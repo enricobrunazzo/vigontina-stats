@@ -915,7 +915,7 @@ const VigontinaStats = () => {
                         
                         <div className="flex justify-between items-start pr-6">
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <span className="font-semibold">{new Date(match.date).toLocaleDateString('it-IT')}</span>
                               <span className={`px-1 py-0.5 rounded text-[10px] font-bold ${
                                 result === 'win' ? 'bg-green-500 text-white' : 
@@ -924,6 +924,13 @@ const VigontinaStats = () => {
                               }`}>
                                 {result === 'win' ? 'VINTA' : result === 'loss' ? 'PERSA' : 'PAREGGIO'}
                               </span>
+                              <button
+                                onClick={() => setShowMatchDetails(match)}
+                                className="text-[10px] text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded"
+                              >
+                                <TrendingUp className="w-3 h-3" />
+                                Dettagli Partita
+                              </button>
                             </div>
                             <div className="text-gray-600 text-[11px]">
                               {match.competition || 'Torneo'}
@@ -942,17 +949,6 @@ const VigontinaStats = () => {
                             </div>
                           </div>
                         </div>
-                        
-                        <button
-                          onClick={() => setShowMatchDetails(match)}
-                          className="mt-2 text-[10px] text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2 py-1 rounded"
-                        >
-                          <TrendingUp className="w-3 h-3" />
-                          Stats
-                          {match.goals && match.goals.length > 0 && (
-                            <span className="text-[9px] text-gray-500">({match.goals.length} gol)</span>
-                          )}
-                        </button>
                       </div>
                     );
                   })}
