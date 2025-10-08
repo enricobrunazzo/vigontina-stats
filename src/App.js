@@ -914,7 +914,7 @@ const VigontinaStats = () => {
   );
 };
 
-export default VigontinaStats;
+export default VigontinaStats;Campello Francesco</option>
               </select>
             </div>
 
