@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Minus, Target, Users, ChevronLeft, ChevronRight, Download, History, Save, Play, Pause, RotateCcw, X, TrendingUp } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyC1Dw0zFBOYwW6uVfEa0zHC5YBOFUhHsmI",
@@ -81,20 +81,7 @@ const VigontinaStats = () => {
 
   useEffect(() => {
     loadHistory();
-    
-    // Recupera lo stato del timer dal localStorage
-    const savedTimerState = localStorage.getItem('timerState');
-    if (savedTimerState) {
-      const { startTime, periodWhenStarted, isRunning } = JSON.parse(savedTimerState);
-      if (isRunning && periodWhenStarted > 0) {
-        setTimerStartTime(startTime);
-        setIsTimerRunning(true);
-        setCurrentPeriod(periodWhenStarted);
-        // Calcola il tempo trascorso
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
-        setTimerSeconds(Math.min(elapsed, 1200));
-      }
-    }
+    loadTimerState();
     
     // Cleanup wake lock on unmount
     return () => {
@@ -146,20 +133,12 @@ const VigontinaStats = () => {
       setTimerStartTime(startTime);
       setIsTimerRunning(true);
       
-      // Salva nel localStorage
-      localStorage.setItem('timerState', JSON.stringify({
-        startTime: startTime,
-        periodWhenStarted: currentPeriod,
-        isRunning: true
-      }));
+      // Salva su Firebase
+      saveTimerState(startTime, currentPeriod, true);
     } else {
       // Metti in pausa
       setIsTimerRunning(false);
-      localStorage.setItem('timerState', JSON.stringify({
-        startTime: timerStartTime,
-        periodWhenStarted: currentPeriod,
-        isRunning: false
-      }));
+      saveTimerState(timerStartTime, currentPeriod, false);
     }
   };
 
@@ -167,7 +146,7 @@ const VigontinaStats = () => {
     setIsTimerRunning(false);
     setTimerSeconds(0);
     setTimerStartTime(null);
-    localStorage.removeItem('timerState');
+    clearTimerState();
     if (wakeLockRef.current) {
       wakeLockRef.current.release().then(() => {
         wakeLockRef.current = null;
@@ -187,6 +166,64 @@ const VigontinaStats = () => {
       console.log(`✅ Caricati ${matches.length} match dallo storico`);
     } catch (error) {
       console.error('Errore caricamento storico:', error);
+    }
+  };
+
+  const loadTimerState = async () => {
+    try {
+      const q = query(collection(db, 'activeTimer'));
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        const timerDoc = querySnapshot.docs[0];
+        const timerData = timerDoc.data();
+        
+        if (timerData.isRunning && timerData.periodWhenStarted > 0) {
+          setTimerStartTime(timerData.startTime);
+          setIsTimerRunning(true);
+          setCurrentPeriod(timerData.periodWhenStarted);
+          const elapsed = Math.floor((Date.now() - timerData.startTime) / 1000);
+          setTimerSeconds(Math.min(elapsed, 1200));
+        }
+      }
+    } catch (error) {
+      console.error('Errore caricamento timer:', error);
+    }
+  };
+
+  const saveTimerState = async (startTime, period, isRunning) => {
+    try {
+      const q = query(collection(db, 'activeTimer'));
+      const querySnapshot = await getDocs(q);
+      
+      const timerData = {
+        startTime: startTime,
+        periodWhenStarted: period,
+        isRunning: isRunning,
+        lastUpdate: Date.now()
+      };
+      
+      if (querySnapshot.empty) {
+        await addDoc(collection(db, 'activeTimer'), timerData);
+      } else {
+        const timerDoc = querySnapshot.docs[0];
+        await updateDoc(doc(db, 'activeTimer', timerDoc.id), timerData);
+      }
+    } catch (error) {
+      console.error('Errore salvataggio timer:', error);
+    }
+  };
+
+  const clearTimerState = async () => {
+    try {
+      const q = query(collection(db, 'activeTimer'));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        const timerDoc = querySnapshot.docs[0];
+        await deleteDoc(doc(db, 'activeTimer', timerDoc.id));
+      }
+    } catch (error) {
+      console.error('Errore eliminazione timer:', error);
     }
   };
 
