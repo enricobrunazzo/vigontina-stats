@@ -751,3 +751,299 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
                   {availablePlayers.filter(p => p.num !== selectedScorer).map(player => (
                     <button
                       key={player.num}
+onClick={() => setSelectedAssist(player.num)}
+                      className={`p-2 rounded border text-sm ${
+                        selectedAssist === player.num
+                          ? 'bg-green-600 text-white border-green-600'
+                          : 'bg-white border-gray-300'
+                      }`}
+                    >
+                      #{player.num} {player.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowGoalDialog(false)}
+                  className="flex-1 bg-gray-200 py-2 rounded"
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={handleAddGoal}
+                  className="flex-1 bg-blue-600 text-white py-2 rounded"
+                >
+                  Conferma
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Main Content */}
+        <button onClick={onBack} className="text-white hover:text-gray-200 flex items-center gap-2">
+          <ArrowLeft className="w-5 h-5" />
+          Torna alla Panoramica
+        </button>
+
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h2 className="text-2xl font-bold mb-4">{period.name}</h2>
+
+          {/* Timer */}
+          {!isProvaTecnica && (
+            <div className="bg-gray-50 rounded-lg p-6 mb-6">
+              <div className="text-center mb-4">
+                <div className="text-5xl font-mono font-bold text-gray-800">
+                  {formatTime(timerSeconds)}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={isTimerRunning ? onPauseTimer : onStartTimer}
+                  className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+                >
+                  {isTimerRunning ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                  {isTimerRunning ? 'Pausa' : 'Avvia'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Score */}
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 mb-6">
+            <div className="text-center">
+              <p className="text-sm font-semibold mb-2">Punteggio Tempo</p>
+              <div className="flex justify-center items-center gap-6">
+                <div>
+                  <p className="text-xs text-gray-600">Vigontina</p>
+                  <p className="text-4xl font-bold text-green-700">{period.vigontina}</p>
+                </div>
+                <span className="text-2xl">-</span>
+                <div>
+                  <p className="text-xs text-gray-600">{match.opponent}</p>
+                  <p className="text-4xl font-bold text-green-700">{period.opponent}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="space-y-3 mb-6">
+            <button
+              onClick={() => setShowGoalDialog(true)}
+              className="w-full bg-green-600 text-white py-4 rounded-lg hover:bg-green-700 text-lg font-semibold"
+            >
+              ⚽ GOL VIGONTINA
+            </button>
+
+            <div className="flex gap-2 items-center">
+              <button
+                onClick={() => onUpdateOpponentScore(-1)}
+                className="bg-red-500 text-white p-3 rounded-lg hover:bg-red-600"
+              >
+                <Minus className="w-5 h-5" />
+              </button>
+              <div className="flex-1 text-center bg-gray-100 py-3 rounded-lg">
+                <span className="font-semibold">Gol Avversario</span>
+              </div>
+              <button
+                onClick={() => onUpdateOpponentScore(1)}
+                className="bg-green-500 text-white p-3 rounded-lg hover:bg-green-600"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Goals List */}
+          {period.goals.length > 0 && (
+            <div className="mb-6">
+              <h3 className="font-semibold mb-2">Gol Vigontina:</h3>
+              <div className="space-y-2">
+                {period.goals.map((goal, idx) => (
+                  <div key={idx} className="bg-gray-50 p-3 rounded">
+                    <p className="font-medium">
+                      {goal.minute}' - #{goal.scorer} {goal.scorerName}
+                    </p>
+                    {goal.assist && (
+                      <p className="text-sm text-gray-600">
+                        Assist: #{goal.assist} {goal.assistName}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={onFinish}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-semibold"
+          >
+            Termina {period.name}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// COMPONENT: Match History
+const MatchHistory = ({ matches, onBack, onReload }) => {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <button onClick={onBack} className="mb-4 text-gray-600 hover:text-gray-800 flex items-center gap-2">
+            <ArrowLeft className="w-5 h-5" />
+            Indietro
+          </button>
+
+          <h2 className="text-2xl font-bold mb-6">Storico Partite</h2>
+
+          {matches.length === 0 ? (
+            <p className="text-gray-600 text-center py-8">Nessuna partita salvata</p>
+          ) : (
+            <div className="space-y-3">
+              {matches.map(match => (
+                <div key={match.id} className="border rounded-lg p-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-semibold">
+                        {match.isHome ? '🏠' : '✈️'} vs {match.opponent}
+                      </h3>
+                      <p className="text-sm text-gray-600">{match.competition}</p>
+                      <p className="text-sm text-gray-600">
+                        {new Date(match.date).toLocaleDateString('it-IT')}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold">
+                        {match.finalPoints.vigontina} - {match.finalPoints.opponent}
+                      </p>
+                      <p className="text-xs text-gray-600">Punti</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// COMPONENT: Match Summary
+const MatchSummary = ({ match, onBack }) => {
+  const calculateTotalGoals = (team) => {
+    return match.periods.reduce((sum, p) => sum + (team === 'vigontina' ? p.vigontina : p.opponent), 0);
+  };
+
+  const allGoals = match.periods.flatMap((period, periodIdx) =>
+    period.goals.map(goal => ({ ...goal, period: period.name }))
+  );
+
+  const scorers = {};
+  const assisters = {};
+
+  allGoals.forEach(goal => {
+    scorers[goal.scorer] = (scorers[goal.scorer] || 0) + 1;
+    if (goal.assist) {
+      assisters[goal.assist] = (assisters[goal.assist] || 0) + 1;
+    }
+  });
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <button onClick={onBack} className="mb-4 text-gray-600 hover:text-gray-800 flex items-center gap-2">
+            <ArrowLeft className="w-5 h-5" />
+            Indietro
+          </button>
+
+          <h2 className="text-2xl font-bold mb-6">Riepilogo Partita</h2>
+
+          <div className="space-y-6">
+            {/* Match Info */}
+            <div>
+              <h3 className="font-semibold mb-2">Informazioni Partita</h3>
+              <div className="bg-gray-50 p-4 rounded">
+                <p><strong>Competizione:</strong> {match.competition}</p>
+                <p><strong>Avversario:</strong> {match.opponent}</p>
+                <p><strong>Data:</strong> {new Date(match.date).toLocaleDateString('it-IT')}</p>
+                <p><strong>Luogo:</strong> {match.isHome ? 'Casa 🏠' : 'Trasferta ✈️'}</p>
+              </div>
+            </div>
+
+            {/* Scorers */}
+            {Object.keys(scorers).length > 0 && (
+              <div>
+                <h3 className="font-semibold mb-2">⚽ Marcatori</h3>
+                <div className="space-y-2">
+                  {Object.entries(scorers)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([num, count]) => {
+                      const player = PLAYERS.find(p => p.num === parseInt(num));
+                      return (
+                        <div key={num} className="bg-gray-50 p-3 rounded flex justify-between">
+                          <span>#{num} {player?.name}</span>
+                          <span className="font-bold">{count} gol</span>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {/* Assisters */}
+            {Object.keys(assisters).length > 0 && (
+              <div>
+                <h3 className="font-semibold mb-2">🎯 Assist</h3>
+                <div className="space-y-2">
+                  {Object.entries(assisters)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([num, count]) => {
+                      const player = PLAYERS.find(p => p.num === parseInt(num));
+                      return (
+                        <div key={num} className="bg-gray-50 p-3 rounded flex justify-between">
+                          <span>#{num} {player?.name}</span>
+                          <span className="font-bold">{count} assist</span>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {/* All Goals */}
+            {allGoals.length > 0 && (
+              <div>
+                <h3 className="font-semibold mb-2">📋 Tutti i Gol</h3>
+                <div className="space-y-2">
+                  {allGoals.map((goal, idx) => (
+                    <div key={idx} className="bg-gray-50 p-3 rounded">
+                      <p className="font-medium">
+                        {goal.period} - {goal.minute}' - #{goal.scorer} {goal.scorerName}
+                      </p>
+                      {goal.assist && (
+                        <p className="text-sm text-gray-600">
+                          Assist: #{goal.assist} {goal.assistName}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default VigontinaStats;
