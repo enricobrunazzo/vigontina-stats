@@ -914,18 +914,4 @@ const VigontinaStats = () => {
   );
 };
 
-export default VigontinaStats;Campello Francesco</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label className="text-xs sm:text-sm font-medium text-gray-700 w-16 sm:w-20">Dir. acc:</label>
-              <select
-                value={teamManager}
-                onChange={(e) => setTeamManager(e.target.value)}
-                className="border border-gray-300 rounded px-2 py-1 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1"
-              >
-                <option value="">Seleziona...</option>
-                <option value="Vendramin Enrico">Vendramin Enrico</option>
-                <option value="Brunazzo Enrico">Brunazzo Enrico</option>
-                <option value="Campello Francesco">
+export default VigontinaStats;
