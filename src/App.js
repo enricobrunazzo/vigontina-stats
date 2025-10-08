@@ -56,6 +56,7 @@ const VigontinaStats = () => {
   
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [timerStartTime, setTimerStartTime] = useState(null);
   const timerRef = useRef(null);
   const wakeLockRef = useRef(null);
   
@@ -80,6 +81,20 @@ const VigontinaStats = () => {
 
   useEffect(() => {
     loadHistory();
+    
+    // Recupera lo stato del timer dal localStorage
+    const savedTimerState = localStorage.getItem('timerState');
+    if (savedTimerState) {
+      const { startTime, periodWhenStarted, isRunning } = JSON.parse(savedTimerState);
+      if (isRunning && periodWhenStarted > 0) {
+        setTimerStartTime(startTime);
+        setIsTimerRunning(true);
+        setCurrentPeriod(periodWhenStarted);
+        // Calcola il tempo trascorso
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        setTimerSeconds(Math.min(elapsed, 1200));
+      }
+    }
     
     // Cleanup wake lock on unmount
     return () => {
@@ -125,12 +140,34 @@ const VigontinaStats = () => {
   };
 
   const toggleTimer = () => {
-    setIsTimerRunning(!isTimerRunning);
+    if (!isTimerRunning) {
+      // Avvia il timer
+      const startTime = Date.now() - (timerSeconds * 1000);
+      setTimerStartTime(startTime);
+      setIsTimerRunning(true);
+      
+      // Salva nel localStorage
+      localStorage.setItem('timerState', JSON.stringify({
+        startTime: startTime,
+        periodWhenStarted: currentPeriod,
+        isRunning: true
+      }));
+    } else {
+      // Metti in pausa
+      setIsTimerRunning(false);
+      localStorage.setItem('timerState', JSON.stringify({
+        startTime: timerStartTime,
+        periodWhenStarted: currentPeriod,
+        isRunning: false
+      }));
+    }
   };
 
   const resetTimer = () => {
     setIsTimerRunning(false);
     setTimerSeconds(0);
+    setTimerStartTime(null);
+    localStorage.removeItem('timerState');
     if (wakeLockRef.current) {
       wakeLockRef.current.release().then(() => {
         wakeLockRef.current = null;
@@ -824,7 +861,10 @@ const VigontinaStats = () => {
                   <div className="text-3xl font-bold text-blue-700">{formatTime(timerSeconds)}</div>
                   <div className="text-xs text-gray-600 mt-1">Minuto: {getCurrentMinute()}'</div>
                   {isTimerRunning && (
-                    <div className="text-[10px] text-green-600 mt-1">🔒 Schermo bloccato acceso</div>
+                    <div className="text-[10px] text-green-600 mt-1 flex items-center justify-center gap-1">
+                      <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                      Timer attivo (continua anche con schermo spento)
+                    </div>
                   )}
                 </div>
                 <div className="flex gap-2">
