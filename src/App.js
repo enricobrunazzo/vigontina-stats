@@ -908,18 +908,18 @@ const VigontinaStats = () => {
 
           <div className="grid grid-cols-3 gap-2 items-center bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-3 sm:p-4 text-white mt-3">
             <div className="text-center">
-              <div className="flex items-center justify-center gap-1 mb-1">
-                <span className="text-xs opacity-90">VIGONTINA</span>
-                <button
-                  onClick={() => setIsHome(!isHome)}
-                  className={`px-1 py-0.5 rounded text-[10px] ${
-                    isHome ? 'bg-white/30' : 'bg-white/10'
-                  }`}
-                  title={isHome ? "Casa" : "Trasferta"}
-                >
-                  H
-                </button>
-              </div>
+              <div className="text-xs mb-1 opacity-90">VIGONTINA</div>
+              <button
+                onClick={() => setIsHome(!isHome)}
+                className={`mb-2 px-3 py-1 rounded text-xs font-medium transition ${
+                  isHome 
+                    ? 'bg-green-500 hover:bg-green-600' 
+                    : 'bg-gray-500 hover:bg-gray-600'
+                }`}
+                title={isHome ? "Partita in Casa" : "Partita in Trasferta"}
+              >
+                {isHome ? '🏠 CASA' : '✈️ TRASFERTA'}
+              </button>
               <div className="text-3xl sm:text-4xl font-bold mb-2">{periodScores[currentPeriod].vigontina}</div>
               <div className="flex gap-1 justify-center">
                 <button
