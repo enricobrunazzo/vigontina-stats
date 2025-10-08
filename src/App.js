@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Minus, Target, Users, ChevronLeft, ChevronRight, Download, History, Save, Play, Pause, RotateCcw, X, TrendingUp } from 'lucide-react';
+import { Plus, Minus, Target, Users, ChevronLeft, ChevronRight, Download, History, Save, Play, Pause, RotateCcw, X, TrendingUp, Home as HomeIcon } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, getDocs, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
@@ -528,72 +528,207 @@ const VigontinaStats = () => {
         {/* Match Details Dialog */}
         {showMatchDetails && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-            <div className="bg-white rounded-lg p-4 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold">Dettagli Partita</h3>
+            <div className="bg-white rounded-lg p-4 sm:p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4 border-b pb-3">
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-800">📊 Riepilogo Partita</h3>
                 <button
                   onClick={() => setShowMatchDetails(null)}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-gray-500 hover:text-gray-700 p-1"
                 >
                   <X className="w-6 h-6" />
                 </button>
               </div>
               
-              <div className="space-y-3">
-                <div className="bg-gray-50 p-3 rounded">
-                  <p className="text-sm"><strong>Data:</strong> {new Date(showMatchDetails.date).toLocaleDateString('it-IT')}</p>
-                  <p className="text-sm"><strong>Competizione:</strong> {showMatchDetails.competition || '-'}</p>
-                  <p className="text-sm"><strong>Giornata:</strong> {showMatchDetails.matchDay || '-'}</p>
-                  <p className="text-sm"><strong>Luogo:</strong> {showMatchDetails.isHome ? 'Casa' : 'Trasferta'}</p>
-                  <p className="text-sm"><strong>Avversario:</strong> {showMatchDetails.opponent}</p>
+              <div className="space-y-4">
+                {/* Match Info Card */}
+                <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-lg border border-blue-200">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-gray-600 text-xs">Data</p>
+                      <p className="font-semibold">{new Date(showMatchDetails.date).toLocaleDateString('it-IT')}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 text-xs">Competizione</p>
+                      <p className="font-semibold">{showMatchDetails.competition || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 text-xs">Giornata</p>
+                      <p className="font-semibold">{showMatchDetails.matchDay || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 text-xs">Luogo</p>
+                      <p className="font-semibold">{showMatchDetails.isHome ? '🏠 Casa' : '✈️ Trasferta'}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 text-xs">Assistente Arbitro</p>
+                      <p className="font-semibold text-xs">{showMatchDetails.assistantReferee || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 text-xs">Dirigente Accomp.</p>
+                      <p className="font-semibold text-xs">{showMatchDetails.teamManager || '-'}</p>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="bg-blue-50 p-3 rounded">
-                  <p className="text-sm font-bold mb-2">Risultato Finale</p>
-                  <p className="text-2xl font-bold text-center">
-                    {showMatchDetails.finalPoints?.vigontina || 0} - {showMatchDetails.finalPoints?.opponent || 0} (punti)
-                  </p>
-                  <p className="text-sm text-center text-gray-600">
-                    Gol: {showMatchDetails.totalGoals?.vigontina || 0} - {showMatchDetails.totalGoals?.opponent || 0}
-                  </p>
+                {/* Score Card */}
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
+                  <div className="text-center mb-3">
+                    <p className="text-sm font-semibold text-gray-700 mb-2">Vigontina vs {showMatchDetails.opponent}</p>
+                    <div className="flex justify-center items-center gap-6">
+                      <div className="text-center">
+                        <p className="text-xs text-gray-600">Punti</p>
+                        <p className="text-4xl font-bold text-green-700">
+                          {showMatchDetails.finalPoints?.vigontina || 0}
+                        </p>
+                      </div>
+                      <div className="text-2xl font-bold text-gray-400">-</div>
+                      <div className="text-center">
+                        <p className="text-xs text-gray-600">Punti</p>
+                        <p className="text-4xl font-bold text-green-700">
+                          {showMatchDetails.finalPoints?.opponent || 0}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-green-200">
+                      <p className="text-xs text-gray-600 mb-1">Gol (statistica)</p>
+                      <p className="text-xl font-semibold text-gray-700">
+                        {showMatchDetails.totalGoals?.vigontina || 0} - {showMatchDetails.totalGoals?.opponent || 0}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Period Scores */}
+                  {showMatchDetails.periodScores && (
+                    <div className="mt-3 pt-3 border-t border-green-200">
+                      <p className="text-xs font-semibold text-gray-700 mb-2">Punteggi per Tempo</p>
+                      <div className="grid grid-cols-5 gap-1">
+                        {Object.entries(showMatchDetails.periodScores).map(([key, scores]) => (
+                          <div key={key} className="bg-white rounded p-2 text-center">
+                            <p className="text-[9px] text-gray-600 mb-1">{periods[parseInt(key)]}</p>
+                            <p className="text-xs font-bold">{scores.vigontina}-{scores.opponent}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
+                {/* Goals Timeline */}
                 {showMatchDetails.goals && showMatchDetails.goals.length > 0 && (
-                  <div className="bg-yellow-50 p-3 rounded">
-                    <p className="text-sm font-bold mb-2">🎯 Gol Segnati ({showMatchDetails.goals.length})</p>
-                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                    <p className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                      <span>⚽</span> Cronologia Gol ({showMatchDetails.goals.length})
+                    </p>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
                       {showMatchDetails.goals.map((goal, idx) => (
-                        <div key={idx} className="text-xs bg-white p-2 rounded">
-                          <span className="font-bold text-blue-600">{goal.minute}'</span>
-                          {' - '}
-                          <span className="font-semibold">{goal.scorerName}</span>
-                          {goal.assistName && (
-                            <span className="text-gray-600"> (assist: {goal.assistName})</span>
-                          )}
-                          <span className="text-gray-400 ml-2 text-[10px]">({goal.periodName})</span>
+                        <div key={idx} className="bg-white p-3 rounded-lg shadow-sm">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="bg-blue-500 text-white px-2 py-0.5 rounded text-xs font-bold">
+                                  {goal.minute}'
+                                </span>
+                                <span className="text-xs text-gray-500">{goal.periodName}</span>
+                              </div>
+                              <p className="font-semibold text-sm text-gray-800">
+                                ⚽ {goal.scorerName}
+                                <span className="text-xs text-gray-600 ml-1">(#{goal.scorer})</span>
+                              </p>
+                              {goal.assistName && (
+                                <p className="text-xs text-gray-600 mt-1">
+                                  🎯 Assist: {goal.assistName} (#{goal.assist})
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
 
+                {/* Player Stats */}
                 {showMatchDetails.playerStats && (
-                  <div className="bg-green-50 p-3 rounded">
-                    <p className="text-sm font-bold mb-2">📊 Statistiche Giocatori</p>
-                    <div className="space-y-1 max-h-48 overflow-y-auto">
-                      {players.map(player => {
-                        const playerStat = showMatchDetails.playerStats[player.num];
-                        if (!playerStat || (playerStat.goals === 0 && playerStat.assists === 0)) return null;
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <p className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                      <Users className="w-4 h-4" /> Statistiche Giocatori
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                      {players
+                        .map(player => {
+                          const playerStat = showMatchDetails.playerStats[player.num];
+                          if (!playerStat || (playerStat.goals === 0 && playerStat.assists === 0)) return null;
+                          return (
+                            <div key={player.num} className="bg-white p-3 rounded-lg shadow-sm">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
+                                  {player.num}
+                                </div>
+                                <p className="font-semibold text-sm">{player.name}</p>
+                              </div>
+                              <div className="flex gap-4 text-xs">
+                                <div>
+                                  <span className="text-gray-600">Gol:</span>
+                                  <span className="font-bold text-blue-600 ml-1">{playerStat.goals}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-600">Assist:</span>
+                                  <span className="font-bold text-green-600 ml-1">{playerStat.assists}</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                        .filter(Boolean)}
+                    </div>
+                    
+                    {/* Top Scorer & Top Assist */}
+                    <div className="mt-4 pt-3 border-t border-blue-200 grid grid-cols-2 gap-3">
+                      {(() => {
+                        const topScorer = players.reduce((max, player) => {
+                          const goals = showMatchDetails.playerStats[player.num]?.goals || 0;
+                          return goals > (showMatchDetails.playerStats[max.num]?.goals || 0) ? player : max;
+                        }, players[0]);
+                        
+                        const topAssist = players.reduce((max, player) => {
+                          const assists = showMatchDetails.playerStats[player.num]?.assists || 0;
+                          return assists > (showMatchDetails.playerStats[max.num]?.assists || 0) ? player : max;
+                        }, players[0]);
+                        
+                        const topScorerGoals = showMatchDetails.playerStats[topScorer.num]?.goals || 0;
+                        const topAssistCount = showMatchDetails.playerStats[topAssist.num]?.assists || 0;
+                        
                         return (
-                          <div key={player.num} className="text-xs bg-white p-2 rounded flex justify-between">
-                            <span className="font-semibold">{player.name}</span>
-                            <span>⚽ {playerStat.goals} | 🎯 {playerStat.assists}</span>
-                          </div>
+                          <>
+                            {topScorerGoals > 0 && (
+                              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 p-3 rounded-lg border border-yellow-300">
+                                <p className="text-xs text-gray-600 mb-1">🥇 Miglior Marcatore</p>
+                                <p className="font-bold text-sm">{topScorer.name}</p>
+                                <p className="text-lg font-bold text-orange-600">{topScorerGoals} gol</p>
+                              </div>
+                            )}
+                            {topAssistCount > 0 && (
+                              <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-3 rounded-lg border border-green-300">
+                                <p className="text-xs text-gray-600 mb-1">🎯 Miglior Assistman</p>
+                                <p className="font-bold text-sm">{topAssist.name}</p>
+                                <p className="text-lg font-bold text-green-600">{topAssistCount} assist</p>
+                              </div>
+                            )}
+                          </>
                         );
-                      })}
+                      })()}
                     </div>
                   </div>
                 )}
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={() => setShowMatchDetails(null)}
+                  className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition"
+                >
+                  Chiudi
+                </button>
               </div>
             </div>
           </div>
@@ -808,17 +943,16 @@ const VigontinaStats = () => {
                           </div>
                         </div>
                         
-                        {match.goals && match.goals.length > 0 && (
-                          <div className="flex gap-2 mt-2">
-                            <button
-                              onClick={() => setShowMatchDetails(match)}
-                              className="text-[10px] text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2 py-1 rounded"
-                            >
-                              <TrendingUp className="w-3 h-3" />
-                              Stats ({match.goals.length} gol)
-                            </button>
-                          </div>
-                        )}
+                        <button
+                          onClick={() => setShowMatchDetails(match)}
+                          className="mt-2 text-[10px] text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2 py-1 rounded"
+                        >
+                          <TrendingUp className="w-3 h-3" />
+                          Stats
+                          {match.goals && match.goals.length > 0 && (
+                            <span className="text-[9px] text-gray-500">({match.goals.length} gol)</span>
+                          )}
+                        </button>
                       </div>
                     );
                   })}
