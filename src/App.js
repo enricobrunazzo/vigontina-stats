@@ -57,6 +57,7 @@ const VigontinaStats = () => {
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const timerRef = useRef(null);
+  const wakeLockRef = useRef(null);
   
   const [periodScores, setPeriodScores] = useState(() => {
     const initial = {};
@@ -79,6 +80,15 @@ const VigontinaStats = () => {
 
   useEffect(() => {
     loadHistory();
+    
+    // Cleanup wake lock on unmount
+    return () => {
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release().then(() => {
+          console.log('Wake Lock rilasciato');
+        });
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -121,6 +131,11 @@ const VigontinaStats = () => {
   const resetTimer = () => {
     setIsTimerRunning(false);
     setTimerSeconds(0);
+    if (wakeLockRef.current) {
+      wakeLockRef.current.release().then(() => {
+        wakeLockRef.current = null;
+      });
+    }
   };
 
   const loadHistory = async () => {
@@ -673,6 +688,9 @@ const VigontinaStats = () => {
                   <div className="text-xs text-gray-600 mb-1">Cronometro</div>
                   <div className="text-3xl font-bold text-blue-700">{formatTime(timerSeconds)}</div>
                   <div className="text-xs text-gray-600 mt-1">Minuto: {getCurrentMinute()}'</div>
+                  {isTimerRunning && (
+                    <div className="text-[10px] text-green-600 mt-1">🔒 Schermo bloccato acceso</div>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -791,13 +809,15 @@ const VigontinaStats = () => {
                         </div>
                         
                         {match.goals && match.goals.length > 0 && (
-                          <button
-                            onClick={() => setShowMatchDetails(match)}
-                            className="mt-2 text-[10px] text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                          >
-                            <TrendingUp className="w-3 h-3" />
-                            Vedi dettagli ({match.goals.length} gol)
-                          </button>
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              onClick={() => setShowMatchDetails(match)}
+                              className="text-[10px] text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2 py-1 rounded"
+                            >
+                              <TrendingUp className="w-3 h-3" />
+                              Stats ({match.goals.length} gol)
+                            </button>
+                          </div>
                         )}
                       </div>
                     );
