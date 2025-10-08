@@ -764,7 +764,6 @@ const VigontinaStats = () => {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="font-semibold">{new Date(match.date).toLocaleDateString('it-IT')}</span>
-                              {match.isHome && <HomeIcon className="w-3 h-3 text-blue-500" title="Casa" />}
                               <span className={`px-1 py-0.5 rounded text-[10px] font-bold ${
                                 result === 'win' ? 'bg-green-500 text-white' : 
                                 result === 'loss' ? 'bg-red-500 text-white' : 
@@ -773,8 +772,11 @@ const VigontinaStats = () => {
                                 {result === 'win' ? 'VINTA' : result === 'loss' ? 'PERSA' : 'PAREGGIO'}
                               </span>
                             </div>
-                            <div className="text-gray-600">
-                              {match.competition || 'Torneo'} {match.matchDay && `- G${match.matchDay}`}
+                            <div className="text-gray-600 text-[11px]">
+                              {match.competition || 'Torneo'}
+                              {match.matchDay && ` - G${match.matchDay}`}
+                              {' • '}
+                              {match.isHome ? '🏠 Casa' : '✈️ Trasferta'}
                             </div>
                             <div className="font-medium">vs {match.opponent}</div>
                           </div>
