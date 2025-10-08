@@ -199,6 +199,10 @@ const VigontinaStats = () => {
   };
 
   const addGoal = (scorerNum) => {
+    if (currentPeriod === 0) {
+      alert('⚠️ Non è possibile segnare gol durante la PROVA TECNICA. Usa i pulsanti +/- per il punteggio.');
+      return;
+    }
     setSelectedScorer(scorerNum);
     setShowGoalDialog(true);
   };
@@ -235,6 +239,9 @@ const VigontinaStats = () => {
     
     if (currentPeriod > 0) {
       updateScore('vigontina', 1);
+    } else {
+      // Durante PROVA TECNICA aggiorna solo il punteggio manualmente
+      alert('⚠️ Durante la PROVA TECNICA usa i pulsanti +/- per il punteggio.');
     }
     
     setShowGoalDialog(false);
@@ -1032,6 +1039,11 @@ const VigontinaStats = () => {
 
         <div className="bg-white rounded-lg shadow-lg p-3 sm:p-4">
           <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-2 sm:mb-3">Statistiche Giocatori</h2>
+          {currentPeriod === 0 && (
+            <div className="bg-yellow-50 border border-yellow-300 rounded p-2 mb-3 text-xs text-center">
+              ⚠️ Durante la PROVA TECNICA usa i pulsanti +/- del punteggio. I gol individuali si segnano solo nei tempi 1-4.
+            </div>
+          )}
           <div className="space-y-2">
             {players.map(player => {
               const isNotCalled = notCalled.includes(player.num);
@@ -1086,9 +1098,9 @@ const VigontinaStats = () => {
                       </span>
                       <button
                         onClick={() => addGoal(player.num)}
-                        disabled={isNotCalled}
+                        disabled={isNotCalled || currentPeriod === 0}
                         className={`p-0.5 rounded ${
-                          isNotCalled 
+                          isNotCalled || currentPeriod === 0
                             ? 'bg-gray-300 text-gray-400 cursor-not-allowed' 
                             : 'bg-blue-500 hover:bg-blue-600 text-white'
                         }`}
