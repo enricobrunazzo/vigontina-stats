@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Minus, Trophy, Target, Users, ChevronLeft, ChevronRight, Download, History, Save, Play, Pause, RotateCcw } from 'lucide-react';
+import { Plus, Minus, Target, Users, ChevronLeft, ChevronRight, Download, History, Save, Play, Pause, RotateCcw } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, getDocs, query, orderBy } from 'firebase/firestore';
