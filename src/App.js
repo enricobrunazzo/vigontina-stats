@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, ArrowLeft, Save, Download, FileText, Plus, Minus } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { Play, Pause, ArrowLeft, Save, Download, FileText, Plus, Minus } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, getDocs, query, orderBy, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 
@@ -35,14 +34,12 @@ const PLAYERS = [
 ];
 
 const VigontinaStats = () => {
-  const [page, setPage] = useState('home'); // home, new-match, match-overview, period, history, summary
+  const [page, setPage] = useState('home');
   const [matchHistory, setMatchHistory] = useState([]);
   
-  // Current match data
   const [currentMatch, setCurrentMatch] = useState(null);
   const [currentPeriod, setCurrentPeriod] = useState(null);
   
-  // Timer
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [timerStartTime, setTimerStartTime] = useState(null);
@@ -293,11 +290,9 @@ const VigontinaStats = () => {
   };
 
   const exportMatchToExcel = () => {
-    // Implementation similar to before
     alert('Export Excel in development');
   };
 
-  // PAGE: Home
   if (page === 'home') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
@@ -337,12 +332,10 @@ const VigontinaStats = () => {
     );
   }
 
-  // PAGE: New Match Setup
   if (page === 'new-match') {
     return <NewMatchForm onSubmit={createNewMatch} onCancel={() => setPage('home')} />;
   }
 
-  // PAGE: Match Overview
   if (page === 'match-overview' && currentMatch) {
     return (
       <MatchOverview
@@ -361,7 +354,6 @@ const VigontinaStats = () => {
     );
   }
 
-  // PAGE: Period Play
   if (page === 'period' && currentMatch && currentPeriod !== null) {
     return (
       <PeriodPlay
@@ -374,6 +366,7 @@ const VigontinaStats = () => {
         onAddGoal={addGoal}
         onUpdateOpponentScore={updateOpponentScore}
         onFinish={finishPeriod}
+        formatTime={formatTime}
         onBack={() => {
           setPage('match-overview');
           setCurrentPeriod(null);
@@ -382,12 +375,10 @@ const VigontinaStats = () => {
     );
   }
 
-  // PAGE: History
   if (page === 'history') {
     return <MatchHistory matches={matchHistory} onBack={() => setPage('home')} onReload={loadHistory} />;
   }
 
-  // PAGE: Summary
   if (page === 'summary' && currentMatch) {
     return <MatchSummary match={currentMatch} onBack={() => setPage('match-overview')} />;
   }
@@ -395,7 +386,6 @@ const VigontinaStats = () => {
   return null;
 };
 
-// COMPONENT: New Match Form
 const NewMatchForm = ({ onSubmit, onCancel }) => {
   const [competition, setCompetition] = useState('Torneo Provinciale Autunnale');
   const [matchDay, setMatchDay] = useState('');
@@ -566,7 +556,6 @@ const NewMatchForm = ({ onSubmit, onCancel }) => {
   );
 };
 
-// COMPONENT: Match Overview
 const MatchOverview = ({ match, onStartPeriod, onSave, onExport, onSummary, onBack }) => {
   const calculateTotalGoals = (team) => {
     return match.periods.reduce((sum, p) => sum + (team === 'vigontina' ? p.vigontina : p.opponent), 0);
@@ -679,20 +668,13 @@ const MatchOverview = ({ match, onStartPeriod, onSave, onExport, onSummary, onBa
   );
 };
 
-// COMPONENT: Period Play
-const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartTimer, onPauseTimer, onAddGoal, onUpdateOpponentScore, onFinish, onBack }) => {
+const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartTimer, onPauseTimer, onAddGoal, onUpdateOpponentScore, onFinish, formatTime, onBack }) => {
   const period = match.periods[periodIndex];
   const [showGoalDialog, setShowGoalDialog] = useState(false);
   const [selectedScorer, setSelectedScorer] = useState(null);
   const [selectedAssist, setSelectedAssist] = useState(null);
 
   const availablePlayers = PLAYERS.filter(p => !match.notCalled.includes(p.num));
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
 
   const handleAddGoal = () => {
     if (!selectedScorer) {
@@ -710,7 +692,6 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
       <div className="max-w-2xl mx-auto space-y-4">
-        {/* Goal Dialog */}
         {showGoalDialog && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-[80vh] overflow-y-auto">
@@ -751,7 +732,7 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
                   {availablePlayers.filter(p => p.num !== selectedScorer).map(player => (
                     <button
                       key={player.num}
-onClick={() => setSelectedAssist(player.num)}
+                      onClick={() => setSelectedAssist(player.num)}
                       className={`p-2 rounded border text-sm ${
                         selectedAssist === player.num
                           ? 'bg-green-600 text-white border-green-600'
@@ -782,7 +763,6 @@ onClick={() => setSelectedAssist(player.num)}
           </div>
         )}
 
-        {/* Main Content */}
         <button onClick={onBack} className="text-white hover:text-gray-200 flex items-center gap-2">
           <ArrowLeft className="w-5 h-5" />
           Torna alla Panoramica
@@ -791,7 +771,6 @@ onClick={() => setSelectedAssist(player.num)}
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h2 className="text-2xl font-bold mb-4">{period.name}</h2>
 
-          {/* Timer */}
           {!isProvaTecnica && (
             <div className="bg-gray-50 rounded-lg p-6 mb-6">
               <div className="text-center mb-4">
@@ -811,7 +790,6 @@ onClick={() => setSelectedAssist(player.num)}
             </div>
           )}
 
-          {/* Score */}
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 mb-6">
             <div className="text-center">
               <p className="text-sm font-semibold mb-2">Punteggio Tempo</p>
@@ -829,7 +807,6 @@ onClick={() => setSelectedAssist(player.num)}
             </div>
           </div>
 
-          {/* Actions */}
           <div className="space-y-3 mb-6">
             <button
               onClick={() => setShowGoalDialog(true)}
@@ -857,7 +834,6 @@ onClick={() => setSelectedAssist(player.num)}
             </div>
           </div>
 
-          {/* Goals List */}
           {period.goals.length > 0 && (
             <div className="mb-6">
               <h3 className="font-semibold mb-2">Gol Vigontina:</h3>
@@ -890,8 +866,7 @@ onClick={() => setSelectedAssist(player.num)}
   );
 };
 
-// COMPONENT: Match History
-const MatchHistory = ({ matches, onBack, onReload }) => {
+const MatchHistory = ({ matches, onBack }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
       <div className="max-w-2xl mx-auto">
@@ -936,13 +911,8 @@ const MatchHistory = ({ matches, onBack, onReload }) => {
   );
 };
 
-// COMPONENT: Match Summary
 const MatchSummary = ({ match, onBack }) => {
-  const calculateTotalGoals = (team) => {
-    return match.periods.reduce((sum, p) => sum + (team === 'vigontina' ? p.vigontina : p.opponent), 0);
-  };
-
-  const allGoals = match.periods.flatMap((period, periodIdx) =>
+  const allGoals = match.periods.flatMap((period) =>
     period.goals.map(goal => ({ ...goal, period: period.name }))
   );
 
@@ -968,7 +938,6 @@ const MatchSummary = ({ match, onBack }) => {
           <h2 className="text-2xl font-bold mb-6">Riepilogo Partita</h2>
 
           <div className="space-y-6">
-            {/* Match Info */}
             <div>
               <h3 className="font-semibold mb-2">Informazioni Partita</h3>
               <div className="bg-gray-50 p-4 rounded">
@@ -979,7 +948,6 @@ const MatchSummary = ({ match, onBack }) => {
               </div>
             </div>
 
-            {/* Scorers */}
             {Object.keys(scorers).length > 0 && (
               <div>
                 <h3 className="font-semibold mb-2">⚽ Marcatori</h3>
@@ -999,7 +967,6 @@ const MatchSummary = ({ match, onBack }) => {
               </div>
             )}
 
-            {/* Assisters */}
             {Object.keys(assisters).length > 0 && (
               <div>
                 <h3 className="font-semibold mb-2">🎯 Assist</h3>
@@ -1019,7 +986,6 @@ const MatchSummary = ({ match, onBack }) => {
               </div>
             )}
 
-            {/* All Goals */}
             {allGoals.length > 0 && (
               <div>
                 <h3 className="font-semibold mb-2">📋 Tutti i Gol</h3>
