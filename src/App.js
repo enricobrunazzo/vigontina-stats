@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Minus, Target, Users, ChevronLeft, ChevronRight, Download, History, Save, Play, Pause, RotateCcw } from 'lucide-react';
+import { Plus, Minus, Target, Users, ChevronLeft, ChevronRight, Download, History, Save, Play, Pause, RotateCcw, X, TrendingUp, Home as HomeIcon } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, getDocs, query, orderBy } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
 
-// Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyC1Dw0zFBOYwW6uVfEa0zHC5YBOFUhHsmI",
   authDomain: "vigontina-stats.firebaseapp.com",
@@ -14,7 +13,6 @@ const firebaseConfig = {
   appId: "1:979551248607:web:fb9b3092d79507ddaf896a"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
@@ -38,20 +36,24 @@ const VigontinaStats = () => {
   ]);
 
   const periods = ['PROVA TECNICA', '1° TEMPO', '2° TEMPO', '3° TEMPO', '4° TEMPO'];
+  const competitions = ['Torneo Provinciale Autunnale', 'Torneo Provinciale Primaverile', 'Amichevole'];
   
   const [currentPeriod, setCurrentPeriod] = useState(0);
   const [opponentName, setOpponentName] = useState('Avversario');
   const [matchDate, setMatchDate] = useState(new Date().toISOString().split('T')[0]);
   const [assistantReferee, setAssistantReferee] = useState('');
   const [teamManager, setTeamManager] = useState('');
+  const [competition, setCompetition] = useState('Torneo Provinciale Autunnale');
+  const [matchDay, setMatchDay] = useState('');
+  const [isHome, setIsHome] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
   const [matchHistory, setMatchHistory] = useState([]);
   const [saving, setSaving] = useState(false);
   const [showGoalDialog, setShowGoalDialog] = useState(false);
   const [selectedScorer, setSelectedScorer] = useState(null);
   const [selectedAssist, setSelectedAssist] = useState(null);
+  const [showMatchDetails, setShowMatchDetails] = useState(null);
   
-  // Timer states
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const timerRef = useRef(null);
@@ -79,12 +81,11 @@ const VigontinaStats = () => {
     loadHistory();
   }, []);
 
-  // Timer effect
   useEffect(() => {
     if (isTimerRunning && currentPeriod > 0) {
       timerRef.current = setInterval(() => {
         setTimerSeconds(prev => {
-          if (prev >= 1200) { // 20 minuti = 1200 secondi
+          if (prev >= 1200) {
             setIsTimerRunning(false);
             return 1200;
           }
@@ -137,6 +138,27 @@ const VigontinaStats = () => {
     }
   };
 
+  const deleteMatch = async (matchId) => {
+    const password = prompt('Inserisci la password per eliminare:');
+    if (password !== 'Vigontina2526') {
+      alert('❌ Password errata!');
+      return;
+    }
+    
+    if (!window.confirm('Sei sicuro di voler eliminare questa partita?')) {
+      return;
+    }
+    
+    try {
+      await deleteDoc(doc(db, 'matches', matchId));
+      alert('✅ Partita eliminata!');
+      await loadHistory();
+    } catch (error) {
+      console.error('Errore eliminazione:', error);
+      alert('❌ Errore durante l\'eliminazione');
+    }
+  };
+
   const saveToFirebase = async () => {
     try {
       setSaving(true);
@@ -146,6 +168,9 @@ const VigontinaStats = () => {
         opponent: opponentName,
         assistantReferee: assistantReferee || '-',
         teamManager: teamManager || '-',
+        competition: competition,
+        matchDay: matchDay || '-',
+        isHome: isHome,
         periodScores: periodScores,
         finalPoints: {
           vigontina: calculatePoints('vigontina'),
@@ -285,14 +310,13 @@ const VigontinaStats = () => {
       const vigontinaScore = periodScores[i].vigontina;
       const opponentScore = periodScores[i].opponent;
       
-      // Conta solo se c'è stato almeno un gol nel tempo (partita giocata)
       if (vigontinaScore > 0 || opponentScore > 0) {
         if (team === 'vigontina') {
-          if (vigontinaScore > opponentScore) points += 1; // Vittoria
-          else if (vigontinaScore === opponentScore) points += 1; // Pareggio
+          if (vigontinaScore > opponentScore) points += 1;
+          else if (vigontinaScore === opponentScore) points += 1;
         } else {
-          if (opponentScore > vigontinaScore) points += 1; // Vittoria
-          else if (opponentScore === vigontinaScore) points += 1; // Pareggio
+          if (opponentScore > vigontinaScore) points += 1;
+          else if (opponentScore === vigontinaScore) points += 1;
         }
       }
     });
@@ -320,6 +344,8 @@ const VigontinaStats = () => {
     setMatchDate(new Date().toISOString().split('T')[0]);
     setAssistantReferee('');
     setTeamManager('');
+    setMatchDay('');
+    setIsHome(true);
     setNotCalled([]);
     setGoals([]);
     resetTimer();
@@ -329,10 +355,22 @@ const VigontinaStats = () => {
     return Object.values(stats).reduce((sum, s) => sum + s.goals, 0);
   };
 
+  const getMatchResult = (match) => {
+    const vigPoints = match.finalPoints ? match.finalPoints.vigontina : 0;
+    const oppPoints = match.finalPoints ? match.finalPoints.opponent : 0;
+    
+    if (vigPoints > oppPoints) return 'win';
+    if (vigPoints < oppPoints) return 'loss';
+    return 'draw';
+  };
+
   const exportToExcel = () => {
     const summaryData = [
       ['VIGONTINA ESORDIENTI - RIEPILOGO PARTITA'],
       [''],
+      ['Competizione:', competition],
+      ['Giornata:', matchDay || '-'],
+      ['Luogo:', isHome ? 'Casa' : 'Trasferta'],
       ['Avversario:', opponentName],
       ['Data:', new Date(matchDate).toLocaleDateString('it-IT')],
       ['Assistente arbitro:', assistantReferee || '-'],
@@ -430,29 +468,33 @@ const VigontinaStats = () => {
     const historyData = [
       ['STORICO PARTITE VIGONTINA ESORDIENTI'],
       [''],
-      ['Data', 'Avversario', 'Punti', 'Gol', 'Ass. Arbitro', 'Dir. Accomp.']
+      ['Data', 'Competizione', 'Giornata', 'Casa/Trasferta', 'Avversario', 'Punti', 'Gol', 'Risultato']
     ];
 
     matchHistory.forEach(match => {
       const vigPoints = match.finalPoints ? match.finalPoints.vigontina : 0;
       const oppPoints = match.finalPoints ? match.finalPoints.opponent : 0;
-      const vigGoals = match.totalGoals ? match.totalGoals.vigontina : (match.totalScore ? match.totalScore.vigontina : 0);
-      const oppGoals = match.totalGoals ? match.totalGoals.opponent : (match.totalScore ? match.totalScore.opponent : 0);
+      const vigGoals = match.totalGoals ? match.totalGoals.vigontina : 0;
+      const oppGoals = match.totalGoals ? match.totalGoals.opponent : 0;
+      const result = getMatchResult(match);
+      const resultText = result === 'win' ? 'VINTA' : result === 'loss' ? 'PERSA' : 'PAREGGIO';
       
       historyData.push([
         new Date(match.date).toLocaleDateString('it-IT'),
+        match.competition || '-',
+        match.matchDay || '-',
+        match.isHome ? 'Casa' : 'Trasferta',
         match.opponent,
-        `${vigPoints} - ${oppPoints} (pt)`,
-        `${vigGoals} - ${oppGoals} (gol)`,
-        match.assistantReferee,
-        match.teamManager
+        `${vigPoints} - ${oppPoints}`,
+        `${vigGoals} - ${oppGoals}`,
+        resultText
       ]);
     });
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(historyData);
     
-    ws['!cols'] = [{ wch: 12 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 20 }];
+    ws['!cols'] = [{ wch: 12 }, { wch: 30 }, { wch: 10 }, { wch: 15 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
     
     XLSX.utils.book_append_sheet(wb, ws, 'Storico');
     XLSX.writeFile(wb, `Vigontina_Storico_${new Date().toISOString().split('T')[0]}.xlsx`);
@@ -461,6 +503,80 @@ const VigontinaStats = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-2 sm:p-4">
       <div className="max-w-4xl mx-auto">
+        {/* Match Details Dialog */}
+        {showMatchDetails && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+            <div className="bg-white rounded-lg p-4 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold">Dettagli Partita</h3>
+                <button
+                  onClick={() => setShowMatchDetails(null)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="bg-gray-50 p-3 rounded">
+                  <p className="text-sm"><strong>Data:</strong> {new Date(showMatchDetails.date).toLocaleDateString('it-IT')}</p>
+                  <p className="text-sm"><strong>Competizione:</strong> {showMatchDetails.competition || '-'}</p>
+                  <p className="text-sm"><strong>Giornata:</strong> {showMatchDetails.matchDay || '-'}</p>
+                  <p className="text-sm"><strong>Luogo:</strong> {showMatchDetails.isHome ? 'Casa' : 'Trasferta'}</p>
+                  <p className="text-sm"><strong>Avversario:</strong> {showMatchDetails.opponent}</p>
+                </div>
+
+                <div className="bg-blue-50 p-3 rounded">
+                  <p className="text-sm font-bold mb-2">Risultato Finale</p>
+                  <p className="text-2xl font-bold text-center">
+                    {showMatchDetails.finalPoints?.vigontina || 0} - {showMatchDetails.finalPoints?.opponent || 0} (punti)
+                  </p>
+                  <p className="text-sm text-center text-gray-600">
+                    Gol: {showMatchDetails.totalGoals?.vigontina || 0} - {showMatchDetails.totalGoals?.opponent || 0}
+                  </p>
+                </div>
+
+                {showMatchDetails.goals && showMatchDetails.goals.length > 0 && (
+                  <div className="bg-yellow-50 p-3 rounded">
+                    <p className="text-sm font-bold mb-2">🎯 Gol Segnati ({showMatchDetails.goals.length})</p>
+                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                      {showMatchDetails.goals.map((goal, idx) => (
+                        <div key={idx} className="text-xs bg-white p-2 rounded">
+                          <span className="font-bold text-blue-600">{goal.minute}'</span>
+                          {' - '}
+                          <span className="font-semibold">{goal.scorerName}</span>
+                          {goal.assistName && (
+                            <span className="text-gray-600"> (assist: {goal.assistName})</span>
+                          )}
+                          <span className="text-gray-400 ml-2 text-[10px]">({goal.periodName})</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {showMatchDetails.playerStats && (
+                  <div className="bg-green-50 p-3 rounded">
+                    <p className="text-sm font-bold mb-2">📊 Statistiche Giocatori</p>
+                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                      {players.map(player => {
+                        const playerStat = showMatchDetails.playerStats[player.num];
+                        if (!playerStat || (playerStat.goals === 0 && playerStat.assists === 0)) return null;
+                        return (
+                          <div key={player.num} className="text-xs bg-white p-2 rounded flex justify-between">
+                            <span className="font-semibold">{player.name}</span>
+                            <span>⚽ {playerStat.goals} | 🎯 {playerStat.assists}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Goal Dialog */}
         {showGoalDialog && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -605,7 +721,7 @@ const VigontinaStats = () => {
           </div>
 
           {showHistory && (
-            <div className="bg-gray-50 rounded-lg p-3 mb-3 max-h-60 overflow-y-auto">
+            <div className="bg-gray-50 rounded-lg p-3 mb-3 max-h-96 overflow-y-auto">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-bold text-sm">Storico Partite ({matchHistory.length})</h3>
                 {matchHistory.length > 0 && (
@@ -621,23 +737,62 @@ const VigontinaStats = () => {
                 <p className="text-xs text-gray-500">Nessuna partita salvata</p>
               ) : (
                 <div className="space-y-2">
-                  {matchHistory.map((match) => (
-                    <div key={match.id} className="bg-white p-2 rounded text-xs">
-                      <div className="flex justify-between items-center">
-                        <span className="font-semibold">{new Date(match.date).toLocaleDateString('it-IT')}</span>
-                        <span className="font-bold text-blue-600">
-                          {match.finalPoints ? `${match.finalPoints.vigontina} - ${match.finalPoints.opponent}` : 
-                           match.totalScore ? `${match.totalScore.vigontina} - ${match.totalScore.opponent}` : '0 - 0'} pt
-                        </span>
-                      </div>
-                      <div className="text-gray-600">vs {match.opponent}</div>
-                      {match.goals && match.goals.length > 0 && (
-                        <div className="text-[10px] text-gray-500 mt-1">
-                          {match.goals.length} gol registrati
+                  {matchHistory.map((match) => {
+                    const result = getMatchResult(match);
+                    const bgColor = result === 'win' ? 'bg-green-50' : result === 'loss' ? 'bg-red-50' : 'bg-gray-50';
+                    const vigPoints = match.finalPoints ? match.finalPoints.vigontina : 0;
+                    const oppPoints = match.finalPoints ? match.finalPoints.opponent : 0;
+                    
+                    return (
+                      <div key={match.id} className={`${bgColor} p-2 rounded border text-xs relative`}>
+                        <button
+                          onClick={() => deleteMatch(match.id)}
+                          className="absolute top-1 right-1 text-red-500 hover:text-red-700 p-1"
+                          title="Elimina partita"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                        
+                        <div className="flex justify-between items-start pr-6">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-semibold">{new Date(match.date).toLocaleDateString('it-IT')}</span>
+                              {match.isHome && <HomeIcon className="w-3 h-3 text-blue-500" title="Casa" />}
+                              <span className={`px-1 py-0.5 rounded text-[10px] font-bold ${
+                                result === 'win' ? 'bg-green-500 text-white' : 
+                                result === 'loss' ? 'bg-red-500 text-white' : 
+                                'bg-gray-400 text-white'
+                              }`}>
+                                {result === 'win' ? 'VINTA' : result === 'loss' ? 'PERSA' : 'PAREGGIO'}
+                              </span>
+                            </div>
+                            <div className="text-gray-600">
+                              {match.competition || 'Torneo'} {match.matchDay && `- G${match.matchDay}`}
+                            </div>
+                            <div className="font-medium">vs {match.opponent}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-bold text-blue-600 text-lg">
+                              {vigPoints} - {oppPoints}
+                            </div>
+                            <div className="text-[10px] text-gray-500">
+                              Gol: {match.totalGoals?.vigontina || 0}-{match.totalGoals?.opponent || 0}
+                            </div>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        
+                        {match.goals && match.goals.length > 0 && (
+                          <button
+                            onClick={() => setShowMatchDetails(match)}
+                            className="mt-2 text-[10px] text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                          >
+                            <TrendingUp className="w-3 h-3" />
+                            Vedi dettagli ({match.goals.length} gol)
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -645,7 +800,31 @@ const VigontinaStats = () => {
 
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <label className="text-xs sm:text-sm font-medium text-gray-700 w-16 sm:w-20">Data:</label>
+              <label className="text-xs sm:text-sm font-medium text-gray-700 w-20">Competizione:</label>
+              <select
+                value={competition}
+                onChange={(e) => setCompetition(e.target.value)}
+                className="border border-gray-300 rounded px-2 py-1 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1"
+              >
+                {competitions.map(comp => (
+                  <option key={comp} value={comp}>{comp}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="text-xs sm:text-sm font-medium text-gray-700 w-20">Giornata:</label>
+              <input
+                type="number"
+                value={matchDay}
+                onChange={(e) => setMatchDay(e.target.value)}
+                placeholder="Es: 1"
+                className="border border-gray-300 rounded px-2 py-1 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="text-xs sm:text-sm font-medium text-gray-700 w-20">Data:</label>
               <input
                 type="date"
                 value={matchDate}
@@ -655,10 +834,24 @@ const VigontinaStats = () => {
             </div>
             
             <div className="flex items-center gap-2">
-              <label className="text-xs sm:text-sm font-medium text-gray-700 w-16 sm:w-20">Ass. arb:</label>
+              <label className="text-xs sm:text-sm font-medium text-gray-700 w-20">Ass. arb:</label>
               <select
                 value={assistantReferee}
                 onChange={(e) => setAssistantReferee(e.target.value)}
+                className="border border-gray-300 rounded px-2 py-1 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1"
+              >
+                <option value="">Seleziona...</option>
+                <option value="Vendramin Enrico">Vendramin Enrico</option>
+                <option value="Brunazzo Enrico">Brunazzo Enrico</option>
+                <option value="Campello Francesco">Campello Francesco</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="text-xs sm:text-sm font-medium text-gray-700 w-20">Dir. accomp:</label>
+              <select
+                value={teamManager}
+                onChange={(e) => setTeamManager(e.target.value)}
                 className="border border-gray-300 rounded px-2 py-1 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1"
               >
                 <option value="">Seleziona...</option>
@@ -708,7 +901,18 @@ const VigontinaStats = () => {
 
           <div className="grid grid-cols-3 gap-2 items-center bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-3 sm:p-4 text-white mt-3">
             <div className="text-center">
-              <div className="text-xs mb-1 opacity-90">VIGONTINA</div>
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <span className="text-xs opacity-90">VIGONTINA</span>
+                <button
+                  onClick={() => setIsHome(!isHome)}
+                  className={`px-1 py-0.5 rounded text-[10px] ${
+                    isHome ? 'bg-white/30' : 'bg-white/10'
+                  }`}
+                  title={isHome ? "Casa" : "Trasferta"}
+                >
+                  H
+                </button>
+              </div>
               <div className="text-3xl sm:text-4xl font-bold mb-2">{periodScores[currentPeriod].vigontina}</div>
               <div className="flex gap-1 justify-center">
                 <button
