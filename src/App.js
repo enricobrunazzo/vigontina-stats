@@ -826,8 +826,30 @@ const VigontinaStats = () => {
                 value={matchDay}
                 onChange={(e) => setMatchDay(e.target.value)}
                 placeholder="Es: 1"
-                className="border border-gray-300 rounded px-2 py-1 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1"
+                className="border border-gray-300 rounded px-2 py-1 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-20"
               />
+              <div className="flex gap-1 ml-2">
+                <button
+                  onClick={() => setIsHome(true)}
+                  className={`px-3 py-1 rounded text-xs font-medium transition ${
+                    isHome 
+                      ? 'bg-green-500 text-white' 
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  🏠 CASA
+                </button>
+                <button
+                  onClick={() => setIsHome(false)}
+                  className={`px-3 py-1 rounded text-xs font-medium transition ${
+                    !isHome 
+                      ? 'bg-green-500 text-white' 
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  ✈️ TRASFERTA
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -909,17 +931,6 @@ const VigontinaStats = () => {
           <div className="grid grid-cols-3 gap-2 items-center bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-3 sm:p-4 text-white mt-3">
             <div className="text-center">
               <div className="text-xs mb-1 opacity-90">VIGONTINA</div>
-              <button
-                onClick={() => setIsHome(!isHome)}
-                className={`mb-2 px-3 py-1 rounded text-xs font-medium transition ${
-                  isHome 
-                    ? 'bg-green-500 hover:bg-green-600' 
-                    : 'bg-gray-500 hover:bg-gray-600'
-                }`}
-                title={isHome ? "Partita in Casa" : "Partita in Trasferta"}
-              >
-                {isHome ? '🏠 CASA' : '✈️ TRASFERTA'}
-              </button>
               <div className="text-3xl sm:text-4xl font-bold mb-2">{periodScores[currentPeriod].vigontina}</div>
               <div className="flex gap-1 justify-center">
                 <button
