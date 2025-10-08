@@ -705,7 +705,7 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
     setSelectedAssist(null);
   };
 
-  const isPr ovaTecnica = period.name === 'PROVA TECNICA';
+  const isProvaTecnica = period.name === 'PROVA TECNICA';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
