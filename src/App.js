@@ -884,13 +884,9 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
   };
 
   const isProvaTecnica = period.name === 'PROVA TECNICA';
-  
   const periodNumber = period.name.match(/(\d+)°/)?.[1] || '';
   const periodTitle = isProvaTecnica ? 'Prova Tecnica' : `${periodNumber}° Tempo`;
-  
-  const periodNumber = period.name.match(/(\d+)°/)?.[1] || '';
-  const periodTitle = isProvaTecnica ? 'Prova Tecnica' : `${periodNumber}° Tempo`;
-
+    
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
       <div className="max-w-2xl mx-auto space-y-4">
