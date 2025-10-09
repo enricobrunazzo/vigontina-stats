@@ -1,7 +1,4 @@
-<p className="text-sm text-gray-600 mb-4">
-                      Gol {match.opponent}: {period.opponent}
-                      {period.goals && period.goals.length > 0 && ` • Autogol: ${period.vigontina - period.goals.length}`}
-                    </p>import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, ArrowLeft, Save, Download, FileText, Plus, Minus } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, getDocs, query, orderBy, deleteDoc, doc, updateDoc } from 'firebase/firestore';
@@ -722,7 +719,7 @@ const MatchOverview = ({ match, onStartPeriod, onViewPeriod, onSave, onExport, o
                     <h3 className="font-semibold">{period.name}</h3>
                     <p className="text-sm text-gray-600">
                       {period.vigontina} - {period.opponent}
-                      {period.goals.length > 0 && ` (${period.goals.length} gol)`}
+                      {period.goals && period.goals.length > 0 && ` (${period.goals.length} gol)`}
                     </p>
                   </div>
                   {!period.completed ? (
@@ -812,7 +809,7 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
                     <button
                       key={player.num}
                       onClick={() => setSelectedScorer(player.num)}
-                      className={                      `p-2 rounded border text-sm ${
+                      className={`p-2 rounded border text-sm ${
                         selectedScorer === player.num
                           ? 'bg-blue-600 text-white border-blue-600'
                           : 'bg-white border-gray-300'
@@ -841,7 +838,7 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
                     <button
                       key={player.num}
                       onClick={() => setSelectedAssist(player.num)}
-                      className={                      `p-2 rounded border text-sm ${
+                      className={`p-2 rounded border text-sm ${
                         selectedAssist === player.num
                           ? 'bg-green-600 text-white border-green-600'
                           : 'bg-white border-gray-300'
@@ -999,7 +996,7 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
             )}
           </div>
 
-          {!isProvaTecnica && period.goals.length > 0 && (
+          {!isProvaTecnica && period.goals && period.goals.length > 0 && (
             <div className="mb-6">
               <h3 className="font-semibold mb-2">⚽ Gol Vigontina:</h3>
               <div className="space-y-2">
@@ -1023,7 +1020,7 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
             <div className="mb-6">
               <div className="bg-gray-50 p-3 rounded">
                 <p className="font-medium">🔴 Gol {match.opponent}: {period.opponent}</p>
-                {period.vigontina - period.goals.length > 0 && (
+                {period.goals && period.vigontina - period.goals.length > 0 && (
                   <p className="text-sm text-gray-600 mt-1">
                     🔴 Autogol: {period.vigontina - period.goals.length}
                   </p>
