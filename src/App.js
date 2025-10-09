@@ -243,6 +243,12 @@ const VigontinaStats = () => {
     setCurrentMatch(updatedMatch);
   };
 
+  const addOwnGoal = () => {
+    const updatedMatch = { ...currentMatch };
+    updatedMatch.periods[currentPeriod].vigontina++;
+    setCurrentMatch(updatedMatch);
+  };
+
   const updateOpponentScore = (delta) => {
     const updatedMatch = { ...currentMatch };
     updatedMatch.periods[currentPeriod].opponent = Math.max(0, updatedMatch.periods[currentPeriod].opponent + delta);
@@ -378,6 +384,7 @@ const VigontinaStats = () => {
         onStartTimer={startTimer}
         onPauseTimer={pauseTimer}
         onAddGoal={addGoal}
+        onAddOwnGoal={addOwnGoal}
         onUpdateOpponentScore={updateOpponentScore}
         onUpdateVigontinaScore={updateVigontinaScore}
         onFinish={finishPeriod}
@@ -392,9 +399,20 @@ const VigontinaStats = () => {
 
   if (page === 'period-view' && currentMatch && currentPeriod !== null) {
     return (
-      <PeriodView
+      <PeriodPlay
         match={currentMatch}
         periodIndex={currentPeriod}
+        timerSeconds={timerSeconds}
+        isTimerRunning={isTimerRunning}
+        onStartTimer={startTimer}
+        onPauseTimer={pauseTimer}
+        onAddGoal={addGoal}
+        onAddOwnGoal={addOwnGoal}
+        onUpdateOpponentScore={updateOpponentScore}
+        onUpdateVigontinaScore={updateVigontinaScore}
+        onFinish={finishPeriod}
+        formatTime={formatTime}
+        isEditing={true}
         onBack={() => {
           setPage('match-overview');
           setCurrentPeriod(null);
@@ -412,6 +430,21 @@ const VigontinaStats = () => {
         onViewStats={(match) => {
           setSelectedHistoryMatch(match);
           setPage('history-summary');
+        }}
+        onDelete={async (matchId) => {
+          const password = prompt('Inserisci la password per eliminare la partita:');
+          if (password === 'Vigontina2526') {
+            try {
+              await deleteDoc(doc(db, 'matches', matchId));
+              alert('✅ Partita eliminata!');
+              await loadHistory();
+            } catch (error) {
+              console.error('Errore eliminazione:', error);
+              alert('❌ Errore nell\'eliminazione');
+            }
+          } else if (password !== null) {
+            alert('❌ Password errata');
+          }
         }}
       />
     );
@@ -645,7 +678,12 @@ const MatchOverview = ({ match, onStartPeriod, onViewPeriod, onSave, onExport, o
               </span>
             )}
           </div>
-          <p className="text-sm text-gray-600 mb-4">{match.competition} • {new Date(match.date).toLocaleDateString('it-IT')}</p>
+          <p className="text-sm text-gray-600 mb-4">
+            {match.competition}
+            {match.matchDay && ` - Giornata ${match.matchDay}`}
+            {' • '}
+            {new Date(match.date).toLocaleDateString('it-IT')}
+          </p>
 
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 mb-6">
             <div className="text-center">
@@ -732,7 +770,7 @@ const MatchOverview = ({ match, onStartPeriod, onViewPeriod, onSave, onExport, o
   );
 };
 
-const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartTimer, onPauseTimer, onAddGoal, onUpdateOpponentScore, onUpdateVigontinaScore, onFinish, formatTime, onBack }) => {
+const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartTimer, onPauseTimer, onAddGoal, onAddOwnGoal, onUpdateOpponentScore, onUpdateVigontinaScore, onFinish, formatTime, isEditing, onBack }) => {
   const period = match.periods[periodIndex];
   const [showGoalDialog, setShowGoalDialog] = useState(false);
   const [selectedScorer, setSelectedScorer] = useState(null);
@@ -927,6 +965,13 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
                   ⚽ GOL VIGONTINA
                 </button>
 
+                <button
+                  onClick={onAddOwnGoal}
+                  className="w-full bg-orange-600 text-white py-3 rounded-lg hover:bg-orange-700 font-semibold"
+                >
+                  🔴 AUTOGOL AVVERSARIO
+                </button>
+
                 <div className="flex gap-2 items-center">
                   <button
                     onClick={() => onUpdateOpponentScore(-1)}
@@ -948,7 +993,7 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
             )}
           </div>
 
-          {period.goals.length > 0 && (
+          {!isProvaTecnica && period.goals.length > 0 && (
             <div className="mb-6">
               <h3 className="font-semibold mb-2">Gol Vigontina:</h3>
               <div className="space-y-2">
@@ -972,7 +1017,7 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
             onClick={onFinish}
             className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-semibold"
           >
-            Termina {period.name}
+            {isEditing ? 'Salva Modifiche' : `Termina ${period.name}`}
           </button>
         </div>
       </div>
@@ -982,6 +1027,7 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
 
 const PeriodView = ({ match, periodIndex, onBack }) => {
   const period = match.periods[periodIndex];
+  const isProvaTecnica = period.name === 'PROVA TECNICA';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
@@ -996,7 +1042,7 @@ const PeriodView = ({ match, periodIndex, onBack }) => {
 
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 mb-6">
             <div className="text-center">
-              <p className="text-sm font-semibold mb-2">Risultato Finale</p>
+              <p className="text-sm font-semibold mb-2">{isProvaTecnica ? 'Risultato Prova Tecnica' : 'Risultato Finale'}</p>
               <div className="flex justify-center items-center gap-6">
                 <div>
                   <p className="text-xs text-gray-600">Vigontina</p>
@@ -1008,10 +1054,15 @@ const PeriodView = ({ match, periodIndex, onBack }) => {
                   <p className="text-4xl font-bold text-green-700">{period.opponent}</p>
                 </div>
               </div>
+              {isProvaTecnica && (
+                <p className="text-xs text-gray-600 mt-2">
+                  Punto finale: {period.vigontina > period.opponent ? 'Vigontina (1pt)' : period.vigontina < period.opponent ? match.opponent + ' (1pt)' : 'Pareggio (1pt ciascuno)'}
+                </p>
+              )}
             </div>
           </div>
 
-          {period.goals.length > 0 ? (
+          {!isProvaTecnica && period.goals && period.goals.length > 0 ? (
             <div>
               <h3 className="font-semibold mb-2">⚽ Gol Vigontina:</h3>
               <div className="space-y-2">
@@ -1029,16 +1080,16 @@ const PeriodView = ({ match, periodIndex, onBack }) => {
                 ))}
               </div>
             </div>
-          ) : (
+          ) : !isProvaTecnica ? (
             <p className="text-gray-600 text-center py-4">Nessun gol segnato in questo tempo</p>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
   );
 };
 
-const MatchHistory = ({ matches, onBack, onViewStats }) => {
+const MatchHistory = ({ matches, onBack, onViewStats, onDelete }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
       <div className="max-w-2xl mx-auto">
@@ -1055,31 +1106,51 @@ const MatchHistory = ({ matches, onBack, onViewStats }) => {
           ) : (
             <div className="space-y-3">
               {matches.map(match => (
-                <div key={match.id} className="border rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="font-semibold">
-                        {match.isHome ? '🏠' : '✈️'} vs {match.opponent}
-                      </h3>
-                      <p className="text-sm text-gray-600">{match.competition}</p>
-                      <p className="text-sm text-gray-600">
-                        {new Date(match.date).toLocaleDateString('it-IT')}
-                      </p>
+                <div key={match.id} className="border rounded-lg p-4 relative">
+                  <button
+                    onClick={() => onDelete(match.id)}
+                    className="absolute top-2 right-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full p-1"
+                    title="Elimina partita"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  
+                  <div className="mb-3 pr-8">
+                    <h3 className="font-semibold text-lg">
+                      Vigontina vs {match.opponent}
+                    </h3>
+                    <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                      <span>{match.isHome ? '🏠 Casa' : '✈️ Trasferta'}</span>
+                      <span>•</span>
+                      <span>{match.competition}</span>
+                      {match.matchDay && (
+                        <>
+                          <span>•</span>
+                          <span>Giornata {match.matchDay}</span>
+                        </>
+                      )}
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold">
+                    <p className="text-sm text-gray-600">
+                      {new Date(match.date).toLocaleDateString('it-IT')}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-center bg-gray-50 px-4 py-2 rounded">
+                      <p className="text-xl font-bold">
                         {match.finalPoints.vigontina} - {match.finalPoints.opponent}
                       </p>
                       <p className="text-xs text-gray-600">Punti</p>
                     </div>
+                    <button
+                      onClick={() => onViewStats(match)}
+                      className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+                    >
+                      <FileText className="w-4 h-4" />
+                      Dettagli Partita
+                    </button>
                   </div>
-                  <button
-                    onClick={() => onViewStats(match)}
-                    className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2"
-                  >
-                    <FileText className="w-4 h-4" />
-                    Vedi Statistiche
-                  </button>
                 </div>
               ))}
             </div>
@@ -1119,11 +1190,14 @@ const MatchSummary = ({ match, onBack }) => {
           <div className="space-y-6">
             <div>
               <h3 className="font-semibold mb-2">Informazioni Partita</h3>
-              <div className="bg-gray-50 p-4 rounded">
+              <div className="bg-gray-50 p-4 rounded space-y-1">
                 <p><strong>Competizione:</strong> {match.competition}</p>
+                {match.matchDay && <p><strong>Giornata:</strong> {match.matchDay}</p>}
+                <p><strong>Luogo:</strong> {match.isHome ? '🏠 Casa' : '✈️ Trasferta'}</p>
                 <p><strong>Avversario:</strong> {match.opponent}</p>
                 <p><strong>Data:</strong> {new Date(match.date).toLocaleDateString('it-IT')}</p>
-                <p><strong>Luogo:</strong> {match.isHome ? 'Casa 🏠' : 'Trasferta ✈️'}</p>
+                {match.assistantReferee && <p><strong>Assistente Arbitro:</strong> {match.assistantReferee}</p>}
+                {match.teamManager && <p><strong>Dirigente Accompagnatore:</strong> {match.teamManager}</p>}
               </div>
             </div>
 
