@@ -490,16 +490,16 @@ const VigontinaStats = () => {
     }
   };
 
-  if (page === 'home') {
-    const stats = useMemo(() => {
-      const totalMatches = matchHistory.length;
-      const wins = matchHistory.filter(m => m.finalPoints && m.finalPoints.vigontina > m.finalPoints.opponent).length;
-      const draws = matchHistory.filter(m => m.finalPoints && m.finalPoints.vigontina === m.finalPoints.opponent).length;
-      const losses = matchHistory.filter(m => m.finalPoints && m.finalPoints.vigontina < m.finalPoints.opponent).length;
-      
-      return { totalMatches, wins, draws, losses };
-    }, [matchHistory]);
+    const stats = useMemo(() => {  // ← SPOSTATO FUORI dall'if
+    const totalMatches = matchHistory.length;
+    const wins = matchHistory.filter(m => m.finalPoints && m.finalPoints.vigontina > m.finalPoints.opponent).length;
+    const draws = matchHistory.filter(m => m.finalPoints && m.finalPoints.vigontina === m.finalPoints.opponent).length;
+    const losses = matchHistory.filter(m => m.finalPoints && m.finalPoints.vigontina < m.finalPoints.opponent).length;
+    
+    return { totalMatches, wins, draws, losses };
+  }, [matchHistory]);
 
+  if (page === 'home') {  // ← Ora l'if viene DOPO useMemo
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
         <div className="max-w-2xl mx-auto">
