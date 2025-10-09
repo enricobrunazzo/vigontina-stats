@@ -312,6 +312,11 @@ const VigontinaStats = () => {
   };
 
   if (page === 'home') {
+    const totalMatches = matchHistory.length;
+    const wins = matchHistory.filter(m => m.finalPoints && m.finalPoints.vigontina > m.finalPoints.opponent).length;
+    const draws = matchHistory.filter(m => m.finalPoints && m.finalPoints.vigontina === m.finalPoints.opponent).length;
+    const losses = matchHistory.filter(m => m.finalPoints && m.finalPoints.vigontina < m.finalPoints.opponent).length;
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
         <div className="max-w-2xl mx-auto">
@@ -328,6 +333,30 @@ const VigontinaStats = () => {
                 <p className="text-sm text-gray-600">Esordienti 2025-2026</p>
               </div>
             </div>
+
+            {totalMatches > 0 && (
+              <div className="bg-gradient-to-r from-slate-50 to-cyan-50 rounded-lg p-4 mb-6">
+                <h3 className="font-semibold mb-3 text-center">Stagione 2025-2026</h3>
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-gray-800">{totalMatches}</p>
+                    <p className="text-xs text-gray-600">Partite</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-green-600">{wins}</p>
+                    <p className="text-xs text-gray-600">Vinte</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-yellow-600">{draws}</p>
+                    <p className="text-xs text-gray-600">Pareggiate</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-red-600">{losses}</p>
+                    <p className="text-xs text-gray-600">Perse</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-3">
               <button
@@ -961,35 +990,37 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
               </>
             ) : (
               <>
-                <button
-                  onClick={() => setShowGoalDialog(true)}
-                  className="w-full bg-green-600 text-white py-4 rounded-lg hover:bg-green-700 text-lg font-semibold"
-                >
-                  ⚽ GOL VIGONTINA
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setShowGoalDialog(true)}
+                    className="bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 font-semibold"
+                  >
+                    ⚽ GOL
+                  </button>
 
-                <button
-                  onClick={onAddOwnGoal}
-                  className="w-full bg-orange-600 text-white py-3 rounded-lg hover:bg-orange-700 font-semibold"
-                >
-                  🔴 AUTOGOL
-                </button>
+                  <button
+                    onClick={onAddOwnGoal}
+                    className="bg-orange-600 text-white py-3 rounded-lg hover:bg-orange-700 font-semibold"
+                  >
+                    🔴 AUTOGOL
+                  </button>
+                </div>
 
                 <div className="flex gap-2 items-center">
                   <button
                     onClick={() => onUpdateOpponentScore(-1)}
-                    className="bg-red-500 text-white p-3 rounded-lg hover:bg-red-600"
+                    className="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600"
                   >
-                    <Minus className="w-5 h-5" />
+                    <Minus className="w-4 h-4" />
                   </button>
-                  <div className="flex-1 text-center bg-gray-100 py-3 rounded-lg">
-                    <span className="font-semibold">Gol Avversario</span>
+                  <div className="flex-1 text-center bg-gray-100 py-2 rounded-lg">
+                    <span className="text-sm font-semibold">Gol {match.opponent}</span>
                   </div>
                   <button
                     onClick={() => onUpdateOpponentScore(1)}
-                    className="bg-green-500 text-white p-3 rounded-lg hover:bg-green-600"
+                    className="bg-green-500 text-white p-2 rounded-lg hover:bg-green-600"
                   >
-                    <Plus className="w-5 h-5" />
+                    <Plus className="w-4 h-4" />
                   </button>
                 </div>
               </>
@@ -1017,15 +1048,17 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
           )}
 
           {!isProvaTecnica && (
-            <div className="mb-6">
-              <div className="bg-gray-50 p-3 rounded">
-                <p className="font-medium">🔴 Gol {match.opponent}: {period.opponent}</p>
-                {period.goals && period.vigontina - period.goals.length > 0 && (
-                  <p className="text-sm text-gray-600 mt-1">
-                    🔴 Autogol: {period.vigontina - period.goals.length}
-                  </p>
-                )}
+            <div className="mb-6 space-y-3">
+              <div className="bg-gray-50 p-3 rounded flex justify-between items-center">
+                <p className="font-medium text-sm">Gol {match.opponent}</p>
+                <p className="text-lg font-bold">{period.opponent}</p>
               </div>
+              {period.goals && period.vigontina - period.goals.length > 0 && (
+                <div className="bg-red-50 p-3 rounded flex justify-between items-center">
+                  <p className="font-medium text-sm text-red-700">🔴 Autogol</p>
+                  <p className="text-lg font-bold text-red-700">{period.vigontina - period.goals.length}</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -1057,54 +1090,66 @@ const MatchHistory = ({ matches, onBack, onViewStats, onDelete }) => {
             <p className="text-gray-600 text-center py-8">Nessuna partita salvata</p>
           ) : (
             <div className="space-y-3">
-              {matches.map(match => (
-                <div key={match.id} className="border rounded-lg p-4 relative">
-                  <button
-                    onClick={() => onDelete(match.id)}
-                    className="absolute top-2 right-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full p-1"
-                    title="Elimina partita"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                  
-                  <div className="mb-3 pr-8">
-                    <h3 className="font-semibold text-lg">
-                      Vigontina vs {match.opponent}
-                    </h3>
-                    <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
-                      <span>{match.isHome ? '🏠 Casa' : '✈️ Trasferta'}</span>
-                      <span>•</span>
-                      <span>{match.competition}</span>
-                      {match.matchDay && (
-                        <>
+              {matches.map(match => {
+                const isWin = match.finalPoints.vigontina > match.finalPoints.opponent;
+                const isLoss = match.finalPoints.vigontina < match.finalPoints.opponent;
+                const bgColor = isWin ? 'bg-green-50' : isLoss ? 'bg-red-50' : 'bg-yellow-50';
+                const resultText = isWin ? 'VINTA' : isLoss ? 'PERSA' : 'PAREGGIO';
+                const resultColor = isWin ? 'text-green-700' : isLoss ? 'text-red-700' : 'text-yellow-700';
+                
+                return (
+                  <div key={match.id} className={`border rounded-lg p-4 relative ${bgColor}`}>
+                    <button
+                      onClick={() => onDelete(match.id)}
+                      className="absolute top-2 right-2 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full p-1"
+                      title="Elimina partita"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                    
+                    <div className="pr-8">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-semibold text-base">
+                          Vigontina vs {match.opponent}
+                        </h3>
+                        <span className={`text-xs font-bold px-2 py-1 rounded ${resultColor} bg-opacity-20`}>
+                          {resultText}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs text-gray-600">
+                          <span>{match.isHome ? '🏠' : '✈️'}</span>
+                          <span>{match.competition}</span>
+                          {match.matchDay && (
+                            <>
+                              <span>•</span>
+                              <span>Giornata {match.matchDay}</span>
+                            </>
+                          )}
                           <span>•</span>
-                          <span>Giornata {match.matchDay}</span>
-                        </>
-                      )}
+                          <span>{new Date(match.date).toLocaleDateString('it-IT')}</span>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-lg font-bold">
+                            {match.finalPoints.vigontina} - {match.finalPoints.opponent}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-600">
-                      {new Date(match.date).toLocaleDateString('it-IT')}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-center bg-gray-50 px-4 py-2 rounded">
-                      <p className="text-xl font-bold">
-                        {match.finalPoints.vigontina} - {match.finalPoints.opponent}
-                      </p>
-                      <p className="text-xs text-gray-600">Punti</p>
-                    </div>
+                    
                     <button
                       onClick={() => onViewStats(match)}
-                      className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+                      className="w-full mt-3 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 text-sm"
                     >
                       <FileText className="w-4 h-4" />
                       Dettagli Partita
                     </button>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
