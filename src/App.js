@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+<p className="text-sm text-gray-600 mb-4">
+                      Gol {match.opponent}: {period.opponent}
+                      {period.goals && period.goals.length > 0 && ` • Autogol: ${period.vigontina - period.goals.length}`}
+                    </p>import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, ArrowLeft, Save, Download, FileText, Plus, Minus } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, getDocs, query, orderBy, deleteDoc, doc, updateDoc } from 'firebase/firestore';
@@ -670,7 +673,7 @@ const MatchOverview = ({ match, onStartPeriod, onViewPeriod, onSave, onExport, o
 
         <div className="bg-white rounded-lg shadow-lg p-6">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-2xl font-bold">{match.isHome ? '🏠' : '✈️'} vs {match.opponent}</h2>
+            <h2 className="text-2xl font-bold">Vigontina vs {match.opponent}</h2>
             {isTimerRunning && (
               <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse flex items-center gap-1">
                 <span className="w-2 h-2 bg-white rounded-full"></span>
@@ -678,6 +681,9 @@ const MatchOverview = ({ match, onStartPeriod, onViewPeriod, onSave, onExport, o
               </span>
             )}
           </div>
+          <p className="text-sm text-gray-600 mb-2">
+            {match.isHome ? '🏠 Casa' : '✈️ Trasferta'}
+          </p>
           <p className="text-sm text-gray-600 mb-4">
             {match.competition}
             {match.matchDay && ` - Giornata ${match.matchDay}`}
@@ -969,7 +975,7 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
                   onClick={onAddOwnGoal}
                   className="w-full bg-orange-600 text-white py-3 rounded-lg hover:bg-orange-700 font-semibold"
                 >
-                  🔴 AUTOGOL AVVERSARIO
+                  🔴 AUTOGOL
                 </button>
 
                 <div className="flex gap-2 items-center">
@@ -995,7 +1001,7 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
 
           {!isProvaTecnica && period.goals.length > 0 && (
             <div className="mb-6">
-              <h3 className="font-semibold mb-2">Gol Vigontina:</h3>
+              <h3 className="font-semibold mb-2">⚽ Gol Vigontina:</h3>
               <div className="space-y-2">
                 {period.goals.map((goal, idx) => (
                   <div key={idx} className="bg-gray-50 p-3 rounded">
@@ -1009,6 +1015,19 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
                     )}
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {!isProvaTecnica && (
+            <div className="mb-6">
+              <div className="bg-gray-50 p-3 rounded">
+                <p className="font-medium">🔴 Gol {match.opponent}: {period.opponent}</p>
+                {period.vigontina - period.goals.length > 0 && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    🔴 Autogol: {period.vigontina - period.goals.length}
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -1098,9 +1117,9 @@ const MatchHistory = ({ matches, onBack, onViewStats, onDelete }) => {
 };
 
 const MatchSummary = ({ match, onBack }) => {
-  const allGoals = match.periods.flatMap((period) =>
-    period.goals.map(goal => ({ ...goal, period: period.name }))
-  );
+  const allGoals = match.periods ? match.periods.flatMap((period) =>
+    (period.goals || []).map(goal => ({ ...goal, period: period.name }))
+  ) : [];
 
   const scorers = {};
   const assisters = {};
