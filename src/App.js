@@ -36,6 +36,7 @@ const PLAYERS = [
 const VigontinaStats = () => {
   const [page, setPage] = useState('home');
   const [matchHistory, setMatchHistory] = useState([]);
+  const [selectedHistoryMatch, setSelectedHistoryMatch] = useState(null);
   
   const [currentMatch, setCurrentMatch] = useState(null);
   const [currentPeriod, setCurrentPeriod] = useState(null);
@@ -221,6 +222,11 @@ const VigontinaStats = () => {
     setPage('period');
   };
 
+  const viewCompletedPeriod = (periodIndex) => {
+    setCurrentPeriod(periodIndex);
+    setPage('period-view');
+  };
+
   const addGoal = (scorerNum, assistNum) => {
     const goal = {
       scorer: scorerNum,
@@ -240,6 +246,12 @@ const VigontinaStats = () => {
   const updateOpponentScore = (delta) => {
     const updatedMatch = { ...currentMatch };
     updatedMatch.periods[currentPeriod].opponent = Math.max(0, updatedMatch.periods[currentPeriod].opponent + delta);
+    setCurrentMatch(updatedMatch);
+  };
+
+  const updateVigontinaScore = (delta) => {
+    const updatedMatch = { ...currentMatch };
+    updatedMatch.periods[currentPeriod].vigontina = Math.max(0, updatedMatch.periods[currentPeriod].vigontina + delta);
     setCurrentMatch(updatedMatch);
   };
 
@@ -341,9 +353,11 @@ const VigontinaStats = () => {
       <MatchOverview
         match={currentMatch}
         onStartPeriod={startPeriod}
+        onViewPeriod={viewCompletedPeriod}
         onSave={saveMatch}
         onExport={exportMatchToExcel}
         onSummary={() => setPage('summary')}
+        isTimerRunning={isTimerRunning}
         onBack={() => {
           if (window.confirm('Sei sicuro? I dati non salvati andranno persi.')) {
             setCurrentMatch(null);
@@ -365,6 +379,7 @@ const VigontinaStats = () => {
         onPauseTimer={pauseTimer}
         onAddGoal={addGoal}
         onUpdateOpponentScore={updateOpponentScore}
+        onUpdateVigontinaScore={updateVigontinaScore}
         onFinish={finishPeriod}
         formatTime={formatTime}
         onBack={() => {
@@ -375,12 +390,47 @@ const VigontinaStats = () => {
     );
   }
 
+  if (page === 'period-view' && currentMatch && currentPeriod !== null) {
+    return (
+      <PeriodView
+        match={currentMatch}
+        periodIndex={currentPeriod}
+        onBack={() => {
+          setPage('match-overview');
+          setCurrentPeriod(null);
+        }}
+      />
+    );
+  }
+
   if (page === 'history') {
-    return <MatchHistory matches={matchHistory} onBack={() => setPage('home')} onReload={loadHistory} />;
+    return (
+      <MatchHistory 
+        matches={matchHistory} 
+        onBack={() => setPage('home')} 
+        onReload={loadHistory}
+        onViewStats={(match) => {
+          setSelectedHistoryMatch(match);
+          setPage('history-summary');
+        }}
+      />
+    );
   }
 
   if (page === 'summary' && currentMatch) {
     return <MatchSummary match={currentMatch} onBack={() => setPage('match-overview')} />;
+  }
+
+  if (page === 'history-summary' && selectedHistoryMatch) {
+    return (
+      <MatchSummary 
+        match={selectedHistoryMatch} 
+        onBack={() => {
+          setSelectedHistoryMatch(null);
+          setPage('history');
+        }} 
+      />
+    );
   }
 
   return null;
@@ -537,7 +587,7 @@ const NewMatchForm = ({ onSubmit, onCancel }) => {
                         }
                       }}
                     />
-                    <span>#{player.num} {player.name}</span>
+                    <span>{player.num} {player.name}</span>
                   </label>
                 ))}
               </div>
@@ -556,7 +606,7 @@ const NewMatchForm = ({ onSubmit, onCancel }) => {
   );
 };
 
-const MatchOverview = ({ match, onStartPeriod, onSave, onExport, onSummary, onBack }) => {
+const MatchOverview = ({ match, onStartPeriod, onViewPeriod, onSave, onExport, onSummary, isTimerRunning, onBack }) => {
   const calculateTotalGoals = (team) => {
     return match.periods.reduce((sum, p) => sum + (team === 'vigontina' ? p.vigontina : p.opponent), 0);
   };
@@ -586,7 +636,15 @@ const MatchOverview = ({ match, onStartPeriod, onSave, onExport, onSummary, onBa
         </button>
 
         <div className="bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-2xl font-bold mb-2">{match.isHome ? '🏠' : '✈️'} vs {match.opponent}</h2>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-2xl font-bold">{match.isHome ? '🏠' : '✈️'} vs {match.opponent}</h2>
+            {isTimerRunning && (
+              <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse flex items-center gap-1">
+                <span className="w-2 h-2 bg-white rounded-full"></span>
+                LIVE
+              </span>
+            )}
+          </div>
           <p className="text-sm text-gray-600 mb-4">{match.competition} • {new Date(match.date).toLocaleDateString('it-IT')}</p>
 
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 mb-6">
@@ -631,7 +689,13 @@ const MatchOverview = ({ match, onStartPeriod, onSave, onExport, onSummary, onBa
                       {period.name === 'PROVA TECNICA' ? 'Inizia' : 'Gioca'}
                     </button>
                   ) : (
-                    <span className="text-green-600 font-semibold">✓ Completato</span>
+                    <button
+                      onClick={() => onViewPeriod(idx)}
+                      className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 flex items-center gap-1"
+                    >
+                      <FileText className="w-4 h-4" />
+                      Dettagli
+                    </button>
                   )}
                 </div>
               </div>
@@ -668,7 +732,7 @@ const MatchOverview = ({ match, onStartPeriod, onSave, onExport, onSummary, onBa
   );
 };
 
-const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartTimer, onPauseTimer, onAddGoal, onUpdateOpponentScore, onFinish, formatTime, onBack }) => {
+const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartTimer, onPauseTimer, onAddGoal, onUpdateOpponentScore, onUpdateVigontinaScore, onFinish, formatTime, onBack }) => {
   const period = match.periods[periodIndex];
   const [showGoalDialog, setShowGoalDialog] = useState(false);
   const [selectedScorer, setSelectedScorer] = useState(null);
@@ -704,13 +768,13 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
                     <button
                       key={player.num}
                       onClick={() => setSelectedScorer(player.num)}
-                      className={`p-2 rounded border text-sm ${
+                      className={                      `p-2 rounded border text-sm ${
                         selectedScorer === player.num
                           ? 'bg-blue-600 text-white border-blue-600'
                           : 'bg-white border-gray-300'
                       }`}
                     >
-                      #{player.num} {player.name}
+                      {player.num} {player.name}
                     </button>
                   ))}
                 </div>
@@ -733,13 +797,13 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
                     <button
                       key={player.num}
                       onClick={() => setSelectedAssist(player.num)}
-                      className={`p-2 rounded border text-sm ${
+                      className={                      `p-2 rounded border text-sm ${
                         selectedAssist === player.num
                           ? 'bg-green-600 text-white border-green-600'
                           : 'bg-white border-gray-300'
                       }`}
                     >
-                      #{player.num} {player.name}
+                      {player.num} {player.name}
                     </button>
                   ))}
                 </div>
@@ -792,7 +856,7 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
 
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 mb-6">
             <div className="text-center">
-              <p className="text-sm font-semibold mb-2">Punteggio Tempo</p>
+              <p className="text-sm font-semibold mb-2">{isProvaTecnica ? 'Punteggio Prova Tecnica' : 'Punteggio Tempo'}</p>
               <div className="flex justify-center items-center gap-6">
                 <div>
                   <p className="text-xs text-gray-600">Vigontina</p>
@@ -808,30 +872,80 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
           </div>
 
           <div className="space-y-3 mb-6">
-            <button
-              onClick={() => setShowGoalDialog(true)}
-              className="w-full bg-green-600 text-white py-4 rounded-lg hover:bg-green-700 text-lg font-semibold"
-            >
-              ⚽ GOL VIGONTINA
-            </button>
+            {isProvaTecnica ? (
+              <>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3">
+                  <p className="text-sm text-blue-800 text-center">
+                    <strong>Prova Tecnica:</strong> Inserisci i punti manualmente. Al termine, la squadra vincente guadagna 1 punto nel punteggio finale.
+                  </p>
+                </div>
+                
+                <div className="space-y-3">
+                  <div className="flex gap-2 items-center">
+                    <button
+                      onClick={() => onUpdateVigontinaScore(-1)}
+                      className="bg-red-500 text-white p-3 rounded-lg hover:bg-red-600"
+                    >
+                      <Minus className="w-5 h-5" />
+                    </button>
+                    <div className="flex-1 text-center bg-gray-100 py-3 rounded-lg">
+                      <span className="font-semibold">Punti Vigontina</span>
+                    </div>
+                    <button
+                      onClick={() => onUpdateVigontinaScore(1)}
+                      className="bg-green-500 text-white p-3 rounded-lg hover:bg-green-600"
+                    >
+                      <Plus className="w-5 h-5" />
+                    </button>
+                  </div>
 
-            <div className="flex gap-2 items-center">
-              <button
-                onClick={() => onUpdateOpponentScore(-1)}
-                className="bg-red-500 text-white p-3 rounded-lg hover:bg-red-600"
-              >
-                <Minus className="w-5 h-5" />
-              </button>
-              <div className="flex-1 text-center bg-gray-100 py-3 rounded-lg">
-                <span className="font-semibold">Gol Avversario</span>
-              </div>
-              <button
-                onClick={() => onUpdateOpponentScore(1)}
-                className="bg-green-500 text-white p-3 rounded-lg hover:bg-green-600"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
-            </div>
+                  <div className="flex gap-2 items-center">
+                    <button
+                      onClick={() => onUpdateOpponentScore(-1)}
+                      className="bg-red-500 text-white p-3 rounded-lg hover:bg-red-600"
+                    >
+                      <Minus className="w-5 h-5" />
+                    </button>
+                    <div className="flex-1 text-center bg-gray-100 py-3 rounded-lg">
+                      <span className="font-semibold">Punti Avversario</span>
+                    </div>
+                    <button
+                      onClick={() => onUpdateOpponentScore(1)}
+                      className="bg-green-500 text-white p-3 rounded-lg hover:bg-green-600"
+                    >
+                      <Plus className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setShowGoalDialog(true)}
+                  className="w-full bg-green-600 text-white py-4 rounded-lg hover:bg-green-700 text-lg font-semibold"
+                >
+                  ⚽ GOL VIGONTINA
+                </button>
+
+                <div className="flex gap-2 items-center">
+                  <button
+                    onClick={() => onUpdateOpponentScore(-1)}
+                    className="bg-red-500 text-white p-3 rounded-lg hover:bg-red-600"
+                  >
+                    <Minus className="w-5 h-5" />
+                  </button>
+                  <div className="flex-1 text-center bg-gray-100 py-3 rounded-lg">
+                    <span className="font-semibold">Gol Avversario</span>
+                  </div>
+                  <button
+                    onClick={() => onUpdateOpponentScore(1)}
+                    className="bg-green-500 text-white p-3 rounded-lg hover:bg-green-600"
+                  >
+                    <Plus className="w-5 h-5" />
+                  </button>
+                </div>
+              </>
+            )}
           </div>
 
           {period.goals.length > 0 && (
@@ -841,11 +955,11 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
                 {period.goals.map((goal, idx) => (
                   <div key={idx} className="bg-gray-50 p-3 rounded">
                     <p className="font-medium">
-                      {goal.minute}' - #{goal.scorer} {goal.scorerName}
+                      {goal.minute}' - {goal.scorer} {goal.scorerName}
                     </p>
                     {goal.assist && (
                       <p className="text-sm text-gray-600">
-                        Assist: #{goal.assist} {goal.assistName}
+                        Assist: {goal.assist} {goal.assistName}
                       </p>
                     )}
                   </div>
@@ -866,7 +980,65 @@ const PeriodPlay = ({ match, periodIndex, timerSeconds, isTimerRunning, onStartT
   );
 };
 
-const MatchHistory = ({ matches, onBack }) => {
+const PeriodView = ({ match, periodIndex, onBack }) => {
+  const period = match.periods[periodIndex];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
+      <div className="max-w-2xl mx-auto space-y-4">
+        <button onClick={onBack} className="text-white hover:text-gray-200 flex items-center gap-2">
+          <ArrowLeft className="w-5 h-5" />
+          Torna alla Panoramica
+        </button>
+
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h2 className="text-2xl font-bold mb-4">{period.name}</h2>
+
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 mb-6">
+            <div className="text-center">
+              <p className="text-sm font-semibold mb-2">Risultato Finale</p>
+              <div className="flex justify-center items-center gap-6">
+                <div>
+                  <p className="text-xs text-gray-600">Vigontina</p>
+                  <p className="text-4xl font-bold text-green-700">{period.vigontina}</p>
+                </div>
+                <span className="text-2xl">-</span>
+                <div>
+                  <p className="text-xs text-gray-600">{match.opponent}</p>
+                  <p className="text-4xl font-bold text-green-700">{period.opponent}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {period.goals.length > 0 ? (
+            <div>
+              <h3 className="font-semibold mb-2">⚽ Gol Vigontina:</h3>
+              <div className="space-y-2">
+                {period.goals.map((goal, idx) => (
+                  <div key={idx} className="bg-gray-50 p-3 rounded">
+                    <p className="font-medium">
+                      {goal.minute}' - {goal.scorer} {goal.scorerName}
+                    </p>
+                    {goal.assist && (
+                      <p className="text-sm text-gray-600">
+                        Assist: {goal.assist} {goal.assistName}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="text-gray-600 text-center py-4">Nessun gol segnato in questo tempo</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const MatchHistory = ({ matches, onBack, onViewStats }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
       <div className="max-w-2xl mx-auto">
@@ -884,7 +1056,7 @@ const MatchHistory = ({ matches, onBack }) => {
             <div className="space-y-3">
               {matches.map(match => (
                 <div key={match.id} className="border rounded-lg p-4">
-                  <div className="flex justify-between items-start">
+                  <div className="flex justify-between items-start mb-3">
                     <div>
                       <h3 className="font-semibold">
                         {match.isHome ? '🏠' : '✈️'} vs {match.opponent}
@@ -901,6 +1073,13 @@ const MatchHistory = ({ matches, onBack }) => {
                       <p className="text-xs text-gray-600">Punti</p>
                     </div>
                   </div>
+                  <button
+                    onClick={() => onViewStats(match)}
+                    className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Vedi Statistiche
+                  </button>
                 </div>
               ))}
             </div>
@@ -957,9 +1136,11 @@ const MatchSummary = ({ match, onBack }) => {
                     .map(([num, count]) => {
                       const player = PLAYERS.find(p => p.num === parseInt(num));
                       return (
-                        <div key={num} className="bg-gray-50 p-3 rounded flex justify-between">
-                          <span>#{num} {player?.name}</span>
-                          <span className="font-bold">{count} gol</span>
+                        <div key={num} className="bg-gray-50 p-3 rounded flex justify-between items-center">
+                          <span>{num} {player?.name}</span>
+                          <span className="font-bold flex items-center gap-1">
+                            {count} {'⚽'.repeat(Math.min(count, 5))}
+                          </span>
                         </div>
                       );
                     })}
@@ -976,9 +1157,11 @@ const MatchSummary = ({ match, onBack }) => {
                     .map(([num, count]) => {
                       const player = PLAYERS.find(p => p.num === parseInt(num));
                       return (
-                        <div key={num} className="bg-gray-50 p-3 rounded flex justify-between">
-                          <span>#{num} {player?.name}</span>
-                          <span className="font-bold">{count} assist</span>
+                        <div key={num} className="bg-gray-50 p-3 rounded flex justify-between items-center">
+                          <span>{num} {player?.name}</span>
+                          <span className="font-bold flex items-center gap-1">
+                            {count} {'🎯'.repeat(Math.min(count, 5))}
+                          </span>
                         </div>
                       );
                     })}
@@ -993,11 +1176,11 @@ const MatchSummary = ({ match, onBack }) => {
                   {allGoals.map((goal, idx) => (
                     <div key={idx} className="bg-gray-50 p-3 rounded">
                       <p className="font-medium">
-                        {goal.period} - {goal.minute}' - #{goal.scorer} {goal.scorerName}
+                        ⚽ {goal.period} - {goal.minute}' - {goal.scorer} {goal.scorerName}
                       </p>
                       {goal.assist && (
                         <p className="text-sm text-gray-600">
-                          Assist: #{goal.assist} {goal.assistName}
+                          🎯 Assist: {goal.assist} {goal.assistName}
                         </p>
                       )}
                     </div>
