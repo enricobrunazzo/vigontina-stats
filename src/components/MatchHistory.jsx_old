@@ -1,7 +1,6 @@
 // components/MatchHistory.jsx
 import React from "react";
 import { ArrowLeft, Download, FileText } from "lucide-react";
-import { calculatePoints } from "../utils/matchUtils";
 
 const MatchHistory = ({
   matches,
@@ -57,11 +56,8 @@ const MatchCard = ({
   onExportPDF,
   onDelete,
 }) => {
-  // Calcolo live dei punti secondo la nuova logica
-  const vigontinaPoints = calculatePoints(match, "vigontina");
-  const opponentPoints = calculatePoints(match, "opponent");
-  const isWin = vigontinaPoints > opponentPoints;
-  const isLoss = vigontinaPoints < opponentPoints;
+  const isWin = match.finalPoints.vigontina > match.finalPoints.opponent;
+  const isLoss = match.finalPoints.vigontina < match.finalPoints.opponent;
   
   const bgColor = isWin
     ? "bg-green-50"
@@ -128,7 +124,7 @@ const MatchCard = ({
           </div>
           <div className="text-center">
             <p className="text-lg font-bold">
-              {vigontinaPoints} - {opponentPoints}
+              {match.finalPoints.vigontina} - {match.finalPoints.opponent}
             </p>
           </div>
         </div>
