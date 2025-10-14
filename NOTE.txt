@@ -1,0 +1,76 @@
+# Struttura Modulare - Vigontina Stats App
+
+## 📁 Struttura delle Cartelle
+
+```
+src/
+├── config/
+│   └── firebase.js                 # Configurazione Firebase
+├── constants/
+│   └── players.js                  # Lista giocatori
+├── components/
+│   ├── NewMatchForm.jsx           # Form nuova partita
+│   ├── MatchOverview.jsx          # Panoramica partita
+│   ├── PeriodPlay.jsx             # Gestione periodo di gioco
+│   ├── MatchHistory.jsx           # Storico partite
+│   ├── MatchSummary.jsx           # Riepilogo dettagliato
+│   └── modals/
+│       ├── GoalModal.jsx          # Modal per segnare gol
+│       ├── PenaltyModal.jsx       # Modal per rigori
+│       └── LineupModal.jsx        # Modal selezione formazione
+├── hooks/
+│   ├── useTimer.js                # Hook per gestione timer
+│   ├── useMatchHistory.js         # Hook per storico partite
+│   └── useMatch.js                # Hook per gestione partita corrente
+├── utils/
+│   ├── exportUtils.js             # Funzioni export Excel/PDF
+│   ├── matchUtils.js              # Utility per calcoli partita
+│   └── dateUtils.js               # Utility per date
+└── App.jsx                         # Componente principale
+
+```
+
+## 🔧 File da Creare
+
+### 1. config/firebase.js
+Contiene la configurazione e l'inizializzazione di Firebase.
+
+### 2. constants/players.js
+Esporta l'array PLAYERS con tutti i giocatori.
+
+### 3. hooks/useTimer.js
+Gestisce lo stato del timer, wake lock, e persistenza su Firebase.
+
+### 4. hooks/useMatchHistory.js
+Gestisce il caricamento, salvataggio ed eliminazione delle partite.
+
+### 5. hooks/useMatch.js
+Gestisce lo stato della partita corrente e le operazioni su periodi e eventi.
+
+### 6. utils/exportUtils.js
+Contiene le funzioni `exportMatchToExcel` e `exportMatchToPDF`.
+
+### 7. utils/matchUtils.js
+Funzioni di utility per calcoli (punti, gol totali, statistiche).
+
+### 8. components/modals/
+Componenti per i vari modal riutilizzabili.
+
+### 9. components/
+Tutti i componenti principali separati in file distinti.
+
+## 🚀 Vantaggi della Modularizzazione
+
+- **Manutenibilità**: Ogni file ha una responsabilità specifica
+- **Riusabilità**: I componenti e le funzioni possono essere riutilizzati
+- **Testing**: Più facile testare singoli moduli
+- **Performance**: Possibilità di code splitting e lazy loading
+- **Collaborazione**: Team possono lavorare su file diversi
+- **Debugging**: Più facile individuare e risolvere problemi
+
+## 📝 Note di Implementazione
+
+1. Inizia creando le cartelle nella struttura del progetto
+2. Sposta i file uno alla volta, testando dopo ogni spostamento
+3. Aggiorna gli import in tutti i file che utilizzano i moduli spostati
+4. Verifica che l'applicazione funzioni correttamente dopo ogni modifica
