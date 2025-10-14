@@ -8,12 +8,14 @@
  */
 export const calculatePoints = (match, team) => {
   if (!match || !match.periods) return 0;
-  
+
   let points = 0;
   match.periods.forEach((period) => {
+    // Escludi la Prova Tecnica dal conteggio punti
+    if (period.name === "PROVA TECNICA") return;
     // Salta se non ci sono gol
     if (period.vigontina === 0 && period.opponent === 0) return;
-    
+
     if (team === "vigontina") {
       if (period.vigontina > period.opponent) points++;
       else if (period.vigontina === period.opponent) points++;
@@ -22,7 +24,7 @@ export const calculatePoints = (match, team) => {
       else if (period.opponent === period.vigontina) points++;
     }
   });
-  
+
   return points;
 };
 
@@ -34,11 +36,11 @@ export const calculatePoints = (match, team) => {
  */
 export const calculateTotalGoals = (match, team) => {
   if (!match || !match.periods) return 0;
-  
+
   return match.periods.reduce((sum, period) => {
     // Escludi la Prova Tecnica dal conteggio gol
     if (period.name === "PROVA TECNICA") return sum;
-    
+
     return sum + (team === "vigontina" ? period.vigontina : period.opponent);
   }, 0);
 };
