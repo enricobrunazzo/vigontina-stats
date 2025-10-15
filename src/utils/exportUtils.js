@@ -78,7 +78,7 @@ function eventLabel(e, opponentName = "Avversari") {
   }
 }
 
-// Carica un’immagine come DataURL (per jsPDF.addImage)
+// Carica un'immagine come DataURL (per jsPDF.addImage)
 async function loadImageAsDataURL(url) {
   try {
     const res = await fetch(url, { cache: "no-store" });
@@ -211,7 +211,6 @@ export const exportMatchToPDF = async (match, opts = {}) => {
   doc.text("DETTAGLIO PERIODI", margin, y);
   y += 6;
 
-  // >>>> RIMOSSA la colonna "Conta nei Punti"
   autoTable(doc, {
     startY: y,
     head: [["Periodo", "Vigontina", opponentName, "Completato", "Esito"]],
@@ -379,7 +378,7 @@ export const exportMatchToPDF = async (match, opts = {}) => {
 };
 
 /* -------------------------------------------------------------------------- */
-/*                                   EXCEL                                    */
+/*                                   EXCEL SINGOLA PARTITA                    */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -502,5 +501,296 @@ export const exportMatchToExcel = (match) => {
   } catch (error) {
     console.error("Errore export Excel:", error);
     alert(`❌ Errore durante l'esportazione Excel: ${error.message ?? "Errore sconosciuto"}`);
+  }
+};
+
+/* -------------------------------------------------------------------------- */
+/*                        EXPORT STORICO COMPLETO EXCEL                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Esporta tutto lo storico partite in un unico file Excel multi-foglio
+ * @param {Array} matches - Array di tutte le partite
+ */
+export const exportHistoryToExcel = (matches) => {
+  if (!matches || matches.length === 0) {
+    alert("⚠️ Nessuna partita da esportare");
+    return;
+  }
+
+  try {
+    const wb = XLSX.utils.book_new();
+
+    /* --------------------------- FOGLIO: RIEPILOGO ------------------------ */
+    const summaryData = [
+      ["VIGONTINA SAN PAOLO - STORICO PARTITE"],
+      ["Stagione 2025-2026"],
+      [""],
+      ["Totale Partite", matches.length],
+      [""],
+      ["Data Esportazione", new Date().toLocaleDateString("it-IT")],
+      [""],
+      [""],
+      ["STATISTICHE GENERALI"],
+      [""],
+    ];
+
+    // Calcola statistiche
+    let totalWins = 0;
+    let totalDraws = 0;
+    let totalLosses = 0;
+    let totalGoalsFor = 0;
+    let totalGoalsAgainst = 0;
+    let totalPointsFor = 0;
+    let totalPointsAgainst = 0;
+
+    matches.forEach((match) => {
+      const vp = calculatePoints(match, "vigontina");
+      const op = calculatePoints(match, "opponent");
+      const vg = calculateTotalGoals(match, "vigontina");
+      const og = calculateTotalGoals(match, "opponent");
+
+      totalPointsFor += vp;
+      totalPointsAgainst += op;
+      totalGoalsFor += vg;
+      totalGoalsAgainst += og;
+
+      if (vp > op) totalWins++;
+      else if (vp === op) totalDraws++;
+      else totalLosses++;
+    });
+
+    summaryData.push(
+      ["Partite Vinte", totalWins],
+      ["Partite Pareggiate", totalDraws],
+      ["Partite Perse", totalLosses],
+      [""],
+      ["Punti Totali Vigontina", totalPointsFor],
+      ["Punti Totali Avversari", totalPointsAgainst],
+      [""],
+      ["Gol Totali Segnati", totalGoalsFor],
+      ["Gol Totali Subiti", totalGoalsAgainst],
+      ["Differenza Reti", totalGoalsFor - totalGoalsAgainst]
+    );
+
+    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(wb, wsSummary, "Riepilogo");
+
+    /* ------------------------ FOGLIO: TUTTE LE PARTITE --------------------- */
+    const allMatchesData = [
+      [
+        "Data",
+        "Competizione",
+        "Giornata",
+        "Avversario",
+        "Casa/Trasferta",
+        "Punti Vigontina",
+        "Punti Avversario",
+        "Gol Vigontina",
+        "Gol Avversario",
+        "Risultato",
+      ],
+    ];
+
+    matches
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .forEach((match) => {
+        const vp = calculatePoints(match, "vigontina");
+        const op = calculatePoints(match, "opponent");
+        const vg = calculateTotalGoals(match, "vigontina");
+        const og = calculateTotalGoals(match, "opponent");
+        const result = vp > op ? "V" : vp === op ? "P" : "S";
+
+        allMatchesData.push([
+          fmtDateIT(match.date),
+          match.competition || "",
+          match.matchDay || "",
+          match.opponent || "",
+          match.isHome ? "Casa" : "Trasferta",
+          vp,
+          op,
+          vg,
+          og,
+          result,
+        ]);
+      });
+
+    const wsAllMatches = XLSX.utils.aoa_to_sheet(allMatchesData);
+    XLSX.utils.book_append_sheet(wb, wsAllMatches, "Tutte le Partite");
+
+    /* ----------------------- FOGLIO: CLASSIFICA MARCATORI ------------------ */
+    const allScorers = {};
+    const allAssisters = {};
+
+    matches.forEach((match) => {
+      const stats = calculateMatchStats(match);
+      
+      // Aggrega marcatori
+      Object.entries(stats.scorers).forEach(([num, count]) => {
+        allScorers[num] = (allScorers[num] || 0) + count;
+      });
+      
+      // Aggrega assist
+      Object.entries(stats.assisters).forEach(([num, count]) => {
+        allAssisters[num] = (allAssisters[num] || 0) + count;
+      });
+    });
+
+    const scorersData = [
+      ["CLASSIFICA MARCATORI - STAGIONE 2025-2026"],
+      [""],
+      ["Posizione", "Numero", "Giocatore", "Gol"],
+    ];
+
+    Object.entries(allScorers)
+      .sort((a, b) => b[1] - a[1])
+      .forEach(([num, count], idx) => {
+        const player = PLAYERS.find((p) => p.num === parseInt(num, 10));
+        scorersData.push([idx + 1, num, player?.name || "Sconosciuto", count]);
+      });
+
+    scorersData.push([""], [""], ["CLASSIFICA ASSIST"], [""], ["Posizione", "Numero", "Giocatore", "Assist"]);
+
+    Object.entries(allAssisters)
+      .sort((a, b) => b[1] - a[1])
+      .forEach(([num, count], idx) => {
+        const player = PLAYERS.find((p) => p.num === parseInt(num, 10));
+        scorersData.push([idx + 1, num, player?.name || "Sconosciuto", count]);
+      });
+
+    const wsScorers = XLSX.utils.aoa_to_sheet(scorersData);
+    XLSX.utils.book_append_sheet(wb, wsScorers, "Classifica Marcatori");
+
+    /* ---------------------- FOGLIO: DETTAGLIO PER PARTITA ------------------ */
+    const detailData = [["DETTAGLIO COMPLETO PARTITE"], [""]];
+
+    matches
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .forEach((match, idx) => {
+        const vp = calculatePoints(match, "vigontina");
+        const op = calculatePoints(match, "opponent");
+        const vg = calculateTotalGoals(match, "vigontina");
+        const og = calculateTotalGoals(match, "opponent");
+        const result = vp > op ? "VITTORIA" : vp === op ? "PAREGGIO" : "SCONFITTA";
+
+        detailData.push(
+          [`PARTITA ${idx + 1}`],
+          ["Data", fmtDateIT(match.date)],
+          ["Competizione", `${match.competition || ""}${match.matchDay ? ` - Giornata ${match.matchDay}` : ""}`],
+          ["Avversario", match.opponent || ""],
+          ["Luogo", match.isHome ? "Casa" : "Trasferta"],
+          ["Risultato", result],
+          ["Punti", `${vp} - ${op}`],
+          ["Gol", `${vg} - ${og}`],
+          [""]
+        );
+
+        // Aggiungi periodi
+        if (match.periods && match.periods.length > 0) {
+          detailData.push(["Dettaglio Periodi"]);
+          nonTechnicalPeriods(match).forEach((period) => {
+            detailData.push([
+              period.name,
+              `${safeNum(period.vigontina)} - ${safeNum(period.opponent)}`,
+            ]);
+          });
+          detailData.push([""]);
+        }
+
+        // Aggiungi eventi
+        const stats = calculateMatchStats(match);
+        if (Object.keys(stats.scorers).length > 0) {
+          detailData.push(["Marcatori"]);
+          Object.entries(stats.scorers).forEach(([num, count]) => {
+            const player = PLAYERS.find((p) => p.num === parseInt(num, 10));
+            detailData.push([`${num} ${player?.name || ""}`, count]);
+          });
+        }
+
+        detailData.push([""], [""], [""]);
+      });
+
+    const wsDetail = XLSX.utils.aoa_to_sheet(detailData);
+    XLSX.utils.book_append_sheet(wb, wsDetail, "Dettaglio Partite");
+
+    /* -------------------------- FOGLIO: STATISTICHE PER AVVERSARIO ---------- */
+    const opponentStats = {};
+
+    matches.forEach((match) => {
+      const opponent = match.opponent || "Sconosciuto";
+      if (!opponentStats[opponent]) {
+        opponentStats[opponent] = {
+          matches: 0,
+          wins: 0,
+          draws: 0,
+          losses: 0,
+          goalsFor: 0,
+          goalsAgainst: 0,
+          pointsFor: 0,
+          pointsAgainst: 0,
+        };
+      }
+
+      const vp = calculatePoints(match, "vigontina");
+      const op = calculatePoints(match, "opponent");
+      const vg = calculateTotalGoals(match, "vigontina");
+      const og = calculateTotalGoals(match, "opponent");
+
+      opponentStats[opponent].matches++;
+      opponentStats[opponent].pointsFor += vp;
+      opponentStats[opponent].pointsAgainst += op;
+      opponentStats[opponent].goalsFor += vg;
+      opponentStats[opponent].goalsAgainst += og;
+
+      if (vp > op) opponentStats[opponent].wins++;
+      else if (vp === op) opponentStats[opponent].draws++;
+      else opponentStats[opponent].losses++;
+    });
+
+    const opponentData = [
+      ["STATISTICHE PER AVVERSARIO"],
+      [""],
+      [
+        "Avversario",
+        "Partite",
+        "V",
+        "P",
+        "S",
+        "Punti Fatti",
+        "Punti Subiti",
+        "Gol Fatti",
+        "Gol Subiti",
+        "Diff. Reti",
+      ],
+    ];
+
+    Object.entries(opponentStats)
+      .sort((a, b) => b[1].matches - a[1].matches)
+      .forEach(([opponent, stats]) => {
+        opponentData.push([
+          opponent,
+          stats.matches,
+          stats.wins,
+          stats.draws,
+          stats.losses,
+          stats.pointsFor,
+          stats.pointsAgainst,
+          stats.goalsFor,
+          stats.goalsAgainst,
+          stats.goalsFor - stats.goalsAgainst,
+        ]);
+      });
+
+    const wsOpponent = XLSX.utils.aoa_to_sheet(opponentData);
+    XLSX.utils.book_append_sheet(wb, wsOpponent, "Statistiche Avversari");
+
+    // Salva il file
+    const fileName = `Vigontina_Storico_Completo_${new Date().toLocaleDateString("it-IT").replace(/\//g, "-")}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+
+    alert("✅ Storico esportato con successo!");
+  } catch (error) {
+    console.error("Errore export storico:", error);
+    alert(`❌ Errore durante l'esportazione: ${error.message || "Errore sconosciuto"}`);
   }
 };

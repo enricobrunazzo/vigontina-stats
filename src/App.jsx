@@ -1,17 +1,20 @@
 // App.jsx (versione ottimizzata con useMatch)
 import React, { useState, useEffect, useCallback } from "react";
+
 // Hooks
 import { useTimer } from "./hooks/useTimer";
 import { useMatchHistory } from "./hooks/useMatchHistory";
 import { useMatch } from "./hooks/useMatch";
+
 // Components
 import NewMatchForm from "./components/NewMatchForm";
 import MatchOverview from "./components/MatchOverview";
 import PeriodPlay from "./components/PeriodPlay";
 import MatchHistory from "./components/MatchHistory";
 import MatchSummary from "./components/MatchSummary";
+
 // Utils
-import { exportMatchToExcel, exportMatchToPDF } from "./utils/exportUtils";
+import { exportMatchToExcel, exportMatchToPDF, exportHistoryToExcel } from "./utils/exportUtils"; // <-- AGGIORNATO
 import { calculatePoints } from "./utils/matchUtils";
 
 const VigontinaStats = () => {
@@ -91,6 +94,11 @@ const VigontinaStats = () => {
       setPage("home");
     }
   };
+
+  // NUOVO: Handler per export storico
+  const handleExportHistory = useCallback(() => {
+    exportHistoryToExcel(matchHistory);
+  }, [matchHistory]);
 
   // Event handlers that use timer.getCurrentMinute
   const handleAddGoal = useCallback(
@@ -202,6 +210,7 @@ const VigontinaStats = () => {
         onExportExcel={exportMatchToExcel}
         onExportPDF={exportMatchToPDF}
         onDelete={deleteMatch}
+        onExportHistory={handleExportHistory} // <-- AGGIUNTO
       />
     );
   }

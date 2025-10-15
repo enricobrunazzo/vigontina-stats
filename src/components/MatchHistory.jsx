@@ -1,6 +1,6 @@
 // components/MatchHistory.jsx
 import React from "react";
-import { ArrowLeft, Download, FileText } from "lucide-react";
+import { ArrowLeft, Download, FileText, FileSpreadsheet } from "lucide-react";
 import { calculatePoints } from "../utils/matchUtils";
 
 const MatchHistory = ({
@@ -10,6 +10,7 @@ const MatchHistory = ({
   onExportExcel,
   onExportPDF,
   onDelete,
+  onExportHistory,
 }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
@@ -23,25 +24,53 @@ const MatchHistory = ({
             Indietro
           </button>
           
-          <h2 className="text-2xl font-bold mb-6">Storico Partite</h2>
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+            <h2 className="text-2xl font-bold">Storico Partite</h2>
+            
+            {/* PULSANTE EXPORT STORICO */}
+            {matches.length > 0 && (
+              <button
+                onClick={onExportHistory}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2 text-sm font-medium shadow-md transition-all hover:shadow-lg"
+                title="Esporta tutto lo storico in Excel"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span className="hidden sm:inline">Esporta Storico</span>
+                <span className="sm:hidden">Storico</span>
+              </button>
+            )}
+          </div>
 
           {matches.length === 0 ? (
-            <p className="text-gray-600 text-center py-8">
-              Nessuna partita salvata
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {matches.map((match) => (
-                <MatchCard
-                  key={match.id}
-                  match={match}
-                  onViewStats={() => onViewStats(match)}
-                  onExportExcel={() => onExportExcel(match)}
-                  onExportPDF={() => onExportPDF(match)}
-                  onDelete={() => onDelete(match.id)}
-                />
-              ))}
+            <div className="text-center py-12">
+              <div className="mb-4 text-gray-400">
+                <FileText className="w-16 h-16 mx-auto" />
+              </div>
+              <p className="text-gray-600 text-lg font-medium mb-2">
+                Nessuna partita salvata
+              </p>
+              <p className="text-gray-500 text-sm">
+                Le partite completate appariranno qui
+              </p>
             </div>
+          ) : (
+            <>
+              <div className="mb-4 text-sm text-gray-600">
+                <span className="font-semibold">{matches.length}</span> partite totali
+              </div>
+              <div className="space-y-3">
+                {matches.map((match) => (
+                  <MatchCard
+                    key={match.id}
+                    match={match}
+                    onViewStats={() => onViewStats(match)}
+                    onExportExcel={() => onExportExcel(match)}
+                    onExportPDF={() => onExportPDF(match)}
+                    onDelete={() => onDelete(match.id)}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -78,10 +107,10 @@ const MatchCard = ({
       : "text-yellow-700";
 
   return (
-    <div className={`border rounded-lg p-4 relative ${bgColor}`}>
+    <div className={`border rounded-lg p-4 relative ${bgColor} hover:shadow-md transition-shadow`}>
       <button
         onClick={onDelete}
-        className="absolute top-2 right-2 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full p-1"
+        className="absolute top-2 right-2 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full p-1 transition-colors"
         title="Elimina partita"
       >
         <svg
@@ -111,7 +140,7 @@ const MatchCard = ({
           </span>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2 text-xs text-gray-600">
             <span>{match.isHome ? "🏠" : "✈️"}</span>
             <span>{match.competition}</span>
@@ -134,24 +163,24 @@ const MatchCard = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 mt-3">
+      <div className="grid grid-cols-3 gap-2">
         <button
           onClick={onViewStats}
-          className="bg-blue-500 text-white py-1 rounded hover:bg-blue-600 flex items-center justify-center gap-2 text-xs"
+          className="bg-blue-500 text-white py-2 rounded hover:bg-blue-600 flex items-center justify-center gap-2 text-xs font-medium transition-colors"
         >
           <FileText className="w-3 h-3" />
           Dettagli
         </button>
         <button
           onClick={onExportExcel}
-          className="bg-green-500 text-white py-1 rounded hover:bg-green-600 flex items-center justify-center gap-2 text-xs"
+          className="bg-green-500 text-white py-2 rounded hover:bg-green-600 flex items-center justify-center gap-2 text-xs font-medium transition-colors"
         >
           <Download className="w-3 h-3" />
           Excel
         </button>
         <button
           onClick={onExportPDF}
-          className="bg-red-500 text-white py-1 rounded hover:bg-red-600 flex items-center justify-center gap-2 text-xs"
+          className="bg-red-500 text-white py-2 rounded hover:bg-red-600 flex items-center justify-center gap-2 text-xs font-medium transition-colors"
         >
           <Download className="w-3 h-3" />
           PDF
