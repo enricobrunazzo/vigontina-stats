@@ -1,5 +1,5 @@
 // utils/exportUtils.js
-// Esporto PDF/Excel con la stessa logica usata nell'app (punti/gol/periodi)
+// Esportazione PDF/Excel coerente con la logica dell'app (punti/gol/periodi)
 
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -24,6 +24,11 @@ const isScorable = (p) => !isTechnicalTest(p) && p?.completed === true;
 const nonTechnicalPeriods = (match) =>
   Array.isArray(match?.periods)
     ? match.periods.filter((p) => !isTechnicalTest(p))
+    : [];
+
+const technicalTestPeriods = (match) =>
+  Array.isArray(match?.periods)
+    ? match.periods.filter((p) => isTechnicalTest(p))
     : [];
 
 const scorablePeriods = (match) =>
@@ -93,11 +98,11 @@ async function loadImageAsDataURL(url) {
 /* -------------------------------------------------------------------------- */
 
 /**
- * Esporta PDF coerente con i calcoli dell'app, con BANNER RISULTATO e LOGO.
+ * Esporta PDF coerente con l'app, con BANNER RISULTATO e LOGO.
  *
  * @param {Object} match - Oggetto partita
  * @param {Object} [opts]
- * @param {string} [opts.logoUrl] - URL/Path del logo (default: `${import.meta.env.BASE_URL}logo-vigontina.png`)
+ * @param {string} [opts.logoUrl] - URL/Path logo (default: `${import.meta.env.BASE_URL}logo-vigontina.png`)
  */
 export const exportMatchToPDF = async (match, opts = {}) => {
   if (!match) return;
@@ -110,7 +115,7 @@ export const exportMatchToPDF = async (match, opts = {}) => {
   // --- Calcoli coerenti con l'app ---
   const vp = calculatePoints(match, "vigontina");     // solo periodi non-PT e completed
   const op = calculatePoints(match, "opponent");
-  const vg = calculateTotalGoals(match, "vigontina"); // no PT
+  const vg = calculateTotalGoals(match, "vigontina"); // senza PT
   const og = calculateTotalGoals(match, "opponent");
   const stats = calculateMatchStats(match);           // eventi senza PT
   const { resultText, isWin, isDraw /* isLoss */ } = getMatchResult(match);
@@ -124,59 +129,65 @@ export const exportMatchToPDF = async (match, opts = {}) => {
   let y = margin;
 
   // Logo a sinistra (se disponibile)
+  const logoW = 42;
+  const logoH = 42;
   if (logoDataUrl) {
-    const logoW = 42;
-    const logoH = 42;
-    doc.addImage(logoDataUrl, "PNG", margin, y - 6, logoW, logoH, undefined, "FAST");
+    doc.addImage(logoDataUrl, "PNG", margin, y, logoW, logoH, undefined, "FAST");
   }
 
   // Titolo centrato
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
-  doc.text("VIGONTINA SAN PAOLO — REPORT PARTITA", pageWidth / 2, y + 10, {
+  doc.text("VIGONTINA SAN PAOLO - REPORT PARTITA", pageWidth / 2, y + 18, {
     align: "center",
   });
-  y += 32;
+
+  // Spazio di sicurezza sotto il titolo e il logo
+  const headerBottom = Math.max(y + 18, y + logoH);
+  y = headerBottom + 12;
 
   /* --------------------------- BANNER RISULTATO ------------------------- */
-  // Colori banner (verde / giallo / rosso)
+  // Banner più sottile per evitare sovrapposizione con il logo
   const bg = isWin ? [220, 252, 231] : isDraw ? [254, 249, 195] : [254, 226, 226];
   const bd = isWin ? [16, 185, 129]  : isDraw ? [250, 204, 21]  : [239, 68, 68];
   const tx = isWin ? [4, 120, 87]    : isDraw ? [161, 98, 7]    : [153, 27, 27];
 
   const bannerX = margin;
   const bannerW = pageWidth - margin * 2;
-  const bannerH = 38;
+  const bannerH = 28; // <-- più sottile
 
-  // bg + stroke
   doc.setFillColor(...bg);
   doc.setDrawColor(...bd);
   doc.roundedRect(bannerX, y, bannerW, bannerH, 6, 6, "FD");
 
-  // testo
+  // Testo risultato a sinistra
   doc.setTextColor(...tx);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
-  doc.text(resultText, bannerX + 12, y + 24);
+  doc.setFontSize(13);
+  doc.text(resultText, bannerX + 10, y + 19);
 
-  // punteggio a punti a destra
+  // Punteggio a punti a destra
   doc.setFont("helvetica", "normal");
   doc.setTextColor(60, 60, 60);
-  doc.text(`Punti: Vigontina ${vp}  –  ${op} ${opponentName}`, bannerX + bannerW - 12, y + 24, {
-    align: "right",
-  });
+  doc.text(
+    `Punti: Vigontina ${vp} - ${op} ${opponentName}`,
+    bannerX + bannerW - 10,
+    y + 19,
+    { align: "right" }
+  );
 
-  // reset colori
+  // Reset colori testo
   doc.setTextColor(0, 0, 0);
-  y += bannerH + 16;
+  y += bannerH + 14;
 
   /* ------------------------------- META -------------------------------- */
+  // ATTENZIONE: niente emoji e niente em-dash per evitare caratteri strani
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   const metaLines = [
     `Vigontina San Paolo vs ${opponentName}`,
-    `${match.competition || ""}${match.matchDay ? ` — Giornata ${match.matchDay}` : ""}`,
-    `${match.isHome ? "🏠 Casa" : "✈️ Trasferta"} — ${fmtDateIT(match.date)}`,
+    `${match.competition || ""}${match.matchDay ? ` - Giornata ${match.matchDay}` : ""}`,
+    `${match.isHome ? "Casa" : "Trasferta"} - ${fmtDateIT(match.date)}`,
   ];
   if (match.captain) {
     const captainName = PLAYERS.find((p) => p.num === match.captain)?.name || "";
@@ -192,7 +203,7 @@ export const exportMatchToPDF = async (match, opts = {}) => {
 
   // Gol (senza PT)
   doc.setFont("helvetica", "bold");
-  doc.text(`Gol (senza PT): ${vg}  –  ${og}`, margin, y);
+  doc.text(`Gol (senza PT): ${vg} - ${og}`, margin, y);
   y += 18;
 
   /* --------------------------- DETTAGLIO PERIODI ----------------------- */
@@ -200,19 +211,18 @@ export const exportMatchToPDF = async (match, opts = {}) => {
   doc.text("DETTAGLIO PERIODI", margin, y);
   y += 6;
 
+  // >>>> RIMOSSA la colonna "Conta nei Punti"
   autoTable(doc, {
     startY: y,
-    head: [["Periodo", "Vigontina", opponentName, "Completato", "Conta nei Punti", "Esito"]],
+    head: [["Periodo", "Vigontina", opponentName, "Completato", "Esito"]],
     body: nonTechnicalPeriods(match).map((p) => {
       const completed = p?.completed === true;
-      const counts = isScorable(p);
       const outcome = periodOutcome(p, opponentName).label;
       return [
         p.name || "",
         safeNum(p.vigontina),
         safeNum(p.opponent),
         completed ? "Sì" : "No",
-        counts ? "Sì" : "No",
         outcome,
       ];
     }),
@@ -223,6 +233,29 @@ export const exportMatchToPDF = async (match, opts = {}) => {
   });
 
   y = doc.lastAutoTable.finalY + 14;
+
+  /* ------------------------- ESITO PROVA TECNICA ------------------------ */
+  const pt = technicalTestPeriods(match);
+  if (pt.length > 0) {
+    doc.setFont("helvetica", "bold");
+    doc.text("PROVA TECNICA", margin, y);
+    y += 6;
+
+    autoTable(doc, {
+      startY: y,
+      head: [["Periodo", "Vigontina", opponentName, "Esito"]],
+      body: pt.map((p) => {
+        const outcome = periodOutcome(p, opponentName).label;
+        return [p.name || "Prova Tecnica", safeNum(p.vigontina), safeNum(p.opponent), outcome];
+      }),
+      theme: "grid",
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [107, 114, 128], textColor: 255 }, // grigio
+      margin: { left: margin, right: margin },
+    });
+
+    y = doc.lastAutoTable.finalY + 14;
+  }
 
   /* ------------------------ MARCATORI / ASSIST / ALTRI ----------------- */
   const hasScorers = Object.keys(stats.scorers || {}).length > 0;
@@ -333,7 +366,7 @@ export const exportMatchToPDF = async (match, opts = {}) => {
   doc.setFont("helvetica", "italic");
   doc.setFontSize(9);
   doc.text(
-    "Nota: i PUNTI considerano solo i tempi giocati (esclusa PROVA TECNICA). I gol non includono la PROVA TECNICA.",
+    "Nota: i PUNTI considerano solo i tempi giocati (Prova Tecnica esclusa). I gol non includono la Prova Tecnica.",
     margin,
     Math.min(y, doc.internal.pageSize.getHeight() - margin)
   );
@@ -397,17 +430,15 @@ export const exportMatchToExcel = (match) => {
     const periods = [
       ["DETTAGLIO PERIODI"],
       [""],
-      ["Periodo", "Vigontina", opponentName, "Completato", "Conta nei Punti", "Esito"],
+      ["Periodo", "Vigontina", opponentName, "Completato", "Esito"],
       ...nonTechnicalPeriods(match).map((p) => {
         const completed = p?.completed === true;
-        const counts = isScorable(p);
         const outcome = periodOutcome(p, opponentName).label;
         return [
           p.name || "",
           safeNum(p.vigontina),
           safeNum(p.opponent),
           completed ? "Sì" : "No",
-          counts ? "Sì" : "No",
           outcome,
         ];
       }),
