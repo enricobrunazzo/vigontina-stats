@@ -9,7 +9,7 @@ import {
   doc,
 } from "firebase/firestore";
 import { db } from "../config/firebase";
-import { calculatePoints } from "../utils/matchUtils";
+import { calculatePoints, calculateTotalGoals } from "../utils/matchUtils";
 
 export const useMatchHistory = () => {
   const [matchHistory, setMatchHistory] = useState([]);
@@ -50,11 +50,20 @@ export const useMatchHistory = () => {
       setIsLoading(true);
       setError(null);
       try {
+        const vigontinaPoints = calculatePoints(match, "vigontina");
+        const opponentPoints = calculatePoints(match, "opponent");
+        const vigontinaGoals = calculateTotalGoals(match, "vigontina");
+        const opponentGoals = calculateTotalGoals(match, "opponent");
+        
         await addDoc(collection(db, "matches"), {
           ...match,
           finalPoints: {
-            vigontina: calculatePoints(match, "vigontina"),
-            opponent: calculatePoints(match, "opponent"),
+            vigontina: vigontinaPoints,
+            opponent: opponentPoints,
+          },
+          finalGoals: {
+            vigontina: vigontinaGoals,
+            opponent: opponentGoals,
           },
           savedAt: Date.now(),
         });
@@ -115,20 +124,42 @@ export const useMatchHistory = () => {
     [loadHistory]
   );
 
-  // Calcola le statistiche generali (patchata per coerenza con lo storico)
+  // Helper per ottenere i punti di una partita
+  // SEMPRE ricalcola per garantire coerenza, ignora finalPoints che potrebbero essere vecchi
+  const getMatchPoints = useCallback((match, team) => {
+    return calculatePoints(match, team);
+  }, []);
+
+  // Helper per ottenere i gol di una partita
+  // SEMPRE ricalcola per garantire coerenza
+  const getMatchGoals = useCallback((match, team) => {
+    return calculateTotalGoals(match, team);
+  }, []);
+
+  // Calcola le statistiche generali
   const stats = useMemo(() => {
     const totalMatches = matchHistory.length;
-    const wins = matchHistory.filter(
-      (m) => calculatePoints(m, "vigontina") > calculatePoints(m, "opponent")
-    ).length;
-    const draws = matchHistory.filter(
-      (m) => calculatePoints(m, "vigontina") === calculatePoints(m, "opponent")
-    ).length;
-    const losses = matchHistory.filter(
-      (m) => calculatePoints(m, "vigontina") < calculatePoints(m, "opponent")
-    ).length;
+    
+    const wins = matchHistory.filter((m) => {
+      const vigontinaPoints = getMatchPoints(m, "vigontina");
+      const opponentPoints = getMatchPoints(m, "opponent");
+      return vigontinaPoints > opponentPoints;
+    }).length;
+    
+    const draws = matchHistory.filter((m) => {
+      const vigontinaPoints = getMatchPoints(m, "vigontina");
+      const opponentPoints = getMatchPoints(m, "opponent");
+      return vigontinaPoints === opponentPoints;
+    }).length;
+    
+    const losses = matchHistory.filter((m) => {
+      const vigontinaPoints = getMatchPoints(m, "vigontina");
+      const opponentPoints = getMatchPoints(m, "opponent");
+      return vigontinaPoints < opponentPoints;
+    }).length;
+    
     return { totalMatches, wins, draws, losses };
-  }, [matchHistory]);
+  }, [matchHistory, getMatchPoints]);
 
   // Ottiene l'ultima partita giocata
   const lastPlayedMatch = useMemo(() => {
@@ -147,5 +178,7 @@ export const useMatchHistory = () => {
     deleteMatch,
     stats,
     lastPlayedMatch,
+    getMatchPoints,
+    getMatchGoals,
   };
 };

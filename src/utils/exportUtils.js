@@ -794,3 +794,308 @@ export const exportHistoryToExcel = (matches) => {
     alert(`❌ Errore durante l'esportazione: ${error.message || "Errore sconosciuto"}`);
   }
 };
+/**
+ * Genera il PDF del Rapporto Gara FIGC
+ */
+export const exportFIGCReportPDF = async (match, figcData) => {
+  if (!match) return;
+
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 40;
+
+  let y = margin;
+
+  // Header - Logo e Titolo
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text("Federazione Italiana Giuoco Calcio", pageWidth / 2, y, {
+    align: "center",
+  });
+  y += 20;
+
+  doc.setFontSize(14);
+  doc.text("Lega Nazionale Dilettanti", pageWidth / 2, y, { align: "center" });
+  y += 20;
+
+  doc.setFontSize(16);
+  doc.setTextColor(0, 51, 153);
+  doc.text("DELEGAZIONE PROVINCIALE DI PADOVA", pageWidth / 2, y, {
+    align: "center",
+  });
+  y += 25;
+
+  doc.setFontSize(14);
+  doc.setTextColor(0, 0, 0);
+  doc.text("Torneo Provinciale Fase Autunnale", pageWidth / 2, y, {
+    align: "center",
+  });
+  y += 18;
+  doc.text("Categoria ESORDIENTI", pageWidth / 2, y, { align: "center" });
+  y += 30;
+
+  // Categoria checkbox
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  const categories = [
+    "ESORDIENTI 2° Anno 2013 - 9>9 (sigla F/)",
+    "ESORDIENTI 1° Anno 2014 - 9>9 (sigla X1)",
+    "ESORDIENTI MISTI 2013/14 - 9>9 (sigla Y2)",
+  ];
+
+  categories.forEach((cat) => {
+    const isSelected = figcData.category === cat;
+    doc.rect(margin, y - 8, 8, 8, isSelected ? "F" : "S");
+    doc.text(cat, margin + 12, y);
+    y += 15;
+  });
+
+  y += 15;
+
+  // Dirigente Arbitro
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(
+    `Rapporto Gara Dirigente Arbitro Sig. ${figcData.refereeName || "_________________________"} della Società ${figcData.refereeClub || "_________________"}`,
+    margin,
+    y
+  );
+  y += 20;
+
+  // GARA
+  doc.text(
+    `GARA: Vigontina San Paolo - ${match.opponent}`,
+    margin,
+    y
+  );
+  y += 15;
+
+  // Dettagli gara
+  doc.text(
+    `Valevole per la ${match.matchDay || "___"} Giornata   GIRONE ${figcData.girone || "___"}   del ${new Date(match.date).toLocaleDateString("it-IT")}   ore ${new Date(match.date).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`,
+    margin,
+    y
+  );
+  y += 15;
+
+  doc.text(
+    `Disputata a ${figcData.location || "______________________"}   campo ${figcData.fieldType} (${figcData.fieldType === "Parrocchiale" ? "X" : " "} Parrocchiale - ${figcData.fieldType === "Comunale" ? "X" : " "} Comunale - ${figcData.fieldType === "Privato" ? "X" : " "} Privato)`,
+    margin,
+    y
+  );
+  y += 25;
+
+  // Tabella Risultati
+  const tableData = [
+    [
+      "SQUADRE",
+      "Prova\nTecnica",
+      "Risultato\n1° tempo",
+      "Risultato\n2° tempo",
+      "Risultato\n3° tempo",
+      "Risultato\n4° tempo",
+      "Risultato\nFINALE",
+    ],
+  ];
+
+  // Righe risultati
+  const homeRow = ["Vigontina\nSan Paolo"];
+  const awayRow = [match.opponent];
+
+  match.periods.forEach((period) => {
+    const score = `${period.vigontina || 0}-${period.opponent || 0}`;
+    homeRow.push(score);
+    awayRow.push("");
+  });
+
+  // Aggiungi righe se mancano periodi
+  while (homeRow.length < 7) {
+    homeRow.push("");
+  }
+  while (awayRow.length < 7) {
+    awayRow.push("");
+  }
+
+  // Risultato finale
+  const finalVigontina = calculatePoints(match, "vigontina");
+  const finalOpponent = calculatePoints(match, "opponent");
+  homeRow[homeRow.length - 1] = `${finalVigontina}`;
+  awayRow[awayRow.length - 1] = `${finalOpponent}`;
+
+  tableData.push(homeRow);
+  tableData.push(awayRow);
+
+  autoTable(doc, {
+    startY: y,
+    head: [tableData[0]],
+    body: [tableData[1], tableData[2]],
+    theme: "grid",
+    styles: { fontSize: 8, cellPadding: 3, halign: "center" },
+    headStyles: { fillColor: [220, 220, 220], textColor: 0 },
+    margin: { left: margin, right: margin },
+  });
+
+  y = doc.lastAutoTable.finalY + 20;
+
+  // Checklist - 2 colonne
+  const colWidth = (pageWidth - margin * 2 - 20) / 2;
+
+  // Colonna Sinistra - Ospitante
+  let leftY = y;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text("SQUADRA OSPITANTE", margin, leftY);
+  leftY += 12;
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(7);
+  doc.text("Da compilare a cura del DIRIGENTE OSPITATO", margin, leftY);
+  leftY += 15;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  const checklistItems = [
+    { label: "Saluto Inizio e Fine Gara", value: figcData.homeChecklist.greeting },
+    { label: "Appello prima della gara", value: figcData.homeChecklist.rollCall },
+    { label: "Tutti i giocatori hanno partecipato", value: figcData.homeChecklist.allPlayed },
+    { label: "Sostituzioni Regolari", value: figcData.homeChecklist.substitutions },
+    { label: "Distinta Giocatori Regolare", value: figcData.homeChecklist.roster },
+  ];
+
+  checklistItems.forEach((item) => {
+    doc.text(`${item.label}`, margin, leftY);
+    doc.text(`SI   -   NO`, margin + colWidth - 50, leftY);
+    // Segna SI o NO
+    if (item.value) {
+      doc.setFont("helvetica", "bold");
+      doc.text("X", margin + colWidth - 50, leftY - 1);
+      doc.setFont("helvetica", "normal");
+    } else {
+      doc.setFont("helvetica", "bold");
+      doc.text("X", margin + colWidth - 30, leftY - 1);
+      doc.setFont("helvetica", "normal");
+    }
+    leftY += 12;
+  });
+
+  // Colonna Destra - Ospitata
+  let rightY = y;
+  const rightX = margin + colWidth + 20;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text("SQUADRA OSPITATA", rightX, rightY);
+  rightY += 12;
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(7);
+  doc.text("Da compilare a cura del DIRIGENTE OSPITANTE", rightX, rightY);
+  rightY += 15;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  const awayChecklistItems = [
+    { label: "Saluto Inizio e Fine Gara", value: figcData.awayChecklist.greeting },
+    { label: "Appello prima della gara", value: figcData.awayChecklist.rollCall },
+    { label: "Tutti i giocatori hanno partecipato", value: figcData.awayChecklist.allPlayed },
+    { label: "Sostituzioni Regolari", value: figcData.awayChecklist.substitutions },
+    { label: "Distinta Giocatori Regolare", value: figcData.awayChecklist.roster },
+  ];
+
+  awayChecklistItems.forEach((item) => {
+    doc.text(`${item.label}`, rightX, rightY);
+    doc.text(`SI   -   NO`, rightX + colWidth - 50, rightY);
+    if (item.value) {
+      doc.setFont("helvetica", "bold");
+      doc.text("X", rightX + colWidth - 50, rightY - 1);
+      doc.setFont("helvetica", "normal");
+    } else {
+      doc.setFont("helvetica", "bold");
+      doc.text("X", rightX + colWidth - 30, rightY - 1);
+      doc.setFont("helvetica", "normal");
+    }
+    rightY += 12;
+  });
+
+  y = Math.max(leftY, rightY) + 15;
+
+  // Note
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.text(
+    "NOTE: infortuni ai giocatori, mancata disputa della gara, comportamento pubblico e tesserati, GIOCATORI ammoniti o espulsi",
+    margin,
+    y
+  );
+  y += 10;
+  doc.text(
+    "(indicare minuto, cognome nome, n. maglia, società, motivazione), ecc...:",
+    margin,
+    y
+  );
+  y += 15;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  const noteLines = doc.splitTextToSize(
+    figcData.notes || "Nessuna nota",
+    pageWidth - margin * 2
+  );
+  doc.text(noteLines, margin, y);
+  y += noteLines.length * 12 + 10;
+
+  // Misura porte
+  doc.setFont("helvetica", "bold");
+  doc.text(`MISURA DELLE PORTE: 6,00 m. x 2,00`, margin, y);
+  doc.text(
+    figcData.correctGoals ? "SI" : "NO",
+    margin + 200,
+    y
+  );
+  if (figcData.correctGoals) {
+    doc.setFont("helvetica", "bold");
+    doc.text("X", margin + 190, y - 1);
+  } else {
+    doc.setFont("helvetica", "bold");
+    doc.text("X", margin + 210, y - 1);
+  }
+  y += 25;
+
+  // Firme
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text("FIRMA DEI DIRIGENTI:", margin, y);
+  y += 20;
+
+  doc.setFont("helvetica", "normal");
+  doc.text("_____________________________", margin, y);
+  doc.text("_____________________________", pageWidth / 2 + 20, y);
+  y += 12;
+  doc.setFontSize(7);
+  doc.text("(Ospitante)", margin + 50, y);
+  doc.text("(Ospitato)", pageWidth / 2 + 70, y);
+  y += 20;
+
+  doc.setFontSize(9);
+  doc.text(
+    `Dirigente Arbitro Gara reperibile al cellulare: ${figcData.refereePhone || "___________________"}`,
+    margin,
+    y
+  );
+  y += 20;
+  doc.text("_____________________________", pageWidth - margin - 150, y);
+  y += 12;
+  doc.setFontSize(7);
+  doc.text("(Firma dell'arbitro)", pageWidth - margin - 110, y);
+  y += 25;
+
+  // Footer
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(7);
+  const footerText = doc.splitTextToSize(
+    "Il Rapporto Gara, assieme alle distinte delle squadre, dovrà pervenire alla Delegazione di Padova esclusivamente tramite scansione IN UN UNICO FILE PDF (NO FOTO) all'indirizzo email PADOVA.REFERTIBASE@LND.IT entro il venerdì successivo alla disputa della gara.",
+    pageWidth - margin * 2
+  );
+  doc.text(footerText, margin, y);
+
+  // Salva
+  const fileName = `Rapporto_FIGC_Vigontina_vs_${match.opponent.replace(/\s+/g, "_")}_${new Date(match.date).toLocaleDateString("it-IT").replace(/\//g, "-")}.pdf`;
+  doc.save(fileName);
+};

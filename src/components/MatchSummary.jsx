@@ -1,10 +1,10 @@
 // components/MatchSummary.jsx
 import React, { useMemo } from "react";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, Download, FileText } from "lucide-react";
 import { PLAYERS } from "../constants/players";
 import { calculateMatchStats, getMatchResult } from "../utils/matchUtils";
 
-const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF }) => {
+const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport }) => {
   const stats = useMemo(() => calculateMatchStats(match), [match]);
   const result = useMemo(() => getMatchResult(match), [match]);
 
@@ -239,6 +239,19 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF }) => {
                 Esporta PDF
               </button>
             </div>
+
+            {/* FIGC Report Button */}
+            {onFIGCReport && (
+              <div className="pt-2">
+                <button
+                  onClick={onFIGCReport}
+                  className="w-full bg-blue-700 text-white py-2 rounded hover:bg-blue-800 font-medium flex items-center justify-center gap-2 text-sm"
+                >
+                  <FileText className="w-4 h-4" />
+                  Genera Rapporto FIGC
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-// App.jsx (versione ottimizzata con useMatch)
+// App.jsx (versione aggiornata con modulo FIGC)
 import React, { useState, useEffect, useCallback } from "react";
 
 // Hooks
@@ -12,6 +12,7 @@ import MatchOverview from "./components/MatchOverview";
 import PeriodPlay from "./components/PeriodPlay";
 import MatchHistory from "./components/MatchHistory";
 import MatchSummary from "./components/MatchSummary";
+import FIGCReport from "./components/FIGCReport";
 
 // Utils
 import { exportMatchToExcel, exportMatchToPDF, exportHistoryToExcel } from "./utils/exportUtils";
@@ -155,6 +156,7 @@ const VigontinaStats = () => {
         onExportExcel={() => exportMatchToExcel(match.currentMatch)}
         onExportPDF={() => exportMatchToPDF(match.currentMatch)}
         onSummary={() => setPage("summary")}
+        onFIGCReport={() => setPage("figc-report")}
         isTimerRunning={timer.isTimerRunning}
         onBack={handleAbandonMatch}
       />
@@ -236,6 +238,16 @@ const VigontinaStats = () => {
         }}
         onExportExcel={() => exportMatchToExcel(selectedHistoryMatch)}
         onExportPDF={() => exportMatchToPDF(selectedHistoryMatch)}
+      />
+    );
+  }
+
+  // NUOVA PAGINA: FIGC Report
+  if (page === "figc-report" && match.currentMatch) {
+    return (
+      <FIGCReport
+        match={match.currentMatch}
+        onBack={() => setPage("match-overview")}
       />
     );
   }

@@ -1,6 +1,6 @@
-// components/MatchOverview.jsx
+// components/MatchOverview.jsx (aggiornato con pulsante FIGC)
 import React from "react";
-import { ArrowLeft, Save, Download, FileText } from "lucide-react";
+import { ArrowLeft, Save, Download, FileText, ClipboardCheck } from "lucide-react";
 import { calculatePoints, calculateTotalGoals } from "../utils/matchUtils";
 
 const MatchOverview = ({
@@ -11,6 +11,7 @@ const MatchOverview = ({
   onExportExcel,
   onExportPDF,
   onSummary,
+  onFIGCReport,
   isTimerRunning,
   onBack,
 }) => {
@@ -111,6 +112,28 @@ const MatchOverview = ({
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* NUOVO: Pulsante Rapporto FIGC */}
+          <div className="mb-6 bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <ClipboardCheck className="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-blue-900 mb-1">
+                  Rapporto Gara FIGC
+                </h3>
+                <p className="text-xs text-blue-800 mb-3">
+                  Compila il rapporto gara ufficiale da inviare alla Delegazione Provinciale di Padova
+                </p>
+                <button
+                  onClick={onFIGCReport}
+                  className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 text-sm font-medium"
+                >
+                  <ClipboardCheck className="w-4 h-4" />
+                  Compila Rapporto FIGC
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 mb-2">
