@@ -323,20 +323,18 @@ const HomeScreen = ({
               <div className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="text-center flex-1">
-                    <p className="text-xs text-gray-600">Vigontina</p>
-                    <p className="text-3xl font-bold">
-                      {lastPlayedMatch.finalPoints?.vigontina ?? 
-                       calculatePoints(lastPlayedMatch, "vigontina")}
-                    </p>
-                  </div>
-                  <span className="px-3 text-gray-400">-</span>
-                  <div className="text-center flex-1">
-                    <p className="text-xs text-gray-600">{lastPlayedMatch.opponent}</p>
-                    <p className="text-3xl font-bold">
-                      {lastPlayedMatch.finalPoints?.opponent ?? 
-                       calculatePoints(lastPlayedMatch, "opponent")}
-                    </p>
-                  </div>
+  <p className="text-xs text-gray-600">Vigontina</p>
+  <p className="text-3xl font-bold">
+    {calculatePoints(lastPlayedMatch, "vigontina")}
+  </p>
+</div>
+<span className="px-3 text-gray-400">-</span>
+<div className="text-center flex-1">
+  <p className="text-xs text-gray-600">{lastPlayedMatch.opponent}</p>
+  <p className="text-3xl font-bold">
+    {calculatePoints(lastPlayedMatch, "opponent")}
+  </p>
+</div>
                 </div>
                 <button
                   onClick={() => onViewLastMatch(lastPlayedMatch)}

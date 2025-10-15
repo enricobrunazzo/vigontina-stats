@@ -1,5 +1,7 @@
 // utils/matchUtils.js
 
+// src/utils/matchUtils.js
+
 /**
  * Helpers
  */
@@ -8,8 +10,11 @@ const isTechnicalTest = (period) =>
 
 const safeNumber = (v) => (Number.isFinite(v) ? v : 0);
 
+// ✅ FIX: Considera solo periodi completati (non la Prova Tecnica)
 const getEffectivePeriods = (match) =>
-  Array.isArray(match?.periods) ? match.periods.filter((p) => !isTechnicalTest(p)) : [];
+  Array.isArray(match?.periods) 
+    ? match.periods.filter((p) => !isTechnicalTest(p) && p.completed === true) 
+    : [];
 
 /**
  * Calcola i punti totali per una squadra (regola: win=1, draw=1, loss=0).

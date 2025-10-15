@@ -180,26 +180,26 @@ export const useMatch = () => {
   );
 
   /** Aggiorna manualmente il punteggio */
-  const updateScore = useCallback(
-    (team, delta) => {
-      if (currentMatch === null || currentPeriod === null) return;
-      if (guardProvaTecnica("la modifica manuale del punteggio")) return;
+const updateScore = useCallback(
+  (team, delta) => {
+    if (currentMatch === null || currentPeriod === null) return;
+    // ✅ RIMOSSO guardProvaTecnica - updateScore DEVE funzionare nella PT!
 
-      setCurrentMatch((prev) => {
-        const updated = { ...prev };
-        updated.periods = [...prev.periods];
-        const period = { ...updated.periods[currentPeriod] };
-        if (team === "vigontina") {
-          period.vigontina = Math.max(0, period.vigontina + delta);
-        } else {
-          period.opponent = Math.max(0, period.opponent + delta);
-        }
-        updated.periods[currentPeriod] = period;
-        return updated;
-      });
-    },
-    [currentMatch, currentPeriod, guardProvaTecnica]
-  );
+    setCurrentMatch((prev) => {
+      const updated = { ...prev };
+      updated.periods = [...prev.periods];
+      const period = { ...updated.periods[currentPeriod] };
+      if (team === "vigontina") {
+        period.vigontina = Math.max(0, period.vigontina + delta);
+      } else {
+        period.opponent = Math.max(0, period.opponent + delta);
+      }
+      updated.periods[currentPeriod] = period;
+      return updated;
+    });
+  },
+  [currentMatch, currentPeriod] // ✅ Rimosso guardProvaTecnica dalla dependency
+);
 
   /** Imposta la formazione per un periodo */
   const setLineup = useCallback((periodIndex, lineupNums) => {
