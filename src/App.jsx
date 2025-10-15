@@ -14,7 +14,7 @@ import MatchHistory from "./components/MatchHistory";
 import MatchSummary from "./components/MatchSummary";
 
 // Utils
-import { exportMatchToExcel, exportMatchToPDF, exportHistoryToExcel } from "./utils/exportUtils"; // <-- AGGIORNATO
+import { exportMatchToExcel, exportMatchToPDF, exportHistoryToExcel } from "./utils/exportUtils";
 import { calculatePoints } from "./utils/matchUtils";
 
 const VigontinaStats = () => {
@@ -95,7 +95,7 @@ const VigontinaStats = () => {
     }
   };
 
-  // NUOVO: Handler per export storico
+  // Handler per export storico
   const handleExportHistory = useCallback(() => {
     exportHistoryToExcel(matchHistory);
   }, [matchHistory]);
@@ -210,7 +210,7 @@ const VigontinaStats = () => {
         onExportExcel={exportMatchToExcel}
         onExportPDF={exportMatchToPDF}
         onDelete={deleteMatch}
-        onExportHistory={handleExportHistory} // <-- AGGIUNTO
+        onExportHistory={handleExportHistory}
       />
     );
   }
@@ -313,14 +313,16 @@ const HomeScreen = ({
                   <div className="text-center flex-1">
                     <p className="text-xs text-gray-600">Vigontina</p>
                     <p className="text-3xl font-bold">
-                      {calculatePoints(lastPlayedMatch, "vigontina")}
+                      {lastPlayedMatch.finalPoints?.vigontina ?? 
+                       calculatePoints(lastPlayedMatch, "vigontina")}
                     </p>
                   </div>
                   <span className="px-3 text-gray-400">-</span>
                   <div className="text-center flex-1">
                     <p className="text-xs text-gray-600">{lastPlayedMatch.opponent}</p>
                     <p className="text-3xl font-bold">
-                      {calculatePoints(lastPlayedMatch, "opponent")}
+                      {lastPlayedMatch.finalPoints?.opponent ?? 
+                       calculatePoints(lastPlayedMatch, "opponent")}
                     </p>
                   </div>
                 </div>
