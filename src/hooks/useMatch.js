@@ -10,51 +10,70 @@ export const useMatch = () => {
   const [currentMatch, setCurrentMatch] = useState(null);
   const [currentPeriod, setCurrentPeriod] = useState(null);
 
-  /**
-   * Crea una nuova partita
-   */
+  /** Crea una nuova partita */
   const createMatch = useCallback((matchData) => {
     const newMatch = createMatchStructure(matchData);
     setCurrentMatch(newMatch);
     return newMatch;
   }, []);
 
-  /**
-   * Resetta la partita corrente
-   */
+  /** Resetta la partita corrente */
   const resetMatch = useCallback(() => {
     setCurrentMatch(null);
     setCurrentPeriod(null);
   }, []);
 
-  /**
-   * Imposta il periodo corrente
-   */
+  /** Imposta il periodo corrente */
   const setPeriod = useCallback((periodIndex) => {
     setCurrentPeriod(periodIndex);
   }, []);
 
-  /**
-   * Resetta il periodo corrente
-   */
+  /** Resetta il periodo corrente */
   const resetPeriod = useCallback(() => {
     setCurrentPeriod(null);
   }, []);
 
-  /**
-   * Aggiunge un gol
-   */
+  /** Ritorna i dati del periodo corrente */
+  const getCurrentPeriodData = useCallback(() => {
+    if (!currentMatch || currentPeriod === null) return null;
+    return currentMatch.periods[currentPeriod];
+  }, [currentMatch, currentPeriod]);
+
+  /** Verifica se il periodo corrente è la Prova Tecnica */
+  const isProvaTecnica = useCallback(() => {
+    const period = getCurrentPeriodData();
+    return period?.name === "PROVA TECNICA";
+  }, [getCurrentPeriodData]);
+
+  /** Helper: blocca azioni in Prova Tecnica, mostra avviso e restituisce true se interrompere */
+  const guardProvaTecnica = useCallback(
+    (actionLabel = "questa azione") => {
+      if (isProvaTecnica()) {
+        if (typeof window !== "undefined" && window?.alert) {
+          window.alert(
+            "Nella PROVA TECNICA non sono previsti gol: " +
+              actionLabel +
+              " è stata ignorata."
+          );
+        }
+        return true;
+      }
+      return false;
+    },
+    [isProvaTecnica]
+  );
+
+  /** Aggiunge un gol */
   const addGoal = useCallback(
     (scorerNum, assistNum, getCurrentMinute) => {
       if (currentMatch === null || currentPeriod === null) return;
+      if (guardProvaTecnica("l'aggiunta del gol")) return;
 
       const goal = {
         scorer: scorerNum,
         scorerName: PLAYERS.find((p) => p.num === scorerNum)?.name,
         assist: assistNum,
-        assistName: assistNum
-          ? PLAYERS.find((p) => p.num === assistNum)?.name
-          : null,
+        assistName: assistNum ? PLAYERS.find((p) => p.num === assistNum)?.name : null,
         minute: getCurrentMinute(),
         type: "goal",
       };
@@ -70,16 +89,14 @@ export const useMatch = () => {
         return updated;
       });
     },
-    [currentMatch, currentPeriod]
+    [currentMatch, currentPeriod, guardProvaTecnica]
   );
 
-  /**
-   * Aggiunge un autogol
-   */
+  /** Aggiunge un autogol */
   const addOwnGoal = useCallback(
     (getCurrentMinute) => {
       if (currentMatch === null || currentPeriod === null) return;
-
+      if (guardProvaTecnica("l'aggiunta dell'AUTOGOL")) return;
       if (!window.confirm("⚠️ Confermi di aggiungere un AUTOGOL?")) return;
 
       const ownGoal = {
@@ -98,15 +115,14 @@ export const useMatch = () => {
         return updated;
       });
     },
-    [currentMatch, currentPeriod]
+    [currentMatch, currentPeriod, guardProvaTecnica]
   );
 
-  /**
-   * Aggiunge un gol dell'avversario
-   */
+  /** Aggiunge un gol dell'avversario */
   const addOpponentGoal = useCallback(
     (getCurrentMinute) => {
       if (currentMatch === null || currentPeriod === null) return;
+      if (guardProvaTecnica("l'aggiunta del gol avversario")) return;
 
       const opponentGoal = {
         minute: getCurrentMinute(),
@@ -124,15 +140,14 @@ export const useMatch = () => {
         return updated;
       });
     },
-    [currentMatch, currentPeriod]
+    [currentMatch, currentPeriod, guardProvaTecnica]
   );
 
-  /**
-   * Aggiunge un rigore
-   */
+  /** Aggiunge un rigore */
   const addPenalty = useCallback(
     (team, scored, scorerNum, getCurrentMinute) => {
       if (currentMatch === null || currentPeriod === null) return;
+      if (guardProvaTecnica("l'inserimento del rigore")) return;
 
       const penalty = {
         minute: getCurrentMinute(),
@@ -141,12 +156,10 @@ export const useMatch = () => {
             ? "penalty-goal"
             : "penalty-opponent-goal"
           : team === "vigontina"
-            ? "penalty-missed"
-            : "penalty-opponent-missed",
+          ? "penalty-missed"
+          : "penalty-opponent-missed",
         scorer: scorerNum,
-        scorerName: scorerNum
-          ? PLAYERS.find((p) => p.num === scorerNum)?.name
-          : null,
+        scorerName: scorerNum ? PLAYERS.find((p) => p.num === scorerNum)?.name : null,
         team: team,
       };
 
@@ -155,47 +168,40 @@ export const useMatch = () => {
         updated.periods = [...prev.periods];
         const period = { ...updated.periods[currentPeriod] };
         period.goals = [...period.goals, penalty];
-
         if (scored) {
           if (team === "vigontina") period.vigontina++;
           else period.opponent++;
         }
-
         updated.periods[currentPeriod] = period;
         return updated;
       });
     },
-    [currentMatch, currentPeriod]
+    [currentMatch, currentPeriod, guardProvaTecnica]
   );
 
-  /**
-   * Aggiorna manualmente il punteggio
-   */
+  /** Aggiorna manualmente il punteggio */
   const updateScore = useCallback(
     (team, delta) => {
       if (currentMatch === null || currentPeriod === null) return;
+      if (guardProvaTecnica("la modifica manuale del punteggio")) return;
 
       setCurrentMatch((prev) => {
         const updated = { ...prev };
         updated.periods = [...prev.periods];
         const period = { ...updated.periods[currentPeriod] };
-
         if (team === "vigontina") {
           period.vigontina = Math.max(0, period.vigontina + delta);
         } else {
           period.opponent = Math.max(0, period.opponent + delta);
         }
-
         updated.periods[currentPeriod] = period;
         return updated;
       });
     },
-    [currentMatch, currentPeriod]
+    [currentMatch, currentPeriod, guardProvaTecnica]
   );
 
-  /**
-   * Imposta la formazione per un periodo
-   */
+  /** Imposta la formazione per un periodo */
   const setLineup = useCallback((periodIndex, lineupNums) => {
     setCurrentMatch((prev) => {
       const updated = { ...prev };
@@ -208,15 +214,13 @@ export const useMatch = () => {
     });
   }, []);
 
-  /**
-   * Completa un periodo
-   */
+  /** Completa un periodo */
   const completePeriod = useCallback(() => {
     if (currentMatch === null || currentPeriod === null) return false;
 
     const period = currentMatch.periods[currentPeriod];
-    const isProvaTecnica = period.name === "PROVA TECNICA";
-    const confirmMessage = isProvaTecnica
+    const isPT = period.name === "PROVA TECNICA";
+    const confirmMessage = isPT
       ? "Confermi di voler terminare la Prova Tecnica?"
       : "Confermi di voler terminare questo tempo? Il timer verrà azzerato.";
 
@@ -231,43 +235,20 @@ export const useMatch = () => {
       };
       return updated;
     });
-
     return true;
   }, [currentMatch, currentPeriod]);
 
-  /**
-   * Ottiene i giocatori disponibili (non convocati esclusi)
-   */
+  /** Ottiene i giocatori disponibili (non convocati esclusi) */
   const getAvailablePlayers = useCallback(() => {
     if (!currentMatch) return PLAYERS;
-    return PLAYERS.filter((p) => !currentMatch.notCalled.includes(p.num));
+    return PLAYERS.filter((p) => !currentMatch.notCalled?.includes(p.num));
   }, [currentMatch]);
 
-  /**
-   * Ottiene il periodo corrente
-   */
-  const getCurrentPeriodData = useCallback(() => {
-    if (!currentMatch || currentPeriod === null) return null;
-    return currentMatch.periods[currentPeriod];
-  }, [currentMatch, currentPeriod]);
-
-  /**
-   * Verifica se il periodo corrente è la Prova Tecnica
-   */
-  const isProvaTecnica = useCallback(() => {
-    const period = getCurrentPeriodData();
-    return period?.name === "PROVA TECNICA";
-  }, [getCurrentPeriodData]);
-
-  /**
-   * Ottiene il titolo del periodo corrente
-   */
+  /** Titolo del periodo corrente */
   const getCurrentPeriodTitle = useCallback(() => {
     const period = getCurrentPeriodData();
     if (!period) return "";
-
     if (period.name === "PROVA TECNICA") return "Prova Tecnica";
-
     const periodNumberMatch = period.name.match(/(\d+)°/);
     const periodNumber = periodNumberMatch ? periodNumberMatch[1] : "";
     return `${periodNumber}° Tempo`;

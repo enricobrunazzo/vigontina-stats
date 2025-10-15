@@ -1,20 +1,18 @@
 // App.jsx (versione ottimizzata con useMatch)
 import React, { useState, useEffect, useCallback } from "react";
-
 // Hooks
 import { useTimer } from "./hooks/useTimer";
 import { useMatchHistory } from "./hooks/useMatchHistory";
 import { useMatch } from "./hooks/useMatch";
-
 // Components
 import NewMatchForm from "./components/NewMatchForm";
 import MatchOverview from "./components/MatchOverview";
 import PeriodPlay from "./components/PeriodPlay";
 import MatchHistory from "./components/MatchHistory";
 import MatchSummary from "./components/MatchSummary";
-
 // Utils
 import { exportMatchToExcel, exportMatchToPDF } from "./utils/exportUtils";
+import { calculatePoints } from "./utils/matchUtils";
 
 const VigontinaStats = () => {
   // Routing
@@ -31,7 +29,6 @@ const VigontinaStats = () => {
     stats,
     lastPlayedMatch,
   } = useMatchHistory();
-  
   const match = useMatch();
 
   // Load history and timer state on mount
@@ -41,21 +38,30 @@ const VigontinaStats = () => {
   }, [loadHistory, timer.loadTimerState]);
 
   // Match management
-  const handleCreateNewMatch = useCallback((matchData) => {
-    match.createMatch(matchData);
-    setPage("match-overview");
-  }, [match]);
+  const handleCreateNewMatch = useCallback(
+    (matchData) => {
+      match.createMatch(matchData);
+      setPage("match-overview");
+    },
+    [match]
+  );
 
-  const handleStartPeriod = useCallback((periodIndex) => {
-    match.setPeriod(periodIndex);
-    timer.resetTimer();
-    setPage("period");
-  }, [match, timer]);
+  const handleStartPeriod = useCallback(
+    (periodIndex) => {
+      match.setPeriod(periodIndex);
+      timer.resetTimer();
+      setPage("period");
+    },
+    [match, timer]
+  );
 
-  const handleViewCompletedPeriod = useCallback((periodIndex) => {
-    match.setPeriod(periodIndex);
-    setPage("period-view");
-  }, [match]);
+  const handleViewCompletedPeriod = useCallback(
+    (periodIndex) => {
+      match.setPeriod(periodIndex);
+      setPage("period-view");
+    },
+    [match]
+  );
 
   const handleSaveMatch = async () => {
     const success = await saveMatch(match.currentMatch);
@@ -93,15 +99,12 @@ const VigontinaStats = () => {
     },
     [match, timer]
   );
-
   const handleAddOwnGoal = useCallback(() => {
     match.addOwnGoal(timer.getCurrentMinute);
   }, [match, timer]);
-
   const handleAddOpponentGoal = useCallback(() => {
     match.addOpponentGoal(timer.getCurrentMinute);
   }, [match, timer]);
-
   const handleAddPenalty = useCallback(
     (team, scored, scorerNum) => {
       match.addPenalty(team, scored, scorerNum, timer.getCurrentMinute);
@@ -246,9 +249,11 @@ const HomeScreen = ({
           <div className="flex items-center gap-3 mb-8">
             <div className="w-16 h-16 rounded-full overflow-hidden bg-white flex items-center justify-center border-2 border-slate-200">
               <img
-                src="/logo-vigontina.png"
+                src={`${import.meta.env.BASE_URL}logo-vigontina.png`}
                 alt="Logo Vigontina San Paolo"
                 className="w-full h-full object-cover"
+                loading="lazy"
+                decoding="async"
               />
             </div>
             <div>
@@ -261,32 +266,22 @@ const HomeScreen = ({
 
           {stats.totalMatches > 0 && (
             <div className="bg-gradient-to-r from-slate-50 to-cyan-50 rounded-lg p-4 mb-6">
-              <h3 className="font-semibold mb-3 text-center">
-                Stagione 2025-2026
-              </h3>
+              <h3 className="font-semibold mb-3 text-center">Stagione 2025-2026</h3>
               <div className="grid grid-cols-4 gap-2">
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-gray-800">
-                    {stats.totalMatches}
-                  </p>
+                  <p className="text-2xl font-bold text-gray-800">{stats.totalMatches}</p>
                   <p className="text-xs text-gray-600">Partite</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-green-600">
-                    {stats.wins}
-                  </p>
+                  <p className="text-2xl font-bold text-green-600">{stats.wins}</p>
                   <p className="text-xs text-gray-600">Vinte</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-yellow-600">
-                    {stats.draws}
-                  </p>
+                  <p className="text-2xl font-bold text-yellow-600">{stats.draws}</p>
                   <p className="text-xs text-gray-600">Pareggiate</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-red-600">
-                    {stats.losses}
-                  </p>
+                  <p className="text-2xl font-bold text-red-600">{stats.losses}</p>
                   <p className="text-xs text-gray-600">Perse</p>
                 </div>
               </div>
@@ -298,13 +293,10 @@ const HomeScreen = ({
               <div className="p-4 border-b">
                 <h3 className="font-semibold">Ultima partita</h3>
                 <p className="text-xs text-gray-500">
-                  {new Date(lastPlayedMatch.date).toLocaleDateString("it-IT")}
-                  {" • "}
-                  {lastPlayedMatch.isHome ? "🏠 Casa" : "✈️ Trasferta"}
-                  {" • "}
+                  {new Date(lastPlayedMatch.date).toLocaleDateString("it-IT")} {" • "}
+                  {lastPlayedMatch.isHome ? "🏠 Casa" : "✈️ Trasferta"} {" • "}
                   {lastPlayedMatch.competition}
-                  {lastPlayedMatch.matchDay &&
-                    ` - Giornata ${lastPlayedMatch.matchDay}`}
+                  {lastPlayedMatch.matchDay && ` - Giornata ${lastPlayedMatch.matchDay}`}
                 </p>
               </div>
               <div className="p-4">
@@ -312,16 +304,14 @@ const HomeScreen = ({
                   <div className="text-center flex-1">
                     <p className="text-xs text-gray-600">Vigontina</p>
                     <p className="text-3xl font-bold">
-                      {lastPlayedMatch.finalPoints?.vigontina ?? 0}
+                      {calculatePoints(lastPlayedMatch, "vigontina")}
                     </p>
                   </div>
                   <span className="px-3 text-gray-400">-</span>
                   <div className="text-center flex-1">
-                    <p className="text-xs text-gray-600">
-                      {lastPlayedMatch.opponent}
-                    </p>
+                    <p className="text-xs text-gray-600">{lastPlayedMatch.opponent}</p>
                     <p className="text-3xl font-bold">
-                      {lastPlayedMatch.finalPoints?.opponent ?? 0}
+                      {calculatePoints(lastPlayedMatch, "opponent")}
                     </p>
                   </div>
                 </div>

@@ -1,53 +1,61 @@
 // utils/matchUtils.js
 
 /**
- * Calcola i punti totali per una squadra
+ * Helpers
+ */
+const isTechnicalTest = (period) =>
+  (period?.name || "").trim().toUpperCase() === "PROVA TECNICA";
+
+const safeNumber = (v) => (Number.isFinite(v) ? v : 0);
+
+const getEffectivePeriods = (match) =>
+  Array.isArray(match?.periods) ? match.periods.filter((p) => !isTechnicalTest(p)) : [];
+
+/**
+ * Calcola i punti totali per una squadra (regola: win=1, draw=1, loss=0).
  * @param {Object} match - Oggetto partita
- * @param {string} team - 'vigontina' o 'opponent'
- * @returns {number} Punti totali
+ * @param {string} team - 'vigontina' | 'opponent'
+ * @returns {number}
  */
 export const calculatePoints = (match, team) => {
   if (!match || !match.periods) return 0;
-
   let points = 0;
-  match.periods.forEach((period) => {
-    // Escludi la Prova Tecnica dal conteggio punti
-    if (period.name === "PROVA TECNICA") return;
-    // Salta se non ci sono gol
-    if (period.vigontina === 0 && period.opponent === 0) return;
 
-    if (team === "vigontina") {
-      if (period.vigontina > period.opponent) points++;
-      else if (period.vigontina === period.opponent) points++;
+  for (const period of getEffectivePeriods(match)) {
+    const v = safeNumber(period.vigontina);
+    const o = safeNumber(period.opponent);
+
+    if (v === o) {
+      points += 1; // pareggio: 1 punto ad entrambe
+    } else if (v > o) {
+      points += team === "vigontina" ? 1 : 0;
     } else {
-      if (period.opponent > period.vigontina) points++;
-      else if (period.opponent === period.vigontina) points++;
+      points += team === "opponent" ? 1 : 0;
     }
-  });
+  }
 
   return points;
 };
 
 /**
- * Calcola i gol totali per una squadra (escludendo la Prova Tecnica)
- * @param {Object} match - Oggetto partita
- * @param {string} team - 'vigontina' o 'opponent'
- * @returns {number} Gol totali
+ * Calcola i gol totali per una squadra (escludendo la PROVA TECNICA)
+ * @param {Object} match
+ * @param {string} team - 'vigontina' | 'opponent'
+ * @returns {number}
  */
 export const calculateTotalGoals = (match, team) => {
   if (!match || !match.periods) return 0;
 
-  return match.periods.reduce((sum, period) => {
-    // Escludi la Prova Tecnica dal conteggio gol
-    if (period.name === "PROVA TECNICA") return sum;
-
-    return sum + (team === "vigontina" ? period.vigontina : period.opponent);
+  return getEffectivePeriods(match).reduce((sum, period) => {
+    const v = safeNumber(period.vigontina);
+    const o = safeNumber(period.opponent);
+    return sum + (team === "vigontina" ? v : o);
   }, 0);
 };
 
 /**
- * Calcola le statistiche di una partita
- * @param {Object} match - Oggetto partita
+ * Calcola le statistiche di una partita (escludendo la PROVA TECNICA dagli eventi)
+ * @param {Object} match
  * @returns {Object} Statistiche complete
  */
 export const calculateMatchStats = (match) => {
@@ -66,12 +74,15 @@ export const calculateMatchStats = (match) => {
     };
   }
 
-  const allGoals = match.periods.flatMap((period) =>
-    (period.goals || []).map((goal) => ({
-      ...goal,
-      period: period.name,
-    }))
-  );
+  // Escludiamo PROVA TECNICA anche dal tracciamento degli eventi
+  const allGoals = match.periods
+    .filter((p) => !isTechnicalTest(p))
+    .flatMap((period) =>
+      (period.goals || []).map((goal) => ({
+        ...goal,
+        period: period.name,
+      }))
+    );
 
   const scorers = {};
   const assisters = {};
@@ -79,25 +90,40 @@ export const calculateMatchStats = (match) => {
   let penaltiesScored = 0;
   let penaltiesMissed = 0;
 
-  allGoals.forEach((event) => {
-    if (event.type === "goal") {
-      if (event.scorer) {
-        scorers[event.scorer] = (scorers[event.scorer] || 0) + 1;
+  for (const event of allGoals) {
+    switch (event.type) {
+      case "goal": {
+        if (event.scorer != null) {
+          const num = parseInt(event.scorer, 10);
+          if (Number.isFinite(num)) scorers[num] = (scorers[num] || 0) + 1;
+        }
+        if (event.assist != null) {
+          const a = parseInt(event.assist, 10);
+          if (Number.isFinite(a)) assisters[a] = (assisters[a] || 0) + 1;
+        }
+        break;
       }
-      if (event.assist) {
-        assisters[event.assist] = (assisters[event.assist] || 0) + 1;
+      case "penalty-goal": {
+        if (event.scorer != null) {
+          const num = parseInt(event.scorer, 10);
+          if (Number.isFinite(num)) scorers[num] = (scorers[num] || 0) + 1;
+        }
+        penaltiesScored += 1;
+        break;
       }
-    } else if (event.type === "own-goal") {
-      ownGoalsCount++;
-    } else if (event.type === "penalty-goal") {
-      if (event.scorer) {
-        scorers[event.scorer] = (scorers[event.scorer] || 0) + 1;
+      case "penalty-missed": {
+        if (event.team === "vigontina") penaltiesMissed += 1;
+        break;
       }
-      penaltiesScored++;
-    } else if (event.type === "penalty-missed") {
-      penaltiesMissed++;
+      case "own-goal": {
+        ownGoalsCount += 1;
+        break;
+      }
+      // Eventi dell'avversario non impattano marcatori/assist della Vigontina
+      default:
+        break;
     }
-  });
+  }
 
   const vigontinaGoals = calculateTotalGoals(match, "vigontina");
   const opponentGoals = calculateTotalGoals(match, "opponent");
@@ -119,14 +145,13 @@ export const calculateMatchStats = (match) => {
 };
 
 /**
- * Determina il risultato della partita
- * @param {Object} match - Oggetto partita
- * @returns {Object} Risultato con testo, colore e background
+ * Determina il risultato della partita (in base ai PUNTI)
+ * @param {Object} match
+ * @returns {{isWin:boolean,isDraw:boolean,isLoss:boolean,resultText:string,resultColor:string,resultBg:string}}
  */
 export const getMatchResult = (match) => {
   const vigontinaPoints = calculatePoints(match, "vigontina");
   const opponentPoints = calculatePoints(match, "opponent");
-
   const isWin = vigontinaPoints > opponentPoints;
   const isDraw = vigontinaPoints === opponentPoints;
 
@@ -142,13 +167,14 @@ export const getMatchResult = (match) => {
 
 /**
  * Crea una nuova struttura partita
- * @param {Object} matchData - Dati iniziali della partita
+ * @param {Object} matchData
  * @returns {Object} Oggetto partita completo
  */
 export const createMatchStructure = (matchData) => {
-  const periods = matchData.competition === "Amichevole"
-    ? ["1° TEMPO", "2° TEMPO", "3° TEMPO", "4° TEMPO"]
-    : ["PROVA TECNICA", "1° TEMPO", "2° TEMPO", "3° TEMPO", "4° TEMPO"];
+  const periods =
+    matchData.competition === "Amichevole"
+      ? ["1° TEMPO", "2° TEMPO", "3° TEMPO", "4° TEMPO"]
+      : ["PROVA TECNICA", "1° TEMPO", "2° TEMPO", "3° TEMPO", "4° TEMPO"];
 
   return {
     ...matchData,
