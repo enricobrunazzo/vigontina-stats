@@ -24,9 +24,9 @@ export const exportFIGCReportToPDF = async (match, formData, calculatePeriodPoin
   };
 
   // Logo e Header
-  try {
-    const logoUrl = `${import.meta.env.BASE_URL || "/"}logo-vigontina.png`;
-    const logoResponse = await fetch(logoUrl);
+try {
+  const logoUrl = `${import.meta.env.BASE_URL || "/"}logo-lnd.png`; // ✅ Logo LND
+  const logoResponse = await fetch(logoUrl);
     const logoBlob = await logoResponse.blob();
     const logoDataUrl = await new Promise((resolve) => {
       const reader = new FileReader();
