@@ -1,544 +1,475 @@
 // utils/exportUtils.js
+// Esporto PDF/Excel con la stessa logica usata nell'app (punti/gol/periodi)
+
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { PLAYERS } from "../constants/players";
+import {
+  calculatePoints,
+  calculateTotalGoals,
+  calculateMatchStats,
+  getMatchResult,
+} from "./matchUtils";
+
+/* -------------------------------------------------------------------------- */
+/*                                  Helpers                                   */
+/* -------------------------------------------------------------------------- */
+
+const isTechnicalTest = (p) =>
+  (p?.name || "").trim().toUpperCase() === "PROVA TECNICA";
+
+const isScorable = (p) => !isTechnicalTest(p) && p?.completed === true;
+
+const nonTechnicalPeriods = (match) =>
+  Array.isArray(match?.periods)
+    ? match.periods.filter((p) => !isTechnicalTest(p))
+    : [];
+
+const scorablePeriods = (match) =>
+  Array.isArray(match?.periods)
+    ? match.periods.filter((p) => isScorable(p))
+    : [];
+
+const safeNum = (v) => (Number.isFinite(v) ? v : 0);
+
+const fmtDateIT = (d) => {
+  const date = new Date(d);
+  return Number.isFinite(date.getTime())
+    ? date.toLocaleDateString("it-IT")
+    : "";
+};
+
+function periodOutcome(period, opponentName = "Avversari") {
+  const v = safeNum(period.vigontina);
+  const o = safeNum(period.opponent);
+  if (v === o) return { label: "Pareggio", winner: "draw" };
+  if (v > o) return { label: "Vigontina", winner: "vigontina" };
+  return { label: opponentName, winner: "opponent" };
+}
+
+function eventLabel(e, opponentName = "Avversari") {
+  const min = e.minute != null ? `${e.minute}'` : "";
+  const who = e.scorerName || e.scorer || "";
+  const assist =
+    e.assistName || (e.assist != null ? ` (assist: ${e.assist})` : "");
+  switch (e.type) {
+    case "goal":
+      return `${min} - Gol ${who}${assist ? " " + assist : ""}`;
+    case "own-goal":
+      return `${min} - Autogol`;
+    case "opponent-goal":
+      return `${min} - Gol ${opponentName}`;
+    case "penalty-goal":
+      return `${min} - Gol (Rig.) ${who}`;
+    case "penalty-missed":
+      return `${min} - Rigore fallito`;
+    case "penalty-opponent-goal":
+      return `${min} - Gol (Rig.) ${opponentName}`;
+    case "penalty-opponent-missed":
+      return `${min} - Rigore fallito ${opponentName}`;
+    default:
+      return `${min} - Evento`;
+  }
+}
+
+// Carica un’immagine come DataURL (per jsPDF.addImage)
+async function loadImageAsDataURL(url) {
+  try {
+    const res = await fetch(url, { cache: "no-store" });
+    const blob = await res.blob();
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                    PDF                                     */
+/* -------------------------------------------------------------------------- */
 
 /**
- * Esporta una partita in formato Excel con fogli multipli
- * @param {Object} match - Oggetto partita da esportare
+ * Esporta PDF coerente con i calcoli dell'app, con BANNER RISULTATO e LOGO.
+ *
+ * @param {Object} match - Oggetto partita
+ * @param {Object} [opts]
+ * @param {string} [opts.logoUrl] - URL/Path del logo (default: `${import.meta.env.BASE_URL}logo-vigontina.png`)
+ */
+export const exportMatchToPDF = async (match, opts = {}) => {
+  if (!match) return;
+
+  const opponentName = match.opponent || "Avversari";
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 28;
+
+  // --- Calcoli coerenti con l'app ---
+  const vp = calculatePoints(match, "vigontina");     // solo periodi non-PT e completed
+  const op = calculatePoints(match, "opponent");
+  const vg = calculateTotalGoals(match, "vigontina"); // no PT
+  const og = calculateTotalGoals(match, "opponent");
+  const stats = calculateMatchStats(match);           // eventi senza PT
+  const { resultText, isWin, isDraw /* isLoss */ } = getMatchResult(match);
+
+  // --- Carica LOGO (facoltativo) ---
+  const logoUrl =
+    opts.logoUrl ?? `${import.meta.env.BASE_URL || "/"}logo-vigontina.png`;
+  const logoDataUrl = await loadImageAsDataURL(logoUrl);
+
+  /* ------------------------------- HEADER ------------------------------- */
+  let y = margin;
+
+  // Logo a sinistra (se disponibile)
+  if (logoDataUrl) {
+    const logoW = 42;
+    const logoH = 42;
+    doc.addImage(logoDataUrl, "PNG", margin, y - 6, logoW, logoH, undefined, "FAST");
+  }
+
+  // Titolo centrato
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text("VIGONTINA SAN PAOLO — REPORT PARTITA", pageWidth / 2, y + 10, {
+    align: "center",
+  });
+  y += 32;
+
+  /* --------------------------- BANNER RISULTATO ------------------------- */
+  // Colori banner (verde / giallo / rosso)
+  const bg = isWin ? [220, 252, 231] : isDraw ? [254, 249, 195] : [254, 226, 226];
+  const bd = isWin ? [16, 185, 129]  : isDraw ? [250, 204, 21]  : [239, 68, 68];
+  const tx = isWin ? [4, 120, 87]    : isDraw ? [161, 98, 7]    : [153, 27, 27];
+
+  const bannerX = margin;
+  const bannerW = pageWidth - margin * 2;
+  const bannerH = 38;
+
+  // bg + stroke
+  doc.setFillColor(...bg);
+  doc.setDrawColor(...bd);
+  doc.roundedRect(bannerX, y, bannerW, bannerH, 6, 6, "FD");
+
+  // testo
+  doc.setTextColor(...tx);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text(resultText, bannerX + 12, y + 24);
+
+  // punteggio a punti a destra
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(60, 60, 60);
+  doc.text(`Punti: Vigontina ${vp}  –  ${op} ${opponentName}`, bannerX + bannerW - 12, y + 24, {
+    align: "right",
+  });
+
+  // reset colori
+  doc.setTextColor(0, 0, 0);
+  y += bannerH + 16;
+
+  /* ------------------------------- META -------------------------------- */
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  const metaLines = [
+    `Vigontina San Paolo vs ${opponentName}`,
+    `${match.competition || ""}${match.matchDay ? ` — Giornata ${match.matchDay}` : ""}`,
+    `${match.isHome ? "🏠 Casa" : "✈️ Trasferta"} — ${fmtDateIT(match.date)}`,
+  ];
+  if (match.captain) {
+    const captainName = PLAYERS.find((p) => p.num === match.captain)?.name || "";
+    metaLines.push(`Capitano: ${match.captain} ${captainName}`);
+  }
+  if (match.assistantReferee) metaLines.push(`Assistente Arbitro: ${match.assistantReferee}`);
+  if (match.teamManager) metaLines.push(`Dirigente Accompagnatore: ${match.teamManager}`);
+
+  metaLines.forEach((l) => {
+    doc.text(l, margin, y);
+    y += 14;
+  });
+
+  // Gol (senza PT)
+  doc.setFont("helvetica", "bold");
+  doc.text(`Gol (senza PT): ${vg}  –  ${og}`, margin, y);
+  y += 18;
+
+  /* --------------------------- DETTAGLIO PERIODI ----------------------- */
+  doc.setFont("helvetica", "bold");
+  doc.text("DETTAGLIO PERIODI", margin, y);
+  y += 6;
+
+  autoTable(doc, {
+    startY: y,
+    head: [["Periodo", "Vigontina", opponentName, "Completato", "Conta nei Punti", "Esito"]],
+    body: nonTechnicalPeriods(match).map((p) => {
+      const completed = p?.completed === true;
+      const counts = isScorable(p);
+      const outcome = periodOutcome(p, opponentName).label;
+      return [
+        p.name || "",
+        safeNum(p.vigontina),
+        safeNum(p.opponent),
+        completed ? "Sì" : "No",
+        counts ? "Sì" : "No",
+        outcome,
+      ];
+    }),
+    theme: "grid",
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [54, 96, 146], textColor: 255 },
+    margin: { left: margin, right: margin },
+  });
+
+  y = doc.lastAutoTable.finalY + 14;
+
+  /* ------------------------ MARCATORI / ASSIST / ALTRI ----------------- */
+  const hasScorers = Object.keys(stats.scorers || {}).length > 0;
+  const hasAssisters = Object.keys(stats.assisters || {}).length > 0;
+  const hasOther =
+    stats.ownGoalsCount > 0 || stats.penaltiesScored > 0 || stats.penaltiesMissed > 0;
+
+  if (hasScorers) {
+    doc.setFont("helvetica", "bold");
+    doc.text("MARCATORI", margin, y);
+    y += 6;
+
+    const scorersBody = Object.entries(stats.scorers)
+      .sort((a, b) => b[1] - a[1])
+      .map(([num, count]) => {
+        const player = PLAYERS.find((p) => p.num === parseInt(num, 10));
+        return [`${num} ${player?.name || "Sconosciuto"}`, count];
+      });
+
+    autoTable(doc, {
+      startY: y,
+      head: [["Giocatore", "Gol"]],
+      body: scorersBody,
+      theme: "grid",
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [54, 96, 146], textColor: 255 },
+      margin: { left: margin, right: margin },
+    });
+    y = doc.lastAutoTable.finalY + 12;
+  }
+
+  if (hasAssisters) {
+    doc.setFont("helvetica", "bold");
+    doc.text("ASSIST", margin, y);
+    y += 6;
+
+    const assistersBody = Object.entries(stats.assisters)
+      .sort((a, b) => b[1] - a[1])
+      .map(([num, count]) => {
+        const player = PLAYERS.find((p) => p.num === parseInt(num, 10));
+        return [`${num} ${player?.name || "Sconosciuto"}`, count];
+      });
+
+    autoTable(doc, {
+      startY: y,
+      head: [["Giocatore", "Assist"]],
+      body: assistersBody,
+      theme: "grid",
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [54, 96, 146], textColor: 255 },
+      margin: { left: margin, right: margin },
+    });
+    y = doc.lastAutoTable.finalY + 12;
+  }
+
+  if (hasOther) {
+    doc.setFont("helvetica", "bold");
+    doc.text("ALTRI EVENTI", margin, y);
+    y += 14;
+
+    doc.setFont("helvetica", "normal");
+    if (stats.ownGoalsCount > 0) {
+      doc.text(`Autogol: ${stats.ownGoalsCount}`, margin, y);
+      y += 14;
+    }
+    if (stats.penaltiesScored > 0) {
+      doc.text(`Rigori segnati: ${stats.penaltiesScored}`, margin, y);
+      y += 14;
+    }
+    if (stats.penaltiesMissed > 0) {
+      doc.text(`Rigori sbagliati: ${stats.penaltiesMissed}`, margin, y);
+      y += 14;
+    }
+  }
+
+  /* --------------------------- CRONOLOGIA EVENTI ----------------------- */
+  doc.setFont("helvetica", "bold");
+  doc.text("CRONOLOGIA EVENTI", margin, y);
+  y += 6;
+
+  const rows = [];
+  nonTechnicalPeriods(match).forEach((p) => {
+    const events = Array.isArray(p.goals) ? p.goals : [];
+    if (events.length === 0 && p.vigontina === 0 && p.opponent === 0) return;
+    if (events.length === 0) {
+      rows.push([p.name, "— nessun evento registrato —"]);
+    } else {
+      events.forEach((e, idx) => {
+        rows.push([idx === 0 ? p.name : "", eventLabel(e, opponentName)]);
+      });
+    }
+  });
+
+  if (rows.length > 0) {
+    autoTable(doc, {
+      startY: y,
+      head: [["Periodo", "Evento"]],
+      body: rows,
+      theme: "grid",
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [16, 185, 129], textColor: 255 },
+      margin: { left: margin, right: margin },
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  }
+
+  // Nota footer
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(9);
+  doc.text(
+    "Nota: i PUNTI considerano solo i tempi giocati (esclusa PROVA TECNICA). I gol non includono la PROVA TECNICA.",
+    margin,
+    Math.min(y, doc.internal.pageSize.getHeight() - margin)
+  );
+
+  // Salva PDF
+  const fileName = `Vigontina_vs_${(opponentName || "").replace(/\s+/g, "_")}_${fmtDateIT(
+    match.date
+  )}.pdf`;
+  doc.save(fileName);
+};
+
+/* -------------------------------------------------------------------------- */
+/*                                   EXCEL                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Export Excel multi-foglio, coerente con la logica dell'app.
+ * (stile minimale ma chiaro)
  */
 export const exportMatchToExcel = (match) => {
   if (!match) return;
-
   try {
     const wb = XLSX.utils.book_new();
+    const opponentName = match.opponent || "Avversari";
 
-    // Calcola statistiche
-    const vigontinaPoints = match.finalPoints?.vigontina || 0;
-    const opponentPoints = match.finalPoints?.opponent || 0;
-    const vigontinaGoals = match.periods.reduce(
-      (sum, p) => sum + (p.name !== "PROVA TECNICA" ? p.vigontina : 0),
-      0
-    );
-    const opponentGoals = match.periods.reduce(
-      (sum, p) => sum + (p.name !== "PROVA TECNICA" ? p.opponent : 0),
-      0
-    );
+    // Calcoli coerenti con l'app
+    const vp = calculatePoints(match, "vigontina");
+    const op = calculatePoints(match, "opponent");
+    const vg = calculateTotalGoals(match, "vigontina");
+    const og = calculateTotalGoals(match, "opponent");
+    const stats = calculateMatchStats(match);
 
-    const scorers = {};
-    const assisters = {};
-    match.periods.forEach((period) => {
-      (period.goals ?? []).forEach((event) => {
-        if (event.type === "goal" || event.type === "penalty-goal") {
-          if (event.scorer) {
-            scorers[event.scorer] = (scorers[event.scorer] ?? 0) + 1;
-          }
-          if (event.assist) {
-            assisters[event.assist] = (assisters[event.assist] ?? 0) + 1;
-          }
-        }
-      });
-    });
-
-    // Foglio 1: Riassunto
-    const summaryData = [
+    /* ------------------------------ Riassunto ------------------------------ */
+    const summary = [
       ["VIGONTINA SAN PAOLO - RIASSUNTO PARTITA"],
       [""],
-      ["Competizione", match.competition],
-      ["Giornata", match.matchDay || ""],
-      ["Avversario", match.opponent],
-      ["Data", new Date(match.date).toLocaleDateString("it-IT")],
+      ["Competizione", match.competition || ""],
+      ["Giornata", match.matchDay ?? ""],
+      ["Avversario", opponentName],
+      ["Data", fmtDateIT(match.date)],
       ["Luogo", match.isHome ? "Casa" : "Trasferta"],
       [
         "Capitano",
         match.captain
-          ? `${match.captain} ${PLAYERS.find((p) => p.num === match.captain)?.name || ""}`
+          ? `${match.captain} ${
+              PLAYERS.find((p) => p.num === match.captain)?.name || ""
+            }`
           : "",
       ],
-      ["Assistente Arbitro", match.assistantReferee || ""],
-      ["Dirigente Accompagnatore", match.teamManager || ""],
+      ["Assistente Arbitro", match.assistantReferee ?? ""],
+      ["Dirigente Accompagnatore", match.teamManager ?? ""],
       [""],
       ["RISULTATO FINALE"],
-      [
-        "Punti",
-        `Vigontina ${vigontinaPoints} - ${opponentPoints} ${match.opponent}`,
-      ],
-      ["Gol Totali", `${vigontinaGoals} - ${opponentGoals}`],
+      ["Punti", `Vigontina ${vp} - ${op} ${opponentName}`],
+      ["Gol Totali (senza PT)", `${vg} - ${og}`],
     ];
-    const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(wb, summaryWs, "Riassunto");
+    const wsSummary = XLSX.utils.aoa_to_sheet(summary);
+    XLSX.utils.book_append_sheet(wb, wsSummary, "Riassunto");
 
-    // Foglio 2: Dettaglio Periodi
-    const periodsData = [
+    /* --------------------------- Dettaglio periodi ------------------------ */
+    const periods = [
       ["DETTAGLIO PERIODI"],
       [""],
-      ["Periodo", "Vigontina", "Avversario"],
-      ...match.periods.map((period) => [
-        period.name,
-        period.vigontina,
-        period.opponent,
-      ]),
+      ["Periodo", "Vigontina", opponentName, "Completato", "Conta nei Punti", "Esito"],
+      ...nonTechnicalPeriods(match).map((p) => {
+        const completed = p?.completed === true;
+        const counts = isScorable(p);
+        const outcome = periodOutcome(p, opponentName).label;
+        return [
+          p.name || "",
+          safeNum(p.vigontina),
+          safeNum(p.opponent),
+          completed ? "Sì" : "No",
+          counts ? "Sì" : "No",
+          outcome,
+        ];
+      }),
     ];
-    const periodsWs = XLSX.utils.aoa_to_sheet(periodsData);
-    XLSX.utils.book_append_sheet(wb, periodsWs, "Periodi");
+    const wsPeriods = XLSX.utils.aoa_to_sheet(periods);
+    XLSX.utils.book_append_sheet(wb, wsPeriods, "Periodi");
 
-    // Foglio 3: Marcatori e Assist
-    const scorersData = [
+    /* --------------------------- Marcatori/Assist ------------------------- */
+    const scorersRows = [
       ["MARCATORI"],
       [""],
       ["Numero", "Giocatore", "Gol"],
-      ...Object.entries(scorers)
+      ...Object.entries(stats.scorers)
         .sort((a, b) => b[1] - a[1])
         .map(([num, count]) => {
-          const player = PLAYERS.find((p) => p.num === parseInt(num));
+          const player = PLAYERS.find((p) => p.num === parseInt(num, 10));
           return [num, player?.name ?? "Sconosciuto", count];
         }),
       [""],
       ["ASSIST"],
       [""],
       ["Numero", "Giocatore", "Assist"],
-      ...Object.entries(assisters)
+      ...Object.entries(stats.assisters)
         .sort((a, b) => b[1] - a[1])
         .map(([num, count]) => {
-          const player = PLAYERS.find((p) => p.num === parseInt(num));
+          const player = PLAYERS.find((p) => p.num === parseInt(num, 10));
           return [num, player?.name ?? "Sconosciuto", count];
         }),
     ];
-    const scorersWs = XLSX.utils.aoa_to_sheet(scorersData);
-    XLSX.utils.book_append_sheet(wb, scorersWs, "Marcatori");
+    const wsScorers = XLSX.utils.aoa_to_sheet(scorersRows);
+    XLSX.utils.book_append_sheet(wb, wsScorers, "Marcatori");
 
-    // Foglio 4: Cronologia Eventi
-    const eventsData = [
+    /* --------------------------- Cronologia Eventi ------------------------ */
+    const eventsRows = [
       ["CRONOLOGIA EVENTI"],
       [""],
-      ["Periodo", "Minuto", "Tipo", "Dettagli"],
-      ...match.periods.flatMap((period) =>
-        (period.goals ?? []).map((event) => {
-          let tipo = "";
-          let dettagli = "";
-          switch (event.type) {
-            case "goal":
-              tipo = "Gol";
-              dettagli = `${event.scorer} ${event.scorerName}`;
-              if (event.assist)
-                dettagli += ` (assist: ${event.assist} ${event.assistName})`;
-              break;
-            case "own-goal":
-              tipo = "Autogol";
-              dettagli = "Vigontina";
-              break;
-            case "opponent-goal":
-              tipo = "Gol Avversario";
-              dettagli = match.opponent;
-              break;
-            case "penalty-goal":
-              tipo = "Rigore Segnato";
-              dettagli = `${event.scorer} ${event.scorerName}`;
-              break;
-            case "penalty-missed":
-              tipo = "Rigore Fallito";
-              dettagli = "Vigontina";
-              break;
-            case "penalty-opponent-goal":
-              tipo = "Rigore Segnato Avversario";
-              dettagli = match.opponent;
-              break;
-            case "penalty-opponent-missed":
-              tipo = "Rigore Fallito Avversario";
-              dettagli = match.opponent;
-              break;
-            default:
-              break;
-          }
-          return [period.name, `${event.minute}'`, tipo, dettagli];
-        })
-      ),
+      ["Periodo", "Minuto", "Evento"],
     ];
-    const eventsWs = XLSX.utils.aoa_to_sheet(eventsData);
-    XLSX.utils.book_append_sheet(wb, eventsWs, "Eventi");
-
-    // Formattazione avanzata per tutti i fogli
-    const worksheets = [
-      { ws: summaryWs, data: summaryData },
-      { ws: periodsWs, data: periodsData },
-      { ws: scorersWs, data: scorersData },
-      { ws: eventsWs, data: eventsData },
-    ];
-
-    worksheets.forEach(({ ws, data }) => {
-      const range = XLSX.utils.decode_range(ws["!ref"]);
-      
-      for (let R = 0; R <= range.e.r; ++R) {
-        for (let C = 0; C <= range.e.c; ++C) {
-          const cell_address = { c: C, r: R };
-          const cell_ref = XLSX.utils.encode_cell(cell_address);
-          if (!ws[cell_ref]) continue;
-
-          const cell = ws[cell_ref];
-
-          // Headers principali bold e blu
-          if (R === 0) {
-            cell.s = {
-              font: { bold: true, color: { rgb: "FFFFFF" }, sz: 16 },
-              fill: { fgColor: { rgb: "366092" } },
-              alignment: {
-                horizontal: "center",
-                vertical: "center",
-                wrapText: true,
-              },
-              border: {
-                top: { style: "thin", color: { rgb: "000000" } },
-                bottom: { style: "thin", color: { rgb: "000000" } },
-                left: { style: "thin", color: { rgb: "000000" } },
-                right: { style: "thin", color: { rgb: "000000" } },
-              },
-            };
-          }
-          // Sub-headers bold e grigio
-          else if (
-            data[R] &&
-            typeof data[R][0] === "string" &&
-            data[R][0].match(
-              /^(RISULTATO|DETTAGLIO|MARCATORI|ASSIST|CRONOLOGIA)$/
-            )
-          ) {
-            cell.s = {
-              font: { bold: true, color: { rgb: "000000" }, sz: 12 },
-              fill: { fgColor: { rgb: "DDEBF7" } },
-              alignment: {
-                horizontal: "center",
-                vertical: "center",
-                wrapText: true,
-              },
-              border: {
-                top: { style: "medium", color: { rgb: "000000" } },
-                bottom: { style: "medium", color: { rgb: "000000" } },
-                left: { style: "thin", color: { rgb: "000000" } },
-                right: { style: "thin", color: { rgb: "000000" } },
-              },
-            };
-          }
-          // Intestazioni tabelle bold
-          else if (
-            R > 0 &&
-            data[R] &&
-            data[R].length > 1 &&
-            (data[R][0] === "Numero" || data[R][0] === "Periodo")
-          ) {
-            cell.s = {
-              font: { bold: true, color: { rgb: "000000" }, sz: 11 },
-              fill: { fgColor: { rgb: "E2EFDA" } },
-              alignment: {
-                horizontal: "center",
-                vertical: "center",
-                wrapText: true,
-              },
-              border: {
-                top: { style: "thin", color: { rgb: "000000" } },
-                bottom: { style: "thin", color: { rgb: "000000" } },
-                left: { style: "thin", color: { rgb: "000000" } },
-                right: { style: "thin", color: { rgb: "000000" } },
-              },
-            };
-          }
-          // Celle dati con bordi
-          else {
-            cell.s = {
-              alignment: {
-                horizontal: "left",
-                vertical: "center",
-                wrapText: true,
-              },
-              border: {
-                top: { style: "thin", color: { rgb: "000000" } },
-                bottom: { style: "thin", color: { rgb: "000000" } },
-                left: { style: "thin", color: { rgb: "000000" } },
-                right: { style: "thin", color: { rgb: "000000" } },
-              },
-            };
-          }
-        }
+    nonTechnicalPeriods(match).forEach((p) => {
+      const events = Array.isArray(p.goals) ? p.goals : [];
+      if (events.length === 0 && p.vigontina === 0 && p.opponent === 0) return;
+      if (events.length === 0) {
+        eventsRows.push([p.name, "", "— nessun evento registrato —"]);
+      } else {
+        events.forEach((e, idx) => {
+          eventsRows.push([
+            idx === 0 ? p.name : "",
+            e.minute != null ? `${e.minute}'` : "",
+            eventLabel(e, opponentName),
+          ]);
+        });
       }
-
-      // Auto-adjust column widths
-      const colWidths = [];
-      for (let C = 0; C <= range.e.c; ++C) {
-        let maxLength = 0;
-        for (let R = 0; R <= range.e.r; ++R) {
-          const cell_address = { c: C, r: R };
-          const cell_ref = XLSX.utils.encode_cell(cell_address);
-          if (ws[cell_ref]) {
-            maxLength = Math.max(
-              maxLength,
-              ws[cell_ref].v ? ws[cell_ref].v.toString().length : 0
-            );
-          }
-        }
-        colWidths[C] = { wch: Math.min(maxLength + 2, 50) };
-      }
-      ws["!cols"] = colWidths;
     });
+    const wsEvents = XLSX.utils.aoa_to_sheet(eventsRows);
+    XLSX.utils.book_append_sheet(wb, wsEvents, "Eventi");
 
-    // Salva il file
-    const fileName = `Vigontina_vs_${match.opponent.replace(/\s+/g, "_")}_${match.date}.xlsx`;
+    const fileName = `Vigontina_vs_${(opponentName || "").replace(/\s+/g, "_")}_${fmtDateIT(
+      match.date
+    )}.xlsx`;
     XLSX.writeFile(wb, fileName);
-
-    alert(
-      "✅ File Excel multi-foglio scaricato con successo!\n\nApri con Microsoft Excel per visualizzare i fogli formattati."
-    );
   } catch (error) {
     console.error("Errore export Excel:", error);
-    alert(
-      `❌ Errore durante l'esportazione Excel: ${error.message ?? "Errore sconosciuto"}`
-    );
-  }
-};
-
-/**
- * Esporta una partita in formato PDF
- * @param {Object} match - Oggetto partita da esportare
- */
-export const exportMatchToPDF = (match) => {
-  if (!match) return;
-
-  try {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-
-    // Header
-    doc.setFontSize(20);
-    doc.setFont("helvetica", "bold");
-    doc.text("VIGONTINA SAN PAOLO - REPORT PARTITA", pageWidth / 2, 20, {
-      align: "center",
-    });
-
-    // Info partita
-    let yPos = 40;
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Competizione: ${match.competition}`, 20, yPos);
-    yPos += 10;
-    
-    if (match.matchDay) {
-      doc.text(`Giornata: ${match.matchDay}`, 20, yPos);
-      yPos += 10;
-    }
-    
-    doc.text(`Avversario: ${match.opponent}`, 20, yPos);
-    yPos += 10;
-    doc.text(
-      `Data: ${new Date(match.date).toLocaleDateString("it-IT")}`,
-      20,
-      yPos
-    );
-    yPos += 10;
-    doc.text(`Luogo: ${match.isHome ? "Casa" : "Trasferta"}`, 20, yPos);
-    yPos += 10;
-    
-    if (match.captain) {
-      const captainName =
-        PLAYERS.find((p) => p.num === match.captain)?.name || "";
-      doc.text(`Capitano: ${match.captain} ${captainName}`, 20, yPos);
-      yPos += 10;
-    }
-    
-    if (match.assistantReferee) {
-      doc.text(`Assistente Arbitro: ${match.assistantReferee}`, 20, yPos);
-      yPos += 10;
-    }
-    
-    if (match.teamManager) {
-      doc.text(`Dirigente Accompagnatore: ${match.teamManager}`, 20, yPos);
-      yPos += 10;
-    }
-
-    // Risultato finale
-    yPos += 10;
-    doc.setFont("helvetica", "bold");
-    doc.text("RISULTATO FINALE", 20, yPos);
-    yPos += 10;
-    doc.setFont("helvetica", "normal");
-    
-    const vigontinaPoints = match.finalPoints?.vigontina || 0;
-    const opponentPoints = match.finalPoints?.opponent || 0;
-    const vigontinaGoals = match.periods.reduce(
-      (sum, p) => sum + (p.name !== "PROVA TECNICA" ? p.vigontina : 0),
-      0
-    );
-    const opponentGoals = match.periods.reduce(
-      (sum, p) => sum + (p.name !== "PROVA TECNICA" ? p.opponent : 0),
-      0
-    );
-    
-    doc.text(
-      `Punti: Vigontina ${vigontinaPoints} - ${opponentPoints} ${match.opponent}`,
-      20,
-      yPos
-    );
-    yPos += 10;
-    doc.text(`Gol Totali: ${vigontinaGoals} - ${opponentGoals}`, 20, yPos);
-
-    // Dettaglio Periodi
-    yPos += 20;
-    doc.setFont("helvetica", "bold");
-    doc.text("DETTAGLIO PERIODI", 20, yPos);
-    yPos += 10;
-    
-    autoTable(doc, {
-      startY: yPos,
-      head: [["Periodo", "Vigontina", "Avversario"]],
-      body: match.periods.map((period) => [
-        period.name,
-        period.vigontina,
-        period.opponent,
-      ]),
-      theme: "grid",
-      styles: { fontSize: 10, cellPadding: 3 },
-      headStyles: { fillColor: [54, 96, 146] },
-      margin: { left: 20, right: 20 },
-    });
-    yPos = doc.lastAutoTable.finalY + 20;
-
-    // Marcatori
-    const scorers = {};
-    match.periods.forEach((period) => {
-      (period.goals ?? []).forEach((event) => {
-        if (event.type === "goal" || event.type === "penalty-goal") {
-          if (event.scorer) {
-            scorers[event.scorer] = (scorers[event.scorer] ?? 0) + 1;
-          }
-        }
-      });
-    });
-    
-    if (Object.keys(scorers).length > 0) {
-      doc.setFont("helvetica", "bold");
-      doc.text("MARCATORI", 20, yPos);
-      yPos += 10;
-      
-      const scorersBody = Object.entries(scorers)
-        .sort((a, b) => b[1] - a[1])
-        .map(([num, count]) => {
-          const player = PLAYERS.find((p) => p.num === parseInt(num));
-          return [`${num} ${player?.name || "Sconosciuto"}`, count];
-        });
-      
-      autoTable(doc, {
-        startY: yPos,
-        head: [["Giocatore", "Gol"]],
-        body: scorersBody,
-        theme: "grid",
-        styles: { fontSize: 10, cellPadding: 3 },
-        headStyles: { fillColor: [54, 96, 146] },
-        margin: { left: 20, right: 20 },
-      });
-      yPos = doc.lastAutoTable.finalY + 20;
-    }
-
-    // Assist
-    const assisters = {};
-    match.periods.forEach((period) => {
-      (period.goals ?? []).forEach((event) => {
-        if (event.assist) {
-          assisters[event.assist] = (assisters[event.assist] ?? 0) + 1;
-        }
-      });
-    });
-    
-    if (Object.keys(assisters).length > 0) {
-      doc.setFont("helvetica", "bold");
-      doc.text("ASSIST", 20, yPos);
-      yPos += 10;
-      
-      const assistersBody = Object.entries(assisters)
-        .sort((a, b) => b[1] - a[1])
-        .map(([num, count]) => {
-          const player = PLAYERS.find((p) => p.num === parseInt(num));
-          return [`${num} ${player?.name || "Sconosciuto"}`, count];
-        });
-      
-      autoTable(doc, {
-        startY: yPos,
-        head: [["Giocatore", "Assist"]],
-        body: assistersBody,
-        theme: "grid",
-        styles: { fontSize: 10, cellPadding: 3 },
-        headStyles: { fillColor: [54, 96, 146] },
-        margin: { left: 20, right: 20 },
-      });
-      yPos = doc.lastAutoTable.finalY + 20;
-    }
-
-    // Cronologia
-    doc.setFont("helvetica", "bold");
-    doc.text("CRONOLOGIA EVENTI", 20, yPos);
-    yPos += 10;
-    
-    const eventsBody = match.periods.flatMap((period) =>
-      (period.goals ?? []).map((event) => {
-        let tipo = "";
-        let dettagli = "";
-        
-        switch (event.type) {
-          case "goal":
-            tipo = "Gol";
-            dettagli = `${event.scorer} ${event.scorerName}${event.assist ? ` (assist: ${event.assist} ${event.assistName})` : ""}`;
-            break;
-          case "own-goal":
-            tipo = "Autogol";
-            dettagli = "Vigontina";
-            break;
-          case "opponent-goal":
-            tipo = "Gol Avversario";
-            dettagli = match.opponent;
-            break;
-          case "penalty-goal":
-            tipo = "Rigore Segnato";
-            dettagli = `${event.scorer} ${event.scorerName}`;
-            break;
-          case "penalty-missed":
-            tipo = "Rigore Fallito";
-            dettagli = "Vigontina";
-            break;
-          case "penalty-opponent-goal":
-            tipo = "Rigore Segnato Avversario";
-            dettagli = match.opponent;
-            break;
-          case "penalty-opponent-missed":
-            tipo = "Rigore Fallito Avversario";
-            dettagli = match.opponent;
-            break;
-          default:
-            break;
-        }
-        
-        return [period.name, `${event.minute}'`, tipo, dettagli];
-      })
-    );
-    
-    autoTable(doc, {
-      startY: yPos,
-      head: [["Periodo", "Minuto", "Tipo", "Dettagli"]],
-      body: eventsBody,
-      theme: "grid",
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [54, 96, 146] },
-      margin: { left: 20, right: 20 },
-      columnStyles: { 3: { cellWidth: 80 } },
-    });
-
-    // Salva PDF
-    const fileName = `Vigontina_vs_${match.opponent.replace(/\s+/g, "_")}_${match.date}.pdf`;
-    doc.save(fileName);
-
-    alert(
-      "✅ File PDF scaricato con successo!\n\nApri con un lettore PDF per visualizzare il report."
-    );
-  } catch (error) {
-    console.error("Errore export PDF:", error);
-    alert(
-      `❌ Errore durante l'esportazione PDF: ${error.message ?? "Errore sconosciuto"}`
-    );
+    alert(`❌ Errore durante l'esportazione Excel: ${error.message ?? "Errore sconosciuto"}`);
   }
 };
