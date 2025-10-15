@@ -365,7 +365,7 @@ export const exportMatchToPDF = async (match, opts = {}) => {
   doc.setFont("helvetica", "italic");
   doc.setFontSize(9);
   doc.text(
-    "Nota: i PUNTI considerano solo i tempi giocati (Prova Tecnica esclusa). I gol non includono la Prova Tecnica.",
+    "Nota: i PUNTI considerano solo i tempi giocati (Prova Tecnica esclusa). I gol durante la Prova Tecnica non vengono calcolati.",
     margin,
     Math.min(y, doc.internal.pageSize.getHeight() - margin)
   );
