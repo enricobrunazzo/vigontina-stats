@@ -1,4 +1,3 @@
-// hooks/useMatchHistory.js
 import { useState, useCallback, useMemo } from "react";
 import {
   collection,
@@ -21,21 +20,18 @@ export const useMatchHistory = () => {
   const loadHistory = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    
     try {
       const q = query(collection(db, "matches"), orderBy("timestamp", "desc"));
       const querySnapshot = await getDocs(q);
-      
       const matches = [];
       querySnapshot.forEach((docSnap) => {
         matches.push({ id: docSnap.id, ...docSnap.data() });
       });
-      
       setMatchHistory(matches);
       return matches;
     } catch (error) {
       console.error("Errore caricamento storico:", error);
-      setError(error.message || "Errore sconosciuto");
+      setError(error.message ?? "Errore sconosciuto");
       alert(
         `⚠️ Errore nel caricamento dello storico: ${error.message ?? "Errore sconosciuto"}`
       );
@@ -51,10 +47,8 @@ export const useMatchHistory = () => {
       if (!window.confirm("Sei sicuro di voler salvare e terminare questa partita?")) {
         return false;
       }
-
       setIsLoading(true);
       setError(null);
-
       try {
         await addDoc(collection(db, "matches"), {
           ...match,
@@ -64,13 +58,12 @@ export const useMatchHistory = () => {
           },
           savedAt: Date.now(),
         });
-
         alert("✅ Partita salvata con successo!");
         await loadHistory();
         return true;
       } catch (error) {
         console.error("Errore salvataggio:", error);
-        setError(error.message || "Errore sconosciuto");
+        setError(error.message ?? "Errore sconosciuto");
         alert(
           `❌ Errore nel salvataggio della partita: ${error.message ?? "Errore sconosciuto"}\n\nRiprova o contatta l'assistenza.`
         );
@@ -92,21 +85,17 @@ export const useMatchHistory = () => {
       ) {
         return false;
       }
-
       const password = prompt(
         "Inserisci la password per confermare l'eliminazione:"
       );
-
       if (password !== "Vigontina2526") {
         if (password !== null) {
           alert("❌ Password errata. Eliminazione annullata.");
         }
         return false;
       }
-
       setIsLoading(true);
       setError(null);
-
       try {
         await deleteDoc(doc(db, "matches", matchId));
         alert("✅ Partita eliminata con successo!");
@@ -114,7 +103,7 @@ export const useMatchHistory = () => {
         return true;
       } catch (error) {
         console.error("Errore eliminazione:", error);
-        setError(error.message || "Errore sconosciuto");
+        setError(error.message ?? "Errore sconosciuto");
         alert(
           `❌ Errore nell'eliminazione: ${error.message ?? "Errore sconosciuto"}`
         );
@@ -126,27 +115,24 @@ export const useMatchHistory = () => {
     [loadHistory]
   );
 
-  // Calcola le statistiche generali
+  // Calcola le statistiche generali (patchata per coerenza con lo storico)
   const stats = useMemo(() => {
     const totalMatches = matchHistory.length;
     const wins = matchHistory.filter(
-      (m) => m.finalPoints && m.finalPoints.vigontina > m.finalPoints.opponent
+      (m) => calculatePoints(m, "vigontina") > calculatePoints(m, "opponent")
     ).length;
     const draws = matchHistory.filter(
-      (m) =>
-        m.finalPoints && m.finalPoints.vigontina === m.finalPoints.opponent
+      (m) => calculatePoints(m, "vigontina") === calculatePoints(m, "opponent")
     ).length;
     const losses = matchHistory.filter(
-      (m) => m.finalPoints && m.finalPoints.vigontina < m.finalPoints.opponent
+      (m) => calculatePoints(m, "vigontina") < calculatePoints(m, "opponent")
     ).length;
-
     return { totalMatches, wins, draws, losses };
   }, [matchHistory]);
 
   // Ottiene l'ultima partita giocata
   const lastPlayedMatch = useMemo(() => {
     if (!matchHistory || matchHistory.length === 0) return null;
-    
     return [...matchHistory].sort(
       (a, b) => new Date(b.date) - new Date(a.date)
     )[0];
