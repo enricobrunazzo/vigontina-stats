@@ -1,4 +1,4 @@
-// App.jsx (versione aggiornata con funzionalità condivise multi-utente)
+// App.jsx (single "Nuova Partita" with mode dialog, LIVE banner, shared read-only)
 import React, { useState, useEffect, useCallback } from "react";
 
 // Hooks
@@ -6,6 +6,7 @@ import { useTimer } from "./hooks/useTimer";
 import { useMatchHistory } from "./hooks/useMatchHistory";
 import { useMatch } from "./hooks/useMatch";
 import { useSharedMatch } from "./hooks/useSharedMatch";
+import { canModifyShared } from "./hooks/sharedConstants";
 
 // Components
 import NewMatchForm from "./components/NewMatchForm";
@@ -15,6 +16,8 @@ import MatchHistory from "./components/MatchHistory";
 import MatchSummary from "./components/MatchSummary";
 import FIGCReport from "./components/FIGCReport";
 import SharedMatchManager from "./components/SharedMatchManager";
+import NewMatchModeDialog from "./components/NewMatchModeDialog";
+import LiveBanner from "./components/LiveBanner";
 
 // Utils
 import { exportMatchToExcel, exportMatchToPDF, exportHistoryToExcel } from "./utils/exportUtils";
@@ -25,6 +28,7 @@ const VigontinaStats = () => {
   const [page, setPage] = useState("home");
   const [selectedHistoryMatch, setSelectedHistoryMatch] = useState(null);
   const [matchMode, setMatchMode] = useState('local'); // 'local' | 'shared'
+  const [showModeDialog, setShowModeDialog] = useState(false);
 
   // Custom hooks
   const timer = useTimer();
@@ -45,7 +49,7 @@ const VigontinaStats = () => {
     timer.loadTimerState();
   }, [loadHistory, timer.loadTimerState]);
 
-  // Determina quale match usare (locale o condiviso)
+  // Choose current source (local/shared)
   const currentMatch = matchMode === 'shared' && sharedMatch.sharedMatch 
     ? sharedMatch.sharedMatch 
     : match.currentMatch;
@@ -54,22 +58,31 @@ const VigontinaStats = () => {
     ? sharedMatch.sharedMatch.currentPeriod
     : match.currentPeriod;
 
-  // Match management
+  // Start flow
+  const openNewMatch = useCallback(() => {
+    setShowModeDialog(true);
+  }, []);
+
+  const handleModeSelected = useCallback(async ({ mode }) => {
+    setMatchMode(mode);
+    setShowModeDialog(false);
+    setPage("new-match");
+  }, []);
+
   const handleCreateNewMatch = useCallback(
     (matchData) => {
       if (matchMode === 'shared') {
-        // Crea partita condivisa
         sharedMatch.createSharedMatch(matchData).then(() => {
-          setPage("match-overview");
+          // After creating shared, go back to Home where LIVE banner appears
+          setPage("home");
         }).catch(error => {
           console.error('Errore creazione partita condivisa:', error);
-          // Fallback a locale
+          // Fallback to local
           match.createMatch(matchData);
           setMatchMode('local');
           setPage("match-overview");
         });
       } else {
-        // Crea partita locale
         match.createMatch(matchData);
         setPage("match-overview");
       }
@@ -89,7 +102,9 @@ const VigontinaStats = () => {
   const handleStartPeriod = useCallback(
     (periodIndex) => {
       if (matchMode === 'shared') {
-        sharedMatch.setSharedPeriod(periodIndex);
+        if (canModifyShared(sharedMatch.userRole)) {
+          sharedMatch.setSharedPeriod(periodIndex);
+        }
       } else {
         match.setPeriod(periodIndex);
       }
@@ -101,10 +116,7 @@ const VigontinaStats = () => {
 
   const handleViewCompletedPeriod = useCallback(
     (periodIndex) => {
-      if (matchMode === 'shared') {
-        // Per partite condivise, usiamo lo stesso periodo dal shared match
-        // Non modifichiamo il currentPeriod del shared match per la visualizzazione
-      } else {
+      if (matchMode === 'local') {
         match.setPeriod(periodIndex);
       }
       setPage("period-view");
@@ -129,11 +141,15 @@ const VigontinaStats = () => {
   const handleFinishPeriod = () => {
     let completed = false;
     
-    if (matchMode === 'shared' && sharedMatch.userRole === 'organizer') {
-      // Solo l'organizzatore può completare i periodi nelle partite condivise
-      // Implementa la logica per completare il periodo nelle partite condivise
-      completed = true; // Semplificato per ora
-    } else if (matchMode === 'local') {
+    if (matchMode === 'shared') {
+      if (canModifyShared(sharedMatch.userRole)) {
+        // For now, mark as completed in shared data
+        sharedMatch.updateSharedMatch({
+          periods: currentMatch.periods.map((p, idx) => idx === currentPeriod ? { ...p, completed: true } : p )
+        });
+        completed = true;
+      }
+    } else {
       completed = match.completePeriod();
     }
     
@@ -165,23 +181,24 @@ const VigontinaStats = () => {
     }
   };
 
-  // Handler per export storico
+  // Export history
   const handleExportHistory = useCallback(() => {
     exportHistoryToExcel(matchHistory);
   }, [matchHistory]);
 
-  // Handler per aprire FIGC Report da storico
   const handleOpenHistoryFIGCReport = useCallback((selectedMatch) => {
     setSelectedHistoryMatch(selectedMatch);
     setPage("history-figc-report");
   }, []);
 
-  // Event handlers che si adattano al tipo di partita
+  // Event handlers (respect shared read-only for viewers)
   const handleAddGoal = useCallback(
     (scorerNum, assistNum) => {
-      if (matchMode === 'shared' && sharedMatch.userRole !== 'viewer') {
-        sharedMatch.addSharedGoal(scorerNum, assistNum, timer.getCurrentMinute);
-      } else if (matchMode === 'local') {
+      if (matchMode === 'shared') {
+        if (canModifyShared(sharedMatch.userRole)) {
+          sharedMatch.addSharedGoal(scorerNum, assistNum, timer.getCurrentMinute);
+        }
+      } else {
         match.addGoal(scorerNum, assistNum, timer.getCurrentMinute);
       }
     },
@@ -192,14 +209,12 @@ const VigontinaStats = () => {
     if (matchMode === 'local') {
       match.addOwnGoal(timer.getCurrentMinute);
     }
-    // Implementa per shared match se necessario
   }, [match, timer, matchMode]);
   
   const handleAddOpponentGoal = useCallback(() => {
     if (matchMode === 'local') {
       match.addOpponentGoal(timer.getCurrentMinute);
     }
-    // Implementa per shared match se necessario
   }, [match, timer, matchMode]);
   
   const handleAddPenalty = useCallback(
@@ -207,7 +222,6 @@ const VigontinaStats = () => {
       if (matchMode === 'local') {
         match.addPenalty(team, scored, scorerNum, timer.getCurrentMinute);
       }
-      // Implementa per shared match se necessario
     },
     [match, timer, matchMode]
   );
@@ -217,114 +231,46 @@ const VigontinaStats = () => {
       if (matchMode === 'local') {
         match.updateScore(team, delta);
       }
-      // Implementa per shared match se necessario
     },
     [match, matchMode]
   );
 
-  // Render routes
+  // RENDER
   if (page === "home") {
     return (
       <HomeScreen
         stats={stats}
         lastPlayedMatch={lastPlayedMatch}
-        onNewMatch={() => setPage("new-match")}
+        onNewMatch={openNewMatch}
         onViewHistory={() => setPage("history")}
         onViewLastMatch={(selectedMatch) => {
           setSelectedHistoryMatch(selectedMatch);
           setPage("history-summary");
         }}
-        onJoinSharedMatch={() => setPage("shared-match")}
-      />
-    );
-  }
-
-  if (page === "shared-match") {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-bold text-gray-800">Partita Condivisa</h1>
-              <button
-                onClick={() => setPage("home")}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
-              >
-                ← Indietro
-              </button>
-            </div>
-            
-            <SharedMatchManager
-              onCreateSharedMatch={async (matchData) => {
-                setMatchMode('shared');
-                return handleCreateNewMatch(matchData);
-              }}
-              onJoinSharedMatch={handleJoinSharedMatch}
-              sharedMatchId={sharedMatch.matchId}
-              userRole={sharedMatch.userRole}
-              participants={sharedMatch.participants}
-              isConnected={sharedMatch.isConnected}
+        sharedBanner={
+          sharedMatch.matchId && sharedMatch.isConnected ? (
+            <LiveBanner matchId={sharedMatch.matchId} onOpen={() => setPage("match-overview")} />
+          ) : null
+        }
+        modeDialog={
+          showModeDialog ? (
+            <NewMatchModeDialog
+              onSelect={handleModeSelected}
+              onCancel={() => setShowModeDialog(false)}
             />
-            
-            {sharedMatch.isConnected && (
-              <div className="mt-6">
-                <button
-                  onClick={() => setPage("match-overview")}
-                  className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition"
-                >
-                  Vai alla Partita
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+          ) : null
+        }
+      />
     );
   }
 
   if (page === "new-match") {
     return (
-      <div className="space-y-6">
-        {/* Selezione modalità partita */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4">Tipo di Partita</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <button
-              onClick={() => setMatchMode('local')}
-              className={`p-4 border-2 rounded-lg transition ${
-                matchMode === 'local'
-                  ? 'border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-gray-300 hover:border-blue-300'
-              }`}
-            >
-              <h4 className="font-semibold">Partita Locale</h4>
-              <p className="text-sm text-gray-600 mt-1">
-                Solo per te, salvata sul dispositivo
-              </p>
-            </button>
-            
-            <button
-              onClick={() => setMatchMode('shared')}
-              className={`p-4 border-2 rounded-lg transition ${
-                matchMode === 'shared'
-                  ? 'border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-gray-300 hover:border-blue-300'
-              }`}
-            >
-              <h4 className="font-semibold">Partita Condivisa</h4>
-              <p className="text-sm text-gray-600 mt-1">
-                Visibile da più persone in tempo reale
-              </p>
-            </button>
-          </div>
-        </div>
-        
-        <NewMatchForm
-          onSubmit={handleCreateNewMatch}
-          onCancel={() => setPage("home")}
-          isShared={matchMode === 'shared'}
-        />
-      </div>
+      <NewMatchForm
+        onSubmit={handleCreateNewMatch}
+        onCancel={() => setPage("home")}
+        isShared={matchMode === 'shared'}
+      />
     );
   }
 
@@ -343,7 +289,6 @@ const VigontinaStats = () => {
         onBack={handleAbandonMatch}
         isShared={matchMode === 'shared'}
         userRole={sharedMatch.userRole}
-        sharedMatchId={sharedMatch.matchId}
       />
     );
   }
@@ -433,7 +378,6 @@ const VigontinaStats = () => {
     );
   }
 
-  // FIGC Report per partita corrente
   if (page === "figc-report" && currentMatch) {
     return (
       <FIGCReport
@@ -443,7 +387,6 @@ const VigontinaStats = () => {
     );
   }
 
-  // FIGC Report per partita storica
   if (page === "history-figc-report" && selectedHistoryMatch) {
     return (
       <FIGCReport
@@ -456,19 +399,22 @@ const VigontinaStats = () => {
   return null;
 };
 
-// HomeScreen Component (aggiornato con pulsante partita condivisa)
+// HomeScreen updated to accept banner and dialog overlays
 const HomeScreen = ({
   stats,
   lastPlayedMatch,
   onNewMatch,
   onViewHistory,
   onViewLastMatch,
-  onJoinSharedMatch,
+  sharedBanner,
+  modeDialog,
 }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
       <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg p-6">
+        <div className="bg-white rounded-lg shadow-lg p-6 relative">
+          {modeDialog}
+          {sharedBanner}
           <div className="flex items-center gap-3 mb-8">
             <div className="w-16 h-16 rounded-full overflow-hidden bg-white flex items-center justify-center border-2 border-slate-200">
               <img
@@ -555,14 +501,6 @@ const HomeScreen = ({
             >
               Nuova Partita
             </button>
-            
-            <button
-              onClick={onJoinSharedMatch}
-              className="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600 transition text-base font-medium"
-            >
-              Partita Condivisa
-            </button>
-            
             <button
               onClick={onViewHistory}
               className="w-full bg-purple-500 text-white py-2 rounded hover:bg-purple-600 transition text-base font-medium"
