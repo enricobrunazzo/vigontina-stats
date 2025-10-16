@@ -1,4 +1,4 @@
-// App.jsx (versione aggiornata con modulo FIGC)
+// App.jsx (versione aggiornata con modulo FIGC anche per storico)
 import React, { useState, useEffect, useCallback } from "react";
 
 // Hooks
@@ -100,6 +100,12 @@ const VigontinaStats = () => {
   const handleExportHistory = useCallback(() => {
     exportHistoryToExcel(matchHistory);
   }, [matchHistory]);
+
+  // Handler per aprire FIGC Report da storico
+  const handleOpenHistoryFIGCReport = useCallback((selectedMatch) => {
+    setSelectedHistoryMatch(selectedMatch);
+    setPage("history-figc-report");
+  }, []);
 
   // Event handlers that use timer.getCurrentMinute
   const handleAddGoal = useCallback(
@@ -224,6 +230,7 @@ const VigontinaStats = () => {
         onBack={() => setPage("match-overview")}
         onExportExcel={() => exportMatchToExcel(match.currentMatch)}
         onExportPDF={() => exportMatchToPDF(match.currentMatch)}
+        onFIGCReport={() => setPage("figc-report")}
       />
     );
   }
@@ -238,16 +245,27 @@ const VigontinaStats = () => {
         }}
         onExportExcel={() => exportMatchToExcel(selectedHistoryMatch)}
         onExportPDF={() => exportMatchToPDF(selectedHistoryMatch)}
+        onFIGCReport={() => handleOpenHistoryFIGCReport(selectedHistoryMatch)}
       />
     );
   }
 
-  // NUOVA PAGINA: FIGC Report
+  // FIGC Report per partita corrente
   if (page === "figc-report" && match.currentMatch) {
     return (
       <FIGCReport
         match={match.currentMatch}
         onBack={() => setPage("match-overview")}
+      />
+    );
+  }
+
+  // FIGC Report per partita storica
+  if (page === "history-figc-report" && selectedHistoryMatch) {
+    return (
+      <FIGCReport
+        match={selectedHistoryMatch}
+        onBack={() => setPage("history-summary")}
       />
     );
   }
@@ -323,18 +341,18 @@ const HomeScreen = ({
               <div className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="text-center flex-1">
-  <p className="text-xs text-gray-600">Vigontina</p>
-  <p className="text-3xl font-bold">
-    {calculatePoints(lastPlayedMatch, "vigontina")}
-  </p>
-</div>
-<span className="px-3 text-gray-400">-</span>
-<div className="text-center flex-1">
-  <p className="text-xs text-gray-600">{lastPlayedMatch.opponent}</p>
-  <p className="text-3xl font-bold">
-    {calculatePoints(lastPlayedMatch, "opponent")}
-  </p>
-</div>
+                    <p className="text-xs text-gray-600">Vigontina</p>
+                    <p className="text-3xl font-bold">
+                      {calculatePoints(lastPlayedMatch, "vigontina")}
+                    </p>
+                  </div>
+                  <span className="px-3 text-gray-400">-</span>
+                  <div className="text-center flex-1">
+                    <p className="text-xs text-gray-600">{lastPlayedMatch.opponent}</p>
+                    <p className="text-3xl font-bold">
+                      {calculatePoints(lastPlayedMatch, "opponent")}
+                    </p>
+                  </div>
                 </div>
                 <button
                   onClick={() => onViewLastMatch(lastPlayedMatch)}

@@ -166,21 +166,21 @@ const MatchCard = ({
       <div className="grid grid-cols-3 gap-2">
         <button
           onClick={onViewStats}
-          className="bg-blue-500 text-white py-2 rounded hover:bg-blue-600 flex items-center justify-center gap-2 text-xs font-medium transition-colors"
+          className="bg-blue-500 text-white py-2 rounded hover:bg-blue-600 flex items-center justify-center gap-2 text-xs font-medium"
         >
           <FileText className="w-3 h-3" />
           Dettagli
         </button>
         <button
           onClick={onExportExcel}
-          className="bg-green-500 text-white py-2 rounded hover:bg-green-600 flex items-center justify-center gap-2 text-xs font-medium transition-colors"
+          className="bg-green-500 text-white py-2 rounded hover:bg-green-600 flex items-center justify-center gap-2 text-xs font-medium"
         >
           <Download className="w-3 h-3" />
           Excel
         </button>
         <button
           onClick={onExportPDF}
-          className="bg-red-500 text-white py-2 rounded hover:bg-red-600 flex items-center justify-center gap-2 text-xs font-medium transition-colors"
+          className="bg-red-500 text-white py-2 rounded hover:bg-red-600 flex items-center justify-center gap-2 text-xs font-medium"
         >
           <Download className="w-3 h-3" />
           PDF
