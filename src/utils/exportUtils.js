@@ -20,8 +20,6 @@ import {
 const isTechnicalTest = (p) =>
   (p?.name || "").trim().toUpperCase() === "PROVA TECNICA";
 
-const isScorable = (p) => !isTechnicalTest(p) && p?.completed === true;
-
 const nonTechnicalPeriods = (match) =>
   Array.isArray(match?.periods)
     ? match.periods.filter((p) => !isTechnicalTest(p))
@@ -30,11 +28,6 @@ const nonTechnicalPeriods = (match) =>
 const technicalTestPeriods = (match) =>
   Array.isArray(match?.periods)
     ? match.periods.filter((p) => isTechnicalTest(p))
-    : [];
-
-const scorablePeriods = (match) =>
-  Array.isArray(match?.periods)
-    ? match.periods.filter((p) => isScorable(p))
     : [];
 
 const safeNum = (v) => (Number.isFinite(v) ? v : 0);
@@ -79,7 +72,6 @@ function eventLabel(e, opponentName = "Avversari") {
   }
 }
 
-// Carica un'immagine come DataURL (per jsPDF.addImage)
 async function loadImageAsDataURL(url) {
   try {
     const res = await fetch(url, { cache: "no-store" });
@@ -352,7 +344,7 @@ export const exportMatchToPDF = async (match, opts = {}) => {
 };
 
 /* -------------------------------------------------------------------------- */
-/*                               EXCEL SINGOLA (EXCELJS)                      */
+/*                          EXCEL SINGOLA (EXCELJS)                           */
 /* -------------------------------------------------------------------------- */
 
 export const exportMatchToExcel = async (match) => {
@@ -386,7 +378,6 @@ export const exportMatchToExcel = async (match) => {
       properties: { tabColor: { argb: colors.primaryGreen } }
     });
 
-    // Carica logo
     try {
       const response = await fetch(`${import.meta.env.BASE_URL}forza-vigontina.png`);
       const blob = await response.blob();
@@ -399,7 +390,8 @@ export const exportMatchToExcel = async (match) => {
 
       sheet1.addImage(imageId, {
         tl: { col: 0.5, row: 0.5 },
-        ext: { width: 120, height: 80 }
+        br: { col: 2, row: 4 },
+        editAs: 'oneCell'
       });
     } catch (error) {
       console.warn('Logo non caricato:', error);
@@ -410,7 +402,6 @@ export const exportMatchToExcel = async (match) => {
     sheet1.getRow(3).height = 20;
     sheet1.getRow(4).height = 20;
 
-    // Titolo
     sheet1.mergeCells('A5:E5');
     const titleCell = sheet1.getCell('A5');
     titleCell.value = 'VIGONTINA SAN PAOLO - REPORT PARTITA';
@@ -423,7 +414,6 @@ export const exportMatchToExcel = async (match) => {
     titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
     sheet1.getRow(5).height = 30;
 
-    // Sottotitolo con risultato
     sheet1.mergeCells('A6:E6');
     const resultCell = sheet1.getCell('A6');
     resultCell.value = resultText;
@@ -439,12 +429,11 @@ export const exportMatchToExcel = async (match) => {
 
     sheet1.addRow([]);
 
-    // Info partita
     const infoData = [
       ['INFORMAZIONI PARTITA', ''],
       ['Avversario:', opponentName],
       ['Data:', fmtDateIT(match.date)],
-      ['Luogo:', match.isHome ? '🏠 Casa' : '✈️ Trasferta'],
+      ['Luogo:', match.isHome ? 'Casa' : 'Trasferta'],
       ['Competizione:', match.competition || '-'],
       ['Giornata:', match.matchDay || '-'],
     ];
@@ -500,7 +489,6 @@ export const exportMatchToExcel = async (match) => {
       currentRow++;
     });
 
-    // Risultato finale
     sheet1.addRow([]);
     currentRow++;
 
@@ -578,7 +566,6 @@ export const exportMatchToExcel = async (match) => {
 
     sheet2.addRow([]);
 
-    // Intestazioni
     const periodHeaders = sheet2.addRow(['Periodo', 'Vigontina', opponentName, 'Completato', 'Esito']);
     periodHeaders.font = { bold: true, size: 11, color: { argb: colors.white } };
     periodHeaders.fill = {
@@ -589,7 +576,6 @@ export const exportMatchToExcel = async (match) => {
     periodHeaders.alignment = { vertical: 'middle', horizontal: 'center' };
     periodHeaders.height = 20;
 
-    // Dati periodi
     nonTechnicalPeriods(match).forEach(period => {
       const completed = period?.completed === true;
       const outcome = periodOutcome(period, opponentName).label;
@@ -598,7 +584,7 @@ export const exportMatchToExcel = async (match) => {
         period.name || "",
         safeNum(period.vigontina),
         safeNum(period.opponent),
-        completed ? 'Sì' : 'No',
+        completed ? 'Si' : 'No',
         outcome
       ]);
       
@@ -627,7 +613,6 @@ export const exportMatchToExcel = async (match) => {
       properties: { tabColor: { argb: colors.primaryGreen } }
     });
 
-    // Marcatori
     sheet3.mergeCells('A1:C1');
     const scorersTitle = sheet3.getCell('A1');
     scorersTitle.value = 'MARCATORI';
@@ -676,11 +661,9 @@ export const exportMatchToExcel = async (match) => {
       sheet3.addRow(['Nessun marcatore']);
     }
 
-    // Spazio
     sheet3.addRow([]);
     sheet3.addRow([]);
 
-    // Assist
     sheet3.mergeCells(`A${sheet3.lastRow.number + 1}:C${sheet3.lastRow.number + 1}`);
     const assistTitle = sheet3.getCell(`A${sheet3.lastRow.number + 1}`);
     assistTitle.value = 'ASSIST';
@@ -815,7 +798,6 @@ export const exportMatchToExcel = async (match) => {
     sheet4.getColumn('B').width = 10;
     sheet4.getColumn('C').width = 50;
 
-    // Salva
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -860,6 +842,7 @@ export const exportHistoryToExcel = async (matches) => {
       white: 'FFFFFFFF'
     };
 
+    // ===== FOGLIO 1: RIEPILOGO STAGIONE =====
     const sheet1 = workbook.addWorksheet('Riepilogo Stagione', {
       properties: { tabColor: { argb: colors.primaryGreen } }
     });
@@ -874,7 +857,6 @@ export const exportHistoryToExcel = async (matches) => {
         extension: 'png',
       });
 
-      // Mantieni le proporzioni del logo - larghezza fissa, altezza proporzionale
       sheet1.addImage(imageId, {
         tl: { col: 1.5, row: 0.5 },
         br: { col: 3, row: 4 },
@@ -1008,7 +990,7 @@ export const exportHistoryToExcel = async (matches) => {
     headerRow.fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: colors.darkGreen }
+      fgColor: { argb: colors.primaryGreen }
     };
     headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
     headerRow.height = 20;
@@ -1044,8 +1026,8 @@ export const exportHistoryToExcel = async (matches) => {
       ];
 
       const dataRow = sheet1.addRow(rowData);
-      dataRow.height = 18;
-      dataRow.alignment = { vertical: 'middle', horizontal: 'center' };
+      dataRow.height = 22;
+      dataRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
 
       const rowColor = isWin ? 'FFD1FAE5' : isLoss ? 'FFFECACA' : 'FFFEF3C7';
       
@@ -1066,16 +1048,307 @@ export const exportHistoryToExcel = async (matches) => {
         if (idx === 2 || idx === 3) {
           cell.font = { bold: true, size: 11 };
         }
+        
+        if (idx === 4) {
+          cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        }
       });
       currentRow++;
     });
 
-    sheet1.getColumn('A').width = 12;
-    sheet1.getColumn('B').width = 25;
-    sheet1.getColumn('C').width = 12;
-    sheet1.getColumn('D').width = 10;
-    sheet1.getColumn('E').width = 20;
-    sheet1.getColumn('F').width = 15;
+    sheet1.getColumn('A').width = 11;
+    sheet1.getColumn('B').width = 20;
+    sheet1.getColumn('C').width = 10;
+    sheet1.getColumn('D').width = 9;
+    sheet1.getColumn('E').width = 18;
+    sheet1.getColumn('F').width = 13;
+
+    sheet1.pageSetup = {
+      paperSize: 9,
+      orientation: 'portrait',
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      margins: {
+        left: 0.5,
+        right: 0.5,
+        top: 0.75,
+        bottom: 0.75,
+        header: 0.3,
+        footer: 0.3
+      }
+    };
+    sheet1.pageSetup.printArea = `A1:F${currentRow - 1}`;
+    sheet1.pageSetup.printTitlesRow = '1:16';
+
+    // ===== FOGLIO 2: CLASSIFICA MARCATORI =====
+    const sheet2 = workbook.addWorksheet('Classifica Marcatori', {
+      properties: { tabColor: { argb: colors.primaryGreen } }
+    });
+
+    const allScorers = {};
+    const allAssisters = {};
+
+    matches.forEach(match => {
+      const matchStats = calculateMatchStats(match);
+      
+      Object.entries(matchStats.scorers).forEach(([num, count]) => {
+        allScorers[num] = (allScorers[num] || 0) + count;
+      });
+      
+      Object.entries(matchStats.assisters).forEach(([num, count]) => {
+        allAssisters[num] = (allAssisters[num] || 0) + count;
+      });
+    });
+
+    sheet2.mergeCells('A1:D1');
+    const scorersTitle = sheet2.getCell('A1');
+    scorersTitle.value = 'CLASSIFICA MARCATORI - STAGIONE 2025/2026';
+    scorersTitle.font = { size: 16, bold: true, color: { argb: colors.white } };
+    scorersTitle.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: colors.primaryGreen }
+    };
+    scorersTitle.alignment = { vertical: 'middle', horizontal: 'center' };
+    sheet2.getRow(1).height = 28;
+
+    sheet2.addRow([]);
+
+    const scorersHeaderRow = sheet2.addRow(['Posizione', 'Numero', 'Giocatore', 'Gol']);
+    scorersHeaderRow.font = { bold: true, size: 11, color: { argb: colors.white } };
+    scorersHeaderRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: colors.darkGreen }
+    };
+    scorersHeaderRow.alignment = { vertical: 'middle', horizontal: 'center' };
+    scorersHeaderRow.height = 20;
+
+    Object.entries(allScorers)
+      .sort((a, b) => b[1] - a[1])
+      .forEach(([num, count], idx) => {
+        const player = PLAYERS.find((p) => p.num === parseInt(num, 10));
+        const row = sheet2.addRow([idx + 1, num, player?.name || "Sconosciuto", count]);
+        row.alignment = { vertical: 'middle', horizontal: 'center' };
+        row.getCell(3).alignment = { vertical: 'middle', horizontal: 'left' };
+        
+        ['A', 'B', 'C', 'D'].forEach(col => {
+          const cell = row.getCell(col);
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+        });
+      });
+
+    sheet2.addRow([]);
+    sheet2.addRow([]);
+
+    sheet2.mergeCells(`A${sheet2.lastRow.number + 1}:D${sheet2.lastRow.number + 1}`);
+    const assistTitle = sheet2.getCell(`A${sheet2.lastRow.number + 1}`);
+    assistTitle.value = 'CLASSIFICA ASSIST';
+    assistTitle.font = { size: 14, bold: true, color: { argb: colors.white } };
+    assistTitle.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: colors.lightGreen }
+    };
+    assistTitle.alignment = { vertical: 'middle', horizontal: 'center' };
+    sheet2.getRow(sheet2.lastRow.number + 1).height = 25;
+
+    sheet2.addRow([]);
+
+    const assistHeaderRow = sheet2.addRow(['Posizione', 'Numero', 'Giocatore', 'Assist']);
+    assistHeaderRow.font = { bold: true, size: 11, color: { argb: colors.white } };
+    assistHeaderRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: colors.darkGreen }
+    };
+    assistHeaderRow.alignment = { vertical: 'middle', horizontal: 'center' };
+    assistHeaderRow.height = 20;
+
+    Object.entries(allAssisters)
+      .sort((a, b) => b[1] - a[1])
+      .forEach(([num, count], idx) => {
+        const player = PLAYERS.find((p) => p.num === parseInt(num, 10));
+        const row = sheet2.addRow([idx + 1, num, player?.name || "Sconosciuto", count]);
+        row.alignment = { vertical: 'middle', horizontal: 'center' };
+        row.getCell(3).alignment = { vertical: 'middle', horizontal: 'left' };
+        
+        ['A', 'B', 'C', 'D'].forEach(col => {
+          const cell = row.getCell(col);
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+        });
+      });
+
+    sheet2.getColumn('A').width = 12;
+    sheet2.getColumn('B').width = 10;
+    sheet2.getColumn('C').width = 25;
+    sheet2.getColumn('D').width = 10;
+
+    sheet2.pageSetup = {
+      paperSize: 9,
+      orientation: 'portrait',
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      margins: {
+        left: 0.5,
+        right: 0.5,
+        top: 0.75,
+        bottom: 0.75,
+        header: 0.3,
+        footer: 0.3
+      }
+    };
+
+    // ===== FOGLIO 3: DETTAGLIO PARTITE =====
+    const sheet3 = workbook.addWorksheet('Dettaglio Partite', {
+      properties: { tabColor: { argb: colors.primaryGreen } }
+    });
+
+    sortedMatches.forEach((match, matchIdx) => {
+      const startRow = matchIdx === 0 ? 1 : sheet3.lastRow.number + 3;
+
+      sheet3.mergeCells(`A${startRow}:E${startRow}`);
+      const matchHeaderCell = sheet3.getCell(`A${startRow}`);
+      matchHeaderCell.value = `${match.opponent} - ${fmtDateIT(match.date)}`;
+      matchHeaderCell.font = { size: 14, bold: true, color: { argb: colors.white } };
+      matchHeaderCell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: colors.primaryGreen }
+      };
+      matchHeaderCell.alignment = { vertical: 'middle', horizontal: 'center' };
+      sheet3.getRow(startRow).height = 25;
+
+      let infoRow = startRow + 1;
+      sheet3.getCell(`A${infoRow}`).value = 'Competizione:';
+      sheet3.getCell(`B${infoRow}`).value = match.competition || '-';
+      sheet3.getCell(`C${infoRow}`).value = match.isHome ? 'Casa' : 'Trasferta';
+      
+      ['A', 'B', 'C'].forEach(col => {
+        const cell = sheet3.getCell(`${col}${infoRow}`);
+        cell.font = { size: 10, bold: col === 'A' };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: colors.lightGray }
+        };
+      });
+
+      infoRow += 2;
+      const periodHeaders = ['Periodo', 'Vigontina', match.opponent];
+      const periodHeaderRow = sheet3.getRow(infoRow);
+      periodHeaders.forEach((header, idx) => {
+        const cell = sheet3.getCell(`${String.fromCharCode(65 + idx)}${infoRow}`);
+        cell.value = header;
+        cell.font = { bold: true, size: 10, color: { argb: colors.white } };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: colors.darkGreen }
+        };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+
+      infoRow++;
+
+      nonTechnicalPeriods(match).forEach(period => {
+        const periodRow = sheet3.getRow(infoRow);
+        periodRow.getCell(1).value = period.name;
+        periodRow.getCell(2).value = period.vigontina || 0;
+        periodRow.getCell(3).value = period.opponent || 0;
+
+        [1, 2, 3].forEach(colIdx => {
+          const cell = periodRow.getCell(colIdx);
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+        });
+        infoRow++;
+      });
+
+      const totalRow = sheet3.getRow(infoRow);
+      totalRow.getCell(1).value = 'TOTALE PUNTI';
+      totalRow.getCell(2).value = calculatePoints(match, "vigontina");
+      totalRow.getCell(3).value = calculatePoints(match, "opponent");
+      
+      [1, 2, 3].forEach(colIdx => {
+        const cell = totalRow.getCell(colIdx);
+        cell.font = { bold: true, size: 11 };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: colors.yellow }
+        };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = {
+          top: { style: 'medium' },
+          left: { style: 'medium' },
+          bottom: { style: 'medium' },
+          right: { style: 'medium' }
+        };
+      });
+
+      const matchStats = calculateMatchStats(match);
+      if (Object.keys(matchStats.scorers).length > 0) {
+        infoRow += 2;
+        sheet3.getCell(`A${infoRow}`).value = 'MARCATORI:';
+        sheet3.getCell(`A${infoRow}`).font = { bold: true, size: 10 };
+        infoRow++;
+
+        Object.entries(matchStats.scorers)
+          .sort((a, b) => b[1] - a[1])
+          .forEach(([num, count]) => {
+            const player = PLAYERS.find((p) => p.num === parseInt(num, 10));
+            const goalRow = sheet3.getRow(infoRow);
+            goalRow.getCell(1).value = `${num} ${player?.name || "Sconosciuto"}`;
+            goalRow.getCell(2).value = count;
+            goalRow.getCell(1).font = { size: 9 };
+            infoRow++;
+          });
+      }
+    });
+
+    sheet3.getColumn('A').width = 25;
+    sheet3.getColumn('B').width = 12;
+    sheet3.getColumn('C').width = 12;
+
+    sheet3.pageSetup = {
+      paperSize: 9,
+      orientation: 'portrait',
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      margins: {
+        left: 0.5,
+        right: 0.5,
+        top: 0.75,
+        bottom: 0.75,
+        header: 0.3,
+        footer: 0.3
+      }
+    };
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
