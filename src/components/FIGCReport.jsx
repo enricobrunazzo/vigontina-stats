@@ -5,19 +5,19 @@ import { exportFIGCReportToPDF } from '../utils/figcExportUtils';
 
 const FIGCReport = ({ match, onBack }) => {
   const [formData, setFormData] = useState({
-    // Categoria
-    category: 'Y2', // F slash = 2013, X1 = 2014, Y2 = MISTI
+    // Categoria FISSA: X1 = Esordienti 1° Anno 2014
+    category: 'X1',
     
     // Dati gara
     refereeManager: match.assistantReferee || '',
-    refereeSociety: '',
+    refereeSociety: 'Vigontina San Paolo',
     homeTeam: match.isHome ? 'VIGONTINA SAN PAOLO' : match.opponent,
     awayTeam: match.isHome ? match.opponent : 'VIGONTINA SAN PAOLO',
     matchDay: match.matchDay || '',
     girone: '',
     date: match.date,
     time: '15:00',
-    location: '',
+    location: 'Via A. Moro - Busa di Vigonza (PD)',
     fieldType: 'Comunale',
     
     // Valutazioni squadra ospitante (da compilare da ospitato)
@@ -98,298 +98,216 @@ const FIGCReport = ({ match, onBack }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
       <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          {/* Header */}
+        <div className="bg-white rounded-lg shadow-lg p-4">
+          {/* Header compatto */}
           <button
             onClick={onBack}
-            className="mb-4 text-gray-600 hover:text-gray-800 flex items-center gap-2"
+            className="mb-3 text-gray-600 hover:text-gray-800 flex items-center gap-2"
           >
             <ArrowLeft className="w-5 h-5" />
             Indietro
           </button>
 
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full overflow-hidden bg-white flex items-center justify-center border-2 border-blue-200">
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-full overflow-hidden bg-white flex items-center justify-center border-2 border-blue-200">
                   <img
-                    src={`${import.meta.env.BASE_URL}logo-vigontina.png`}
-                    alt="FIGC Logo"
+                    src={`${import.meta.env.BASE_URL}logo-lnd.png`}
+                    alt="LND Logo"
                     className="w-full h-full object-cover"
                   />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-blue-900">
+                  <h1 className="text-lg font-bold text-blue-900">
                     Federazione Italiana Giuoco Calcio
                   </h1>
-                  <p className="text-sm text-gray-600">Lega Nazionale Dilettanti</p>
-                  <p className="text-sm font-semibold text-blue-800">
-                    DELEGAZIONE PROVINCIALE DI PADOVA
-                  </p>
+                  <p className="text-xs text-gray-600">Lega Nazionale Dilettanti - Del. Prov. PADOVA</p>
                 </div>
               </div>
               <button
                 onClick={handleExportPDF}
-                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center gap-2"
+                className="bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 flex items-center gap-2 text-sm"
               >
                 <Download className="w-4 h-4" />
-                Genera PDF
+                PDF
               </button>
             </div>
             
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3 text-center">
-              <h2 className="font-bold text-blue-900">
-                {match.competition}
-              </h2>
-              <p className="text-sm text-blue-800">Categoria ESORDIENTI</p>
+            <div className="bg-blue-50 border border-blue-200 rounded p-2 text-center">
+              <h2 className="font-bold text-sm text-blue-900">{match.competition}</h2>
+              <p className="text-xs text-blue-800">ESORDIENTI 1° Anno 2014 - 9&gt;9 (sigla X1)</p>
             </div>
           </div>
 
-          {/* Categoria Selection */}
-          <div className="mb-6 bg-gray-50 p-4 rounded-lg border">
-            <h3 className="font-semibold mb-3">Seleziona Categoria</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              {[
-                { value: 'F/', label: 'ESORDIENTI 2° Anno 2013 - 9>9' },
-                { value: 'X1', label: 'ESORDIENTI 1° Anno 2014 - 9>9' },
-                { value: 'Y2', label: 'ESORDIENTI MISTI 2013/14 - 9>9' }
-              ].map(cat => (
-                <label
-                  key={cat.value}
-                  className={`flex items-center gap-2 p-3 border rounded cursor-pointer ${
-                    formData.category === cat.value
-                      ? 'bg-blue-100 border-blue-500'
-                      : 'bg-white border-gray-300'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={formData.category === cat.value}
-                    onChange={() => handleInputChange('category', cat.value)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm">{cat.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Dati Dirigente Arbitro */}
-          <div className="mb-6 bg-gray-50 p-4 rounded-lg border">
-            <h3 className="font-semibold mb-3">Dirigente Arbitro</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Dati Dirigente Arbitro + Dati Gara in una griglia */}
+          <div className="mb-3 bg-gray-50 p-3 rounded-lg border">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Nome Dirigente Arbitro *
-                </label>
+                <label className="block text-xs font-medium mb-1">Dirigente Arbitro *</label>
                 <input
                   type="text"
                   value={formData.refereeManager}
                   onChange={(e) => handleInputChange('refereeManager', e.target.value)}
-                  className="w-full border rounded px-3 py-2"
-                  placeholder="Es: Mario Rossi"
+                  className="w-full border rounded px-2 py-1 text-sm"
+                  placeholder="Mario Rossi"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Società
-                </label>
+                <label className="block text-xs font-medium mb-1">Società</label>
                 <input
                   type="text"
                   value={formData.refereeSociety}
-                  onChange={(e) => handleInputChange('refereeSociety', e.target.value)}
-                  className="w-full border rounded px-3 py-2"
-                  placeholder="Es: ASD Esempio"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Dati Gara */}
-          <div className="mb-6 bg-gray-50 p-4 rounded-lg border">
-            <h3 className="font-semibold mb-3">Dettagli Gara</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Squadra Ospitante *
-                </label>
-                <input
-                  type="text"
-                  value={formData.homeTeam}
                   readOnly
-                  className="w-full border rounded px-3 py-2 bg-gray-100"
+                  className="w-full border rounded px-2 py-1 text-sm bg-gray-100"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Squadra Ospitata *
-                </label>
-                <input
-                  type="text"
-                  value={formData.awayTeam}
-                  readOnly
-                  className="w-full border rounded px-3 py-2 bg-gray-100"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Giornata
-                </label>
+                <label className="block text-xs font-medium mb-1">Giornata</label>
                 <input
                   type="text"
                   value={formData.matchDay}
                   onChange={(e) => handleInputChange('matchDay', e.target.value)}
-                  className="w-full border rounded px-3 py-2"
+                  className="w-full border rounded px-2 py-1 text-sm"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Girone
-                </label>
+                <label className="block text-xs font-medium mb-1">Girone</label>
                 <input
                   type="text"
                   value={formData.girone}
                   onChange={(e) => handleInputChange('girone', e.target.value)}
-                  className="w-full border rounded px-3 py-2"
-                  placeholder="Es: A"
+                  className="w-full border rounded px-2 py-1 text-sm"
+                  placeholder="A"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Data *
-                </label>
+                <label className="block text-xs font-medium mb-1">Ospitante</label>
+                <input
+                  type="text"
+                  value={formData.homeTeam}
+                  readOnly
+                  className="w-full border rounded px-2 py-1 text-sm bg-gray-100"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1">Ospitata</label>
+                <input
+                  type="text"
+                  value={formData.awayTeam}
+                  readOnly
+                  className="w-full border rounded px-2 py-1 text-sm bg-gray-100"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1">Data</label>
                 <input
                   type="date"
                   value={formData.date}
                   onChange={(e) => handleInputChange('date', e.target.value)}
-                  className="w-full border rounded px-3 py-2"
+                  className="w-full border rounded px-2 py-1 text-sm"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Ora *
-                </label>
+                <label className="block text-xs font-medium mb-1">Ora</label>
                 <input
                   type="time"
                   value={formData.time}
                   onChange={(e) => handleInputChange('time', e.target.value)}
-                  className="w-full border rounded px-3 py-2"
+                  className="w-full border rounded px-2 py-1 text-sm"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Luogo *
-                </label>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium mb-1">Disputata a</label>
                 <input
                   type="text"
                   value={formData.location}
-                  onChange={(e) => handleInputChange('location', e.target.value)}
-                  className="w-full border rounded px-3 py-2"
-                  placeholder="Es: Campo Sportivo Comunale"
+                  readOnly
+                  className="w-full border rounded px-2 py-1 text-sm bg-gray-100"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Tipo Campo *
-                </label>
-                <select
+                <label className="block text-xs font-medium mb-1">Campo</label>
+                <input
+                  type="text"
                   value={formData.fieldType}
-                  onChange={(e) => handleInputChange('fieldType', e.target.value)}
-                  className="w-full border rounded px-3 py-2"
-                >
-                  <option value="Parrocchiale">Parrocchiale</option>
-                  <option value="Comunale">Comunale</option>
-                  <option value="Privato">Privato</option>
-                </select>
+                  readOnly
+                  className="w-full border rounded px-2 py-1 text-sm bg-gray-100"
+                />
               </div>
             </div>
           </div>
 
-          {/* Risultati */}
-          <div className="mb-6 bg-gray-50 p-4 rounded-lg border">
-            <h3 className="font-semibold mb-3">Risultati per Tempo</h3>
-            <p className="text-xs text-gray-600 mb-3">
-              📊 <strong>Sistema FIGC:</strong> Vittoria o Pareggio = 1 punto, Sconfitta = 0 punti<br/>
-              ⚠️ La Prova Tecnica viene refertata ma NON incide sul risultato finale
-            </p>
+          {/* Risultati compatti */}
+          <div className="mb-3 bg-gray-50 p-3 rounded-lg border">
+            <h3 className="font-semibold text-sm mb-2">Risultati (V/P = 1 pt, S = 0 pt)</h3>
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
+              <table className="w-full border-collapse text-xs">
                 <thead>
                   <tr className="bg-blue-100">
-                    <th className="border p-2 text-left">Squadra</th>
-                    <th className="border p-2 text-center bg-yellow-50">
-                      Prova Tecnica
-                      <div className="text-xs font-normal text-gray-600">(non conta)</div>
-                    </th>
-                    <th className="border p-2 text-center">1° Tempo</th>
-                    <th className="border p-2 text-center">2° Tempo</th>
-                    <th className="border p-2 text-center">3° Tempo</th>
-                    <th className="border p-2 text-center">4° Tempo</th>
-                    <th className="border p-2 text-center bg-blue-200">FINALE</th>
+                    <th className="border p-1">Squadra</th>
+                    <th className="border p-1 bg-yellow-50 text-xs">PT</th>
+                    <th className="border p-1">1°T</th>
+                    <th className="border p-1">2°T</th>
+                    <th className="border p-1">3°T</th>
+                    <th className="border p-1">4°T</th>
+                    <th className="border p-1 bg-blue-200 font-bold">FIN</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td className="border p-2 font-medium">Ospitante</td>
+                    <td className="border p-1 font-medium text-xs">Ospitante</td>
                     {match.periods.map((period, idx) => {
                       const points = getPeriodResult(period, 'home');
                       const isPT = period.name === "PROVA TECNICA";
                       return (
-                        <td key={idx} className={`border p-2 text-center ${isPT ? 'bg-yellow-50' : ''}`}>
-                          <div className="font-bold text-2xl">{points}</div>
+                        <td key={idx} className={`border p-1 text-center ${isPT ? 'bg-yellow-50' : ''}`}>
+                          <div className="font-bold text-lg">{points}</div>
                         </td>
                       );
                     })}
-                    <td className="border p-2 text-center font-bold bg-blue-50 text-3xl">
+                    <td className="border p-1 text-center font-bold bg-blue-50 text-xl">
                       {finalScore.home}
                     </td>
                   </tr>
                   <tr>
-                    <td className="border p-2 font-medium">Ospitata</td>
+                    <td className="border p-1 font-medium text-xs">Ospitata</td>
                     {match.periods.map((period, idx) => {
                       const points = getPeriodResult(period, 'away');
                       const isPT = period.name === "PROVA TECNICA";
                       return (
-                        <td key={idx} className={`border p-2 text-center ${isPT ? 'bg-yellow-50' : ''}`}>
-                          <div className="font-bold text-2xl">{points}</div>
+                        <td key={idx} className={`border p-1 text-center ${isPT ? 'bg-yellow-50' : ''}`}>
+                          <div className="font-bold text-lg">{points}</div>
                         </td>
                       );
                     })}
-                    <td className="border p-2 text-center font-bold bg-blue-50 text-3xl">
+                    <td className="border p-1 text-center font-bold bg-blue-50 text-xl">
                       {finalScore.away}
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
-            <div className="mt-3 text-xs text-gray-600 bg-blue-50 p-2 rounded">
-              💡 <strong>Esempio:</strong> Se il 1° tempo finisce 2-2 (pareggio), entrambe le squadre ottengono 1 punto. 
-              Se finisce 3-1 per l'Ospitante, Ospitante prende 1 punto e Ospitata 0 punti.
-            </div>
           </div>
 
-          {/* Valutazioni */}
-          <div className="mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Valutazioni compatte side by side */}
+          <div className="mb-3">
+            <div className="grid grid-cols-2 gap-2">
               {/* Squadra Ospitante */}
-              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                <h3 className="font-semibold mb-3 text-green-900">
-                  SQUADRA OSPITANTE
-                  <br />
-                  <span className="text-xs font-normal">
-                    (Da compilare a cura del DIRIGENTE OSPITATO)
-                  </span>
+              <div className="bg-green-50 p-2 rounded border border-green-200">
+                <h3 className="font-semibold text-xs mb-2 text-green-900">
+                  OSPITANTE (compila ospitato)
                 </h3>
-                <div className="space-y-3">
+                <div className="space-y-1">
                   {[
-                    { key: 'homeGreeting', label: 'Saluto Inizio e Fine Gara' },
-                    { key: 'homeAppeal', label: 'Appello prima della gara' },
-                    { key: 'homeAllPlayed', label: 'Tutti i giocatori hanno partecipato' },
-                    { key: 'homeSubstitutions', label: 'Sostituzioni Regolari' },
-                    { key: 'homeLineup', label: 'Distinta Giocatori Regolare' }
+                    { key: 'homeGreeting', label: 'Saluto' },
+                    { key: 'homeAppeal', label: 'Appello' },
+                    { key: 'homeAllPlayed', label: 'Tutti giocato' },
+                    { key: 'homeSubstitutions', label: 'Sostituzioni' },
+                    { key: 'homeLineup', label: 'Distinta' }
                   ].map(item => (
-                    <div key={item.key} className="flex items-center justify-between">
-                      <span className="text-sm">{item.label}</span>
+                    <div key={item.key} className="flex items-center justify-between text-xs">
+                      <span>{item.label}</span>
                       <div className="flex gap-2">
                         {['SI', 'NO'].map(option => (
                           <label key={option} className="flex items-center gap-1 cursor-pointer">
@@ -397,9 +315,9 @@ const FIGCReport = ({ match, onBack }) => {
                               type="radio"
                               checked={formData[item.key] === option}
                               onChange={() => handleInputChange(item.key, option)}
-                              className="w-4 h-4"
+                              className="w-3 h-3"
                             />
-                            <span className="text-sm">{option}</span>
+                            <span className="text-xs">{option}</span>
                           </label>
                         ))}
                       </div>
@@ -409,24 +327,20 @@ const FIGCReport = ({ match, onBack }) => {
               </div>
 
               {/* Squadra Ospitata */}
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <h3 className="font-semibold mb-3 text-blue-900">
-                  SQUADRA OSPITATA
-                  <br />
-                  <span className="text-xs font-normal">
-                    (Da compilare a cura DEL DIRIGENTE OSPITANTE)
-                  </span>
+              <div className="bg-blue-50 p-2 rounded border border-blue-200">
+                <h3 className="font-semibold text-xs mb-2 text-blue-900">
+                  OSPITATA (compila ospitante)
                 </h3>
-                <div className="space-y-3">
+                <div className="space-y-1">
                   {[
-                    { key: 'awayGreeting', label: 'Saluto Inizio e Fine Gara' },
-                    { key: 'awayAppeal', label: 'Appello prima della gara' },
-                    { key: 'awayAllPlayed', label: 'Tutti i giocatori hanno partecipato' },
-                    { key: 'awaySubstitutions', label: 'Sostituzioni Regolari' },
-                    { key: 'awayLineup', label: 'Distinta Giocatori Regolare' }
+                    { key: 'awayGreeting', label: 'Saluto' },
+                    { key: 'awayAppeal', label: 'Appello' },
+                    { key: 'awayAllPlayed', label: 'Tutti giocato' },
+                    { key: 'awaySubstitutions', label: 'Sostituzioni' },
+                    { key: 'awayLineup', label: 'Distinta' }
                   ].map(item => (
-                    <div key={item.key} className="flex items-center justify-between">
-                      <span className="text-sm">{item.label}</span>
+                    <div key={item.key} className="flex items-center justify-between text-xs">
+                      <span>{item.label}</span>
                       <div className="flex gap-2">
                         {['SI', 'NO'].map(option => (
                           <label key={option} className="flex items-center gap-1 cursor-pointer">
@@ -434,9 +348,9 @@ const FIGCReport = ({ match, onBack }) => {
                               type="radio"
                               checked={formData[item.key] === option}
                               onChange={() => handleInputChange(item.key, option)}
-                              className="w-4 h-4"
+                              className="w-3 h-3"
                             />
-                            <span className="text-sm">{option}</span>
+                            <span className="text-xs">{option}</span>
                           </label>
                         ))}
                       </div>
@@ -447,110 +361,103 @@ const FIGCReport = ({ match, onBack }) => {
             </div>
           </div>
 
+          {/* Misura porte PRIMA delle note */}
+          <div className="mb-3 bg-gray-50 p-2 rounded border">
+            <label className="flex items-center justify-between text-xs">
+              <span className="font-medium">MISURA PORTE: 6,00 m. x 2,00</span>
+              <div className="flex gap-3">
+                {['SI', 'NO'].map(option => (
+                  <label key={option} className="flex items-center gap-1 cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={formData.goalsCorrect === option}
+                      onChange={() => handleInputChange('goalsCorrect', option)}
+                      className="w-3 h-3"
+                    />
+                    <span className="text-xs">{option}</span>
+                  </label>
+                ))}
+              </div>
+            </label>
+          </div>
+
           {/* Note */}
-          <div className="mb-6 bg-gray-50 p-4 rounded-lg border">
-            <h3 className="font-semibold mb-2">NOTE</h3>
-            <p className="text-xs text-gray-600 mb-2">
-              Infortuni ai giocatori, mancata disputa della gara, comportamento pubblico e tesserati, 
-              GIOCATORI ammoniti o espulsi (indicare minuto, cognome nome, n. maglia, società, motivazione), ecc.
-            </p>
+          <div className="mb-3 bg-gray-50 p-2 rounded border">
+            <label className="block text-xs font-medium mb-1">NOTE</label>
             <textarea
               value={formData.notes}
               onChange={(e) => handleInputChange('notes', e.target.value)}
-              className="w-full border rounded px-3 py-2 h-24"
-              placeholder="Inserisci eventuali note..."
+              className="w-full border rounded px-2 py-1 h-16 text-xs"
+              placeholder="Infortuni, ammonizioni, espulsioni..."
             />
-            
-            <div className="mt-3">
-              <label className="flex items-center gap-2">
-                <span className="text-sm font-medium">MISURA DELLE PORTE: 6,00 m. x 2,00</span>
-                <div className="flex gap-3 ml-auto">
-                  {['SI', 'NO'].map(option => (
-                    <label key={option} className="flex items-center gap-1 cursor-pointer">
-                      <input
-                        type="radio"
-                        checked={formData.goalsCorrect === option}
-                        onChange={() => handleInputChange('goalsCorrect', option)}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm">{option}</span>
-                    </label>
-                  ))}
-                </div>
-              </label>
-            </div>
           </div>
 
-          {/* Firme */}
-          <div className="mb-6">
-            <h3 className="font-semibold mb-4">Firme Digitali</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          {/* Firme compatte */}
+          <div className="mb-3">
+            <h3 className="font-semibold text-sm mb-2">Firme Digitali</h3>
+            <div className="grid grid-cols-2 gap-2 mb-2">
               <SignatureBox
                 label="Firma Dirigente OSPITANTE"
                 signature={formData.homeManagerSignature}
                 onSave={(sig) => handleInputChange('homeManagerSignature', sig)}
+                height={80}
               />
               <SignatureBox
                 label="Firma Dirigente OSPITATO"
                 signature={formData.awayManagerSignature}
                 onSave={(sig) => handleInputChange('awayManagerSignature', sig)}
+                height={80}
               />
             </div>
             
-            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-              <h4 className="font-semibold mb-3">Dirigente Arbitro</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+            {/* Arbitro: cellulare e firma affiancati */}
+            <div className="bg-yellow-50 p-2 rounded border border-yellow-200">
+              <h4 className="font-semibold text-xs mb-2">Dirigente Arbitro</h4>
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-xs font-medium mb-1">
                     Cellulare reperibile
                   </label>
                   <input
                     type="tel"
                     value={formData.refereePhone}
                     onChange={(e) => handleInputChange('refereePhone', e.target.value)}
-                    className="w-full border rounded px-3 py-2"
-                    placeholder="Es: 340 1234567"
+                    className="w-full border rounded px-2 py-1 text-sm mb-2"
+                    placeholder="340 1234567"
                   />
                 </div>
+                <SignatureBox
+                  label="Firma Arbitro"
+                  signature={formData.refereeSignature}
+                  onSave={(sig) => handleInputChange('refereeSignature', sig)}
+                  height={80}
+                  compact
+                />
               </div>
-              <SignatureBox
-                label="Firma Arbitro"
-                signature={formData.refereeSignature}
-                onSave={(sig) => handleInputChange('refereeSignature', sig)}
-              />
             </div>
           </div>
 
-          {/* Footer Info */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm mb-6">
-            <p className="font-semibold mb-2">📤 Invio Rapporto</p>
-            <p className="text-gray-700">
-              Il Rapporto Gara, assieme alle distinte delle squadre, dovrà pervenire alla 
-              Delegazione di Padova esclusivamente tramite scansione{' '}
-              <strong>IN UN UNICO FILE PDF (NO FOTO)</strong> all'indirizzo email{' '}
-              <strong className="text-blue-700">PADOVA.REFERTIBASE@LND.IT</strong>{' '}
-              entro il venerdì successivo alla disputa della gara.
-            </p>
+          {/* Footer compatto */}
+          <div className="bg-blue-50 border border-blue-200 rounded p-2 text-xs mb-3">
+            <p className="font-semibold text-xs">📤 Invio: PADOVA.REFERTIBASE@LND.IT (PDF unico, entro venerdì)</p>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-3">
-            <button
-              onClick={handleExportPDF}
-              className="flex-1 bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 flex items-center justify-center gap-2 font-medium"
-            >
-              <Download className="w-5 h-5" />
-              Genera PDF Firmato
-            </button>
-          </div>
+          {/* Action Button */}
+          <button
+            onClick={handleExportPDF}
+            className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 flex items-center justify-center gap-2 font-medium"
+          >
+            <Download className="w-5 h-5" />
+            Genera PDF Firmato
+          </button>
         </div>
       </div>
     </div>
   );
 };
 
-// Componente SignatureBox con canvas per firma touch/mouse
-const SignatureBox = ({ label, signature, onSave }) => {
+// Componente SignatureBox compatto
+const SignatureBox = ({ label, signature, onSave, height = 80, compact = false }) => {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
@@ -613,12 +520,13 @@ const SignatureBox = ({ label, signature, onSave }) => {
 
   return (
     <div>
-      <label className="block text-sm font-medium mb-2">{label}</label>
-      <div className="border-2 border-gray-300 rounded-lg overflow-hidden bg-white">
+      {!compact && <label className="block text-xs font-medium mb-1">{label}</label>}
+      {compact && <label className="block text-xs font-medium mb-1">{label}</label>}
+      <div className="border-2 border-gray-300 rounded overflow-hidden bg-white">
         <canvas
           ref={canvasRef}
-          width={300}
-          height={150}
+          width={250}
+          height={height}
           className="w-full touch-none cursor-crosshair"
           onMouseDown={startDrawing}
           onMouseMove={draw}
@@ -632,9 +540,9 @@ const SignatureBox = ({ label, signature, onSave }) => {
       {hasSignature && (
         <button
           onClick={clearSignature}
-          className="mt-2 text-sm text-red-600 hover:text-red-800"
+          className="mt-1 text-xs text-red-600 hover:text-red-800"
         >
-          Cancella firma
+          Cancella
         </button>
       )}
     </div>

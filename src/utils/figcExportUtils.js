@@ -24,9 +24,9 @@ export const exportFIGCReportToPDF = async (match, formData, calculatePeriodPoin
   };
 
   // Logo e Header
-try {
-  const logoUrl = `${import.meta.env.BASE_URL || "/"}logo-lnd.png`; // ✅ Logo LND
-  const logoResponse = await fetch(logoUrl);
+  try {
+    const logoUrl = `${import.meta.env.BASE_URL || "/"}logo-lnd.png`;
+    const logoResponse = await fetch(logoUrl);
     const logoBlob = await logoResponse.blob();
     const logoDataUrl = await new Promise((resolve) => {
       const reader = new FileReader();
@@ -68,28 +68,15 @@ try {
   
   y += 50;
 
-  // Categoria checkbox
+  // Categoria FISSA - Solo X1
   doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.rect(margin, y, 8, 8);
+  doc.text("X", margin + 2, y + 6);
   doc.setFont("helvetica", "normal");
+  doc.text("ESORDIENTI 1° Anno 2014 - 9>9 (sigla X1)", margin + 12, y + 6);
   
-  const categories = [
-    { value: 'F/', label: 'ESORDIENTI 2° Anno 2013 - 9>9 (sigla F/)' },
-    { value: 'X1', label: 'ESORDIENTI 1° Anno 2014 - 9>9 (sigla X1)' },
-    { value: 'Y2', label: 'ESORDIENTI MISTI 2013/14 - 9>9 (sigla Y2)' }
-  ];
-
-  categories.forEach((cat, idx) => {
-    const isChecked = formData.category === cat.value;
-    doc.rect(margin, y + (idx * 15), 8, 8);
-    if (isChecked) {
-      doc.setFont("helvetica", "bold");
-      doc.text("X", margin + 2, y + (idx * 15) + 6);
-      doc.setFont("helvetica", "normal");
-    }
-    doc.text(cat.label, margin + 12, y + (idx * 15) + 6);
-  });
-  
-  y += 60;
+  y += 25;
 
   // Rapporto Gara - Dirigente Arbitro
   doc.setFont("helvetica", "bold");
@@ -137,11 +124,6 @@ try {
   doc.text(" campo ", margin + 300, y);
   doc.setFont("helvetica", "normal");
   doc.text(formData.fieldType, margin + 345, y);
-  
-  y += 15;
-  doc.setFontSize(9);
-  doc.text("(Parrocchiale - Comunale - Privato)", margin + 300, y);
-  doc.setFontSize(10);
   
   y += 25;
 
@@ -254,9 +236,21 @@ try {
 
   y += 120;
 
-  // NOTE
+  // MISURA PORTE - PRIMA DELLE NOTE
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
+  doc.text("MISURA DELLE PORTE: 6,00 m. x 2,00", margin, y);
+  doc.text("SI", pageWidth - 100, y);
+  doc.rect(pageWidth - 85, y - 5, 6, 6);
+  if (formData.goalsCorrect === 'SI') doc.text("X", pageWidth - 84, y - 1);
+  doc.text("NO", pageWidth - 70, y);
+  doc.rect(pageWidth - 55, y - 5, 6, 6);
+  if (formData.goalsCorrect === 'NO') doc.text("X", pageWidth - 54, y - 1);
+  
+  y += 20;
+
+  // NOTE
+  doc.setFont("helvetica", "bold");
   doc.text("NOTE:", margin, y);
   doc.setFont("helvetica", "italic");
   doc.setFontSize(8);
@@ -274,18 +268,6 @@ try {
   }
   
   y += 70;
-
-  // Misura porte
-  doc.setFont("helvetica", "bold");
-  doc.text("MISURA DELLE PORTE: 6,00 m. x 2,00", margin, y);
-  doc.text("SI", pageWidth - 100, y);
-  doc.rect(pageWidth - 85, y - 5, 6, 6);
-  if (formData.goalsCorrect === 'SI') doc.text("X", pageWidth - 84, y - 1);
-  doc.text("NO", pageWidth - 70, y);
-  doc.rect(pageWidth - 55, y - 5, 6, 6);
-  if (formData.goalsCorrect === 'NO') doc.text("X", pageWidth - 54, y - 1);
-  
-  y += 20;
 
   // Linee per note aggiuntive
   doc.setDrawColor(0, 0, 0);
@@ -328,27 +310,29 @@ try {
 
   y += 70;
 
-  // Dirigente Arbitro
+  // Dirigente Arbitro - Cellulare e firma affiancati
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.text("Dirigente Arbitro Gara reperibile al cellulare:", margin, y);
   doc.setFont("helvetica", "normal");
-  doc.text(formData.refereePhone, margin + 220, y);
+  doc.text(formData.refereePhone || '_______________', margin + 220, y);
   
-  // Box firma arbitro
-  doc.rect(pageWidth - margin - signWidth, y - 10, signWidth, signHeight);
+  // Box firma arbitro più piccola, a destra
+  const refSignWidth = 100;
+  const refSignHeight = 35;
+  doc.rect(pageWidth - margin - refSignWidth, y - 10, refSignWidth, refSignHeight);
   if (formData.refereeSignature) {
     try {
-      doc.addImage(formData.refereeSignature, 'PNG', pageWidth - margin - signWidth + 5, y - 5, signWidth - 10, signHeight - 10);
+      doc.addImage(formData.refereeSignature, 'PNG', pageWidth - margin - refSignWidth + 5, y - 5, refSignWidth - 10, refSignHeight - 10);
     } catch (e) {
       console.log("Errore firma arbitro:", e);
     }
   }
   doc.setFont("helvetica", "italic");
   doc.setFontSize(8);
-  doc.text("(Firma dell'arbitro)", pageWidth - margin - 70, y + 50);
+  doc.text("(Firma dell'arbitro)", pageWidth - margin - 55, y + 30);
 
-  y += 70;
+  y += 50;
 
   // Footer
   if (y > pageHeight - 80) {
