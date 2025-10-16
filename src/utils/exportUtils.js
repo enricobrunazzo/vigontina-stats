@@ -874,9 +874,11 @@ export const exportHistoryToExcel = async (matches) => {
         extension: 'png',
       });
 
+      // Mantieni le proporzioni del logo - larghezza fissa, altezza proporzionale
       sheet1.addImage(imageId, {
         tl: { col: 1.5, row: 0.5 },
-        ext: { width: 150, height: 100 }
+        br: { col: 3, row: 4 },
+        editAs: 'oneCell'
       });
     } catch (error) {
       console.warn('Logo non caricato:', error);
