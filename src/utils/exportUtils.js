@@ -388,9 +388,11 @@ export const exportMatchToExcel = async (match) => {
         extension: 'png',
       });
 
+      // FIX: Mantieni proporzioni originali del logo
+      // Dimensioni fisse che rispettano le proporzioni dell'immagine
       sheet1.addImage(imageId, {
         tl: { col: 0.5, row: 0.5 },
-        br: { col: 2, row: 4 },
+        ext: { width: 120, height: 120 }, // Dimensioni fisse in pixel
         editAs: 'oneCell'
       });
     } catch (error) {
@@ -857,9 +859,10 @@ export const exportHistoryToExcel = async (matches) => {
         extension: 'png',
       });
 
+      // FIX: Mantieni proporzioni originali del logo anche per lo storico
       sheet1.addImage(imageId, {
         tl: { col: 1.5, row: 0.5 },
-        br: { col: 3, row: 4 },
+        ext: { width: 120, height: 120 }, // Dimensioni fisse in pixel
         editAs: 'oneCell'
       });
     } catch (error) {
