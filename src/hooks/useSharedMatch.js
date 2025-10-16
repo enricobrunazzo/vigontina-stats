@@ -1,252 +1,151 @@
-// hooks/useSharedMatch.js
+// hooks/useSharedMatch.js (harden updates: block non-organizer writes)
 import { useState, useEffect, useCallback } from "react";
-import { ref, onValue, set, push, off, serverTimestamp } from "firebase/database";
+import { ref, onValue, set, off, serverTimestamp } from "firebase/database";
 import { realtimeDb } from "../config/firebase";
 import { PLAYERS } from "../constants/players";
 import { createMatchStructure } from "../utils/matchUtils";
 
-/**
- * Hook per gestire partite condivise in tempo reale tra più utenti
- */
+// Helper: simple role check
+const isOrganizer = (role) => role === 'organizer';
+
 export const useSharedMatch = () => {
   const [sharedMatch, setSharedMatch] = useState(null);
   const [matchId, setMatchId] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [userRole, setUserRole] = useState('viewer'); // 'organizer', 'collaborator', 'viewer'
+  const [userRole, setUserRole] = useState('viewer');
   const [participants, setParticipants] = useState([]);
 
-  /**
-   * Genera un codice univoco di 6 cifre per la partita
-   */
   const generateMatchCode = useCallback(() => {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }, []);
 
-  /**
-   * Crea una nuova partita condivisa
-   */
   const createSharedMatch = useCallback(async (matchData) => {
-    try {
-      const newMatchId = generateMatchCode();
-      const newMatch = createMatchStructure(matchData);
-      
-      // Struttura dati per Firebase
-      const sharedMatchData = {
-        ...newMatch,
-        id: newMatchId,
-        createdAt: serverTimestamp(),
-        createdBy: 'organizer', // In futuro con autenticazione
-        isActive: true,
-        currentPeriod: null,
-        participants: {
-          organizer: {
-            role: 'organizer',
-            joinedAt: serverTimestamp()
-          }
-        },
-        settings: {
-          allowViewers: true,
-          allowCollaborators: false
-        }
-      };
-
-      // Salva su Firebase
-      const matchRef = ref(realtimeDb, `active-matches/${newMatchId}`);
-      await set(matchRef, sharedMatchData);
-
-      setMatchId(newMatchId);
-      setUserRole('organizer');
-      
-      return newMatchId;
-    } catch (error) {
-      console.error('Errore nella creazione della partita condivisa:', error);
-      throw error;
-    }
+    const newMatchId = generateMatchCode();
+    const newMatch = createMatchStructure(matchData);
+    const sharedMatchData = {
+      ...newMatch,
+      id: newMatchId,
+      createdAt: serverTimestamp(),
+      createdBy: 'organizer',
+      isActive: true,
+      currentPeriod: null,
+      participants: {
+        organizer: { role: 'organizer', joinedAt: serverTimestamp() }
+      },
+      settings: { allowViewers: true, allowCollaborators: false }
+    };
+    await set(ref(realtimeDb, `active-matches/${newMatchId}`), sharedMatchData);
+    setMatchId(newMatchId);
+    setUserRole('organizer');
+    return newMatchId;
   }, [generateMatchCode]);
 
-  /**
-   * Si connette a una partita esistente tramite codice
-   */
   const joinMatch = useCallback(async (code, role = 'viewer') => {
-    try {
-      const matchRef = ref(realtimeDb, `active-matches/${code}`);
-      
-      // Verifica se la partita esiste
-      return new Promise((resolve, reject) => {
-        const checkMatch = onValue(matchRef, (snapshot) => {
-          off(matchRef, 'value', checkMatch);
-          
-          if (snapshot.exists()) {
-            const matchData = snapshot.val();
-            if (matchData.isActive) {
-              setMatchId(code);
-              setUserRole(role);
-              
-              // Aggiunge il partecipante
-              const participantRef = ref(realtimeDb, `active-matches/${code}/participants/${Date.now()}`);
-              set(participantRef, {
-                role: role,
-                joinedAt: serverTimestamp()
-              });
-              
-              resolve(code);
-            } else {
-              reject(new Error('Partita non più attiva'));
-            }
-          } else {
-            reject(new Error('Partita non trovata'));
-          }
+    const matchRef = ref(realtimeDb, `active-matches/${code}`);
+    return new Promise((resolve, reject) => {
+      const stop = onValue(matchRef, (snap) => {
+        off(matchRef, 'value', stop);
+        if (!snap.exists()) return reject(new Error('Partita non trovata'));
+        const data = snap.val();
+        if (!data.isActive) return reject(new Error('Partita non più attiva'));
+        setMatchId(code);
+        setUserRole(role);
+        // register participant
+        const participantKey = `p_${Date.now()}`;
+        set(ref(realtimeDb, `active-matches/${code}/participants/${participantKey}`), {
+          role,
+          joinedAt: serverTimestamp()
         });
+        resolve(code);
       });
-    } catch (error) {
-      console.error('Errore nel join della partita:', error);
-      throw error;
-    }
+    });
   }, []);
 
-  /**
-   * Listener per i cambiamenti della partita in tempo reale
-   */
   useEffect(() => {
-    if (!matchId) {
-      setSharedMatch(null);
-      setIsConnected(false);
-      return;
-    }
-
+    if (!matchId) { setSharedMatch(null); setIsConnected(false); return; }
     const matchRef = ref(realtimeDb, `active-matches/${matchId}`);
-    
-    const unsubscribe = onValue(matchRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const matchData = snapshot.val();
-        setSharedMatch(matchData);
-        setIsConnected(true);
-        
-        // Aggiorna lista partecipanti
-        if (matchData.participants) {
-          setParticipants(Object.entries(matchData.participants).map(([id, data]) => ({
-            id,
-            ...data
-          })));
-        }
-      } else {
-        setSharedMatch(null);
-        setIsConnected(false);
+    const unsub = onValue(matchRef, (snap) => {
+      if (!snap.exists()) { setSharedMatch(null); setIsConnected(false); return; }
+      const data = snap.val();
+      setSharedMatch(data);
+      setIsConnected(true);
+      if (data.participants) {
+        setParticipants(Object.entries(data.participants).map(([id, info]) => ({ id, ...info })));
       }
     });
-
-    return () => {
-      off(matchRef, 'value', unsubscribe);
-    };
+    return () => { off(matchRef, 'value', unsub); };
   }, [matchId]);
 
-  /**
-   * Aggiorna i dati della partita su Firebase
-   */
+  // HARDEN: block any write from non-organizer
   const updateSharedMatch = useCallback(async (updates) => {
-    if (!matchId || userRole === 'viewer') {
-      console.warn('Non autorizzato a modificare la partita');
+    if (!matchId) return;
+    if (!isOrganizer(userRole)) {
+      console.warn('Bloccato aggiornamento: utente non organizzatore');
       return;
     }
-
     try {
-      const matchRef = ref(realtimeDb, `active-matches/${matchId}`);
-      await set(matchRef, { ...sharedMatch, ...updates });
-    } catch (error) {
-      console.error('Errore nell\'aggiornamento della partita:', error);
+      await set(ref(realtimeDb, `active-matches/${matchId}`), { ...sharedMatch, ...updates });
+    } catch (e) {
+      console.error('Errore aggiornamento partita condivisa:', e);
     }
   }, [matchId, sharedMatch, userRole]);
 
-  /**
-   * Imposta il periodo corrente
-   */
   const setSharedPeriod = useCallback(async (periodIndex) => {
+    if (!isOrganizer(userRole)) return;
     await updateSharedMatch({ currentPeriod: periodIndex });
-  }, [updateSharedMatch]);
+  }, [updateSharedMatch, userRole]);
 
-  /**
-   * Aggiunge un gol alla partita condivisa
-   */
   const addSharedGoal = useCallback(async (scorerNum, assistNum, getCurrentMinute) => {
     if (!sharedMatch || sharedMatch.currentPeriod === null) return;
-    
+    if (!isOrganizer(userRole)) return;
     const goal = {
       scorer: scorerNum,
       scorerName: PLAYERS.find((p) => p.num === scorerNum)?.name,
       assist: assistNum,
       assistName: assistNum ? PLAYERS.find((p) => p.num === assistNum)?.name : null,
       minute: getCurrentMinute(),
-      type: "goal",
+      type: 'goal',
       timestamp: Date.now()
     };
-
-    const updatedMatch = { ...sharedMatch };
-    updatedMatch.periods = [...sharedMatch.periods];
-    updatedMatch.periods[sharedMatch.currentPeriod] = {
-      ...updatedMatch.periods[sharedMatch.currentPeriod],
-      goals: [...updatedMatch.periods[sharedMatch.currentPeriod].goals, goal],
-      vigontina: updatedMatch.periods[sharedMatch.currentPeriod].vigontina + 1,
+    const updated = { ...sharedMatch };
+    updated.periods = [...sharedMatch.periods];
+    updated.periods[sharedMatch.currentPeriod] = {
+      ...updated.periods[sharedMatch.currentPeriod],
+      goals: [...updated.periods[sharedMatch.currentPeriod].goals, goal],
+      vigontina: updated.periods[sharedMatch.currentPeriod].vigontina + 1,
     };
+    await updateSharedMatch(updated);
+  }, [sharedMatch, updateSharedMatch, userRole]);
 
-    await updateSharedMatch(updatedMatch);
-  }, [sharedMatch, updateSharedMatch]);
-
-  /**
-   * Termina la partita condivisa
-   */
   const endSharedMatch = useCallback(async () => {
-    if (userRole !== 'organizer') {
-      console.warn('Solo l\'organizzatore può terminare la partita');
-      return;
-    }
-
+    if (!isOrganizer(userRole)) return;
     await updateSharedMatch({ isActive: false, endedAt: serverTimestamp() });
-    
-    // Disconnette l'utente
-    setMatchId(null);
-    setSharedMatch(null);
-    setIsConnected(false);
-  }, [userRole, updateSharedMatch]);
+    setMatchId(null); setSharedMatch(null); setIsConnected(false);
+  }, [updateSharedMatch, userRole]);
 
-  /**
-   * Disconnette dalla partita corrente
-   */
   const leaveMatch = useCallback(() => {
-    setMatchId(null);
-    setSharedMatch(null);
-    setIsConnected(false);
-    setUserRole('viewer');
+    setMatchId(null); setSharedMatch(null); setIsConnected(false); setUserRole('viewer');
   }, []);
 
-  /**
-   * Ottiene l'URL di condivisione per la partita
-   */
   const getShareUrl = useCallback(() => {
     if (!matchId) return null;
     return `${window.location.origin}?match=${matchId}`;
   }, [matchId]);
 
   return {
-    // State
     sharedMatch,
     matchId,
     isConnected,
     userRole,
     participants,
-
-    // Actions
     createSharedMatch,
     joinMatch,
     leaveMatch,
     endSharedMatch,
-    
-    // Match operations
     updateSharedMatch,
     setSharedPeriod,
     addSharedGoal,
-    
-    // Utilities
     getShareUrl,
-    generateMatchCode
+    generateMatchCode,
   };
 };
