@@ -39,8 +39,8 @@ export const useSharedMatch = () => {
   const joinMatch = useCallback(async (code, role = 'viewer') => {
     const matchRef = ref(realtimeDb, `active-matches/${code}`);
     return new Promise((resolve, reject) => {
-      const stop = onValue(matchRef, (snap) => {
-        off(matchRef, 'value', stop);
+      const unsubscribe = onValue(matchRef, (snap) => {
+        unsubscribe(); // Close listener safely using the returned unsubscribe function
         if (!snap.exists()) return reject(new Error('Partita non trovata'));
         const data = snap.val();
         if (!data.isActive) return reject(new Error('Partita non più attiva'));
