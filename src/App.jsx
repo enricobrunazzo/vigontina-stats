@@ -49,6 +49,29 @@ const VigontinaStats = () => {
     timer.loadTimerState();
   }, [loadHistory, timer.loadTimerState]);
 
+  // Persist matchMode across reloads
+  useEffect(() => {
+    const storedMode = localStorage.getItem('matchMode');
+    if (storedMode) setMatchMode(storedMode);
+  }, []);
+  useEffect(() => {
+    localStorage.setItem('matchMode', matchMode);
+  }, [matchMode]);
+
+  // Auto-join if URL has ?match=XXXXXX
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('match');
+    if (code && !sharedMatch.matchId) {
+      sharedMatch.joinMatch(code).then(() => {
+        setMatchMode('shared');
+        setPage('match-overview');
+      }).catch(() => {
+        // ignore join error; keep home
+      });
+    }
+  }, [sharedMatch.matchId]);
+
   // Choose current source (local/shared)
   const currentMatch = matchMode === 'shared' && sharedMatch.sharedMatch 
     ? sharedMatch.sharedMatch 
