@@ -1,4 +1,4 @@
-// components/PeriodPlay.jsx
+// components/PeriodPlay.jsx (hide actions for shared viewers)
 import React, { useState, useEffect, useMemo } from "react";
 import { ArrowLeft, Play, Pause, Plus, Minus } from "lucide-react";
 import { PLAYERS } from "../constants/players";
@@ -19,9 +19,12 @@ const PeriodPlay = ({
   isEditing,
   onBack,
   onSetLineup,
+  isShared = false,
+  userRole = 'viewer',
 }) => {
   const period = match.periods[periodIndex];
   const isProvaTecnica = period.name === "PROVA TECNICA";
+  const isViewer = isShared && userRole !== 'organizer';
 
   // Modal states
   const [showGoalDialog, setShowGoalDialog] = useState(false);
@@ -45,10 +48,10 @@ const PeriodPlay = ({
 
   // Auto-open lineup modal for normal periods without lineup
   useEffect(() => {
-    if (!isProvaTecnica && (!period.lineup || period.lineup.length !== 9)) {
+    if (!isProvaTecnica && !isViewer && (!period.lineup || period.lineup.length !== 9)) {
       setShowLineupDialog(true);
     }
-  }, [periodIndex, isProvaTecnica, period.lineup]);
+  }, [periodIndex, isProvaTecnica, period.lineup, isViewer]);
 
   const handleAddGoal = (scorerNum, assistNum) => {
     onAddGoal(scorerNum, assistNum);
@@ -61,15 +64,15 @@ const PeriodPlay = ({
   };
 
   const handleSetLineup = (lineupNums) => {
-    onSetLineup(periodIndex, lineupNums);
+    onSetLineup?.(periodIndex, lineupNums);
     setShowLineupDialog(false);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
       <div className="max-w-2xl mx-auto space-y-4">
-        {/* Modals */}
-        {showGoalDialog && (
+        {/* Modals (solo se non viewer) */}
+        {!isViewer && showGoalDialog && (
           <GoalModal
             availablePlayers={availablePlayers}
             onConfirm={handleAddGoal}
@@ -77,7 +80,7 @@ const PeriodPlay = ({
           />
         )}
 
-        {showPenaltyDialog && (
+        {!isViewer && showPenaltyDialog && (
           <PenaltyModal
             availablePlayers={availablePlayers}
             opponentName={match.opponent}
@@ -86,7 +89,7 @@ const PeriodPlay = ({
           />
         )}
 
-        {showLineupDialog && (
+        {!isViewer && showLineupDialog && (
           <LineupModal
             availablePlayers={availablePlayers}
             initialLineup={period.lineup || []}
@@ -109,7 +112,7 @@ const PeriodPlay = ({
           </h2>
 
           {/* Lineup and manual score controls */}
-          {!isProvaTecnica && (
+          {!isViewer && !isProvaTecnica && (
             <div className="flex justify-end -mt-2 mb-2 gap-2">
               <button
                 onClick={() => setShowLineupDialog(true)}
@@ -142,21 +145,23 @@ const PeriodPlay = ({
                   {timer.formatTime(timer.timerSeconds)}
                 </div>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={
-                    timer.isTimerRunning ? timer.pauseTimer : timer.startTimer
-                  }
-                  className="flex-1 bg-blue-500 text-white py-2 rounded hover:bg-blue-600 flex items-center justify-center gap-2 text-sm"
-                >
-                  {timer.isTimerRunning ? (
-                    <Pause className="w-4 h-4" />
-                  ) : (
-                    <Play className="w-4 h-4" />
-                  )}
-                  {timer.isTimerRunning ? "Pausa" : "Avvia"}
-                </button>
-              </div>
+              {!isViewer && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={
+                      timer.isTimerRunning ? timer.pauseTimer : timer.startTimer
+                    }
+                    className="flex-1 bg-blue-500 text-white py-2 rounded hover:bg-blue-600 flex items-center justify-center gap-2 text-sm"
+                  >
+                    {timer.isTimerRunning ? (
+                      <Pause className="w-4 h-4" />
+                    ) : (
+                      <Play className="w-4 h-4" />
+                    )}
+                    {timer.isTimerRunning ? "Pausa" : "Avvia"}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -185,126 +190,52 @@ const PeriodPlay = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="space-y-3 mb-6">
-            {isProvaTecnica ? (
-              <>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3">
-                  <p className="text-sm text-blue-800 text-center">
-                    <strong>Prova Tecnica:</strong> Inserisci i punti
-                    manualmente. Al termine, la squadra vincente guadagna 1 punto
-                    nel punteggio finale.
-                  </p>
-                </div>
+          {!isViewer && (
+            <div className="space-y-3 mb-6">
+              {isProvaTecnica ? (
+                <>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3">
+                    <p className="text-sm text-blue-800 text-center">
+                      <strong>Prova Tecnica:</strong> Inserisci i punti manualmente. Al termine, la squadra vincente guadagna 1 punto nel punteggio finale.
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex gap-2 items-center">
+                      <button onClick={() => onUpdateScore("vigontina", -1)} className="bg-red-500 text-white p-2 rounded hover:bg-red-600"><Minus className="w-4 h-4" /></button>
+                      <div className="flex-1 text-center bg-gray-100 py-2 rounded text-sm"><span className="font-medium">Punti Vigontina</span></div>
+                      <button onClick={() => onUpdateScore("vigontina", 1)} className="bg-green-500 text-white p-2 rounded hover:bg-green-600"><Plus className="w-4 h-4" /></button>
+                    </div>
+                    <div className="flex gap-2 items-center">
+                      <button onClick={() => onUpdateScore("opponent", -1)} className="bg-red-500 text-white p-2 rounded hover:bg-red-600"><Minus className="w-4 h-4" /></button>
+                      <div className="flex-1 text-center bg-gray-100 py-2 rounded text-sm"><span className="font-medium">Punti Avversario</span></div>
+                      <button onClick={() => onUpdateScore("opponent", 1)} className="bg-green-500 text-white p-2 rounded hover:bg-green-600"><Plus className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+                </>
+              ) : manualScoreMode ? (
                 <div className="space-y-3">
                   <div className="flex gap-2 items-center">
-                    <button
-                      onClick={() => onUpdateScore("vigontina", -1)}
-                      className="bg-red-500 text-white p-2 rounded hover:bg-red-600"
-                    >
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <div className="flex-1 text-center bg-gray-100 py-2 rounded text-sm">
-                      <span className="font-medium">Punti Vigontina</span>
-                    </div>
-                    <button
-                      onClick={() => onUpdateScore("vigontina", 1)}
-                      className="bg-green-500 text-white p-2 rounded hover:bg-green-600"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
+                    <button onClick={() => onUpdateScore("vigontina", -1)} className="bg-red-500 text-white p-2 rounded hover:bg-red-600"><Minus className="w-4 h-4" /></button>
+                    <div className="flex-1 text-center bg-gray-100 py-2 rounded text-sm"><span className="font-medium">Gol Vigontina</span></div>
+                    <button onClick={() => onUpdateScore("vigontina", 1)} className="bg-green-500 text-white p-2 rounded hover:bg-green-600"><Plus className="w-4 h-4" /></button>
                   </div>
                   <div className="flex gap-2 items-center">
-                    <button
-                      onClick={() => onUpdateScore("opponent", -1)}
-                      className="bg-red-500 text-white p-2 rounded hover:bg-red-600"
-                    >
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <div className="flex-1 text-center bg-gray-100 py-2 rounded text-sm">
-                      <span className="font-medium">Punti Avversario</span>
-                    </div>
-                    <button
-                      onClick={() => onUpdateScore("opponent", 1)}
-                      className="bg-green-500 text-white p-2 rounded hover:bg-green-600"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
+                    <button onClick={() => onUpdateScore("opponent", -1)} className="bg-red-500 text-white p-2 rounded hover:bg-red-600"><Minus className="w-4 h-4" /></button>
+                    <div className="flex-1 text-center bg-gray-100 py-2 rounded text-sm"><span className="font-medium">Gol {match.opponent}</span></div>
+                    <button onClick={() => onUpdateScore("opponent", 1)} className="bg-green-500 text-white p-2 rounded hover:bg-green-600"><Plus className="w-4 h-4" /></button>
                   </div>
+                  <p className="text-xs text-gray-500 text-center">Nota: le modifiche manuali aggiornano il punteggio del tempo ma non creano eventi Gol.</p>
                 </div>
-              </>
-            ) : manualScoreMode ? (
-              <div className="space-y-3">
-                <div className="flex gap-2 items-center">
-                  <button
-                    onClick={() => onUpdateScore("vigontina", -1)}
-                    className="bg-red-500 text-white p-2 rounded hover:bg-red-600"
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <div className="flex-1 text-center bg-gray-100 py-2 rounded text-sm">
-                    <span className="font-medium">Gol Vigontina</span>
-                  </div>
-                  <button
-                    onClick={() => onUpdateScore("vigontina", 1)}
-                    className="bg-green-500 text-white p-2 rounded hover:bg-green-600"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => setShowGoalDialog(true)} className="bg-green-500 text-white py-2 rounded hover:bg-green-600 font-medium text-sm">⚽ GOL</button>
+                  <button onClick={onAddOwnGoal} className="bg-red-500 text-white py-2 rounded hover:bg-red-600 font-medium flex items-center justify-center gap-1 text-sm"><span className="bg-red-800 rounded-full w-4 h-4 flex items-center justify-center text-xs">⚽</span>AUTOGOL</button>
+                  <button onClick={onAddOpponentGoal} className="bg-blue-500 text-white py-2 rounded hover:bg-blue-600 font-medium text-sm">Gol {match.opponent}</button>
+                  <button onClick={() => setShowPenaltyDialog(true)} className="bg-purple-500 text-white py-2 rounded hover:bg-purple-600 font-medium text-sm">🎯 RIGORE</button>
                 </div>
-                <div className="flex gap-2 items-center">
-                  <button
-                    onClick={() => onUpdateScore("opponent", -1)}
-                    className="bg-red-500 text-white p-2 rounded hover:bg-red-600"
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <div className="flex-1 text-center bg-gray-100 py-2 rounded text-sm">
-                    <span className="font-medium">Gol {match.opponent}</span>
-                  </div>
-                  <button
-                    onClick={() => onUpdateScore("opponent", 1)}
-                    className="bg-green-500 text-white p-2 rounded hover:bg-green-600"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500 text-center">
-                  Nota: le modifiche manuali aggiornano il punteggio del tempo ma
-                  non creano eventi Gol.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setShowGoalDialog(true)}
-                  className="bg-green-500 text-white py-2 rounded hover:bg-green-600 font-medium text-sm"
-                >
-                  ⚽ GOL
-                </button>
-                <button
-                  onClick={onAddOwnGoal}
-                  className="bg-red-500 text-white py-2 rounded hover:bg-red-600 font-medium flex items-center justify-center gap-1 text-sm"
-                >
-                  <span className="bg-red-800 rounded-full w-4 h-4 flex items-center justify-center text-xs">
-                    ⚽
-                  </span>
-                  AUTOGOL
-                </button>
-                <button
-                  onClick={onAddOpponentGoal}
-                  className="bg-blue-500 text-white py-2 rounded hover:bg-blue-600 font-medium text-sm"
-                >
-                  Gol {match.opponent}
-                </button>
-                <button
-                  onClick={() => setShowPenaltyDialog(true)}
-                  className="bg-purple-500 text-white py-2 rounded hover:bg-purple-600 font-medium text-sm"
-                >
-                  🎯 RIGORE
-                </button>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
           {/* Events List */}
           {!isProvaTecnica && period.goals && period.goals.length > 0 && (
@@ -312,11 +243,7 @@ const PeriodPlay = ({
               <h3 className="font-semibold mb-2">Eventi Partita</h3>
               <div className="space-y-2">
                 {period.goals.map((event, idx) => (
-                  <EventCard
-                    key={idx}
-                    event={event}
-                    opponentName={match.opponent}
-                  />
+                  <EventCard key={idx} event={event} opponentName={match.opponent} />
                 ))}
               </div>
             </div>
@@ -324,12 +251,14 @@ const PeriodPlay = ({
 
           {/* Finish Button */}
           <div>
-            <button
-              onClick={onFinish}
-              className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 font-medium text-sm"
-            >
-              {isEditing ? "Salva Modifiche" : `Termina ${periodTitle}`}
-            </button>
+            {!isViewer && (
+              <button onClick={onFinish} className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 font-medium text-sm">
+                {isEditing ? "Salva Modifiche" : `Termina ${periodTitle}`}
+              </button>
+            )}
+            {isViewer && (
+              <div className="text-center text-sm text-gray-600">Modalità condivisa: sola lettura</div>
+            )}
           </div>
         </div>
       </div>
@@ -342,87 +271,53 @@ const EventCard = ({ event, opponentName }) => {
   if (event.type === "goal") {
     return (
       <div className="bg-green-50 p-3 rounded border border-green-200">
-        <p className="font-medium text-green-800">
-          ⚽ {event.minute}' - {event.scorer} {event.scorerName}
-        </p>
-        {event.assist && (
-          <p className="text-sm text-green-700">
-            Assist: {event.assist} {event.assistName}
-          </p>
-        )}
+        <p className="font-medium text-green-800">⚽ {event.minute}' - {event.scorer} {event.scorerName}</p>
+        {event.assist && (<p className="text-sm text-green-700">Assist: {event.assist} {event.assistName}</p>)}
       </div>
     );
   }
-
   if (event.type === "own-goal") {
     return (
       <div className="bg-red-50 p-3 rounded border border-red-200">
-        <p className="font-medium text-red-800 flex items-center gap-2">
-          <span className="bg-red-800 rounded-full w-5 h-5 flex items-center justify-center text-xs">
-            ⚽
-          </span>
-          {event.minute}' - Autogol
-        </p>
+        <p className="font-medium text-red-800 flex items-center gap-2"><span className="bg-red-800 rounded-full w-5 h-5 flex items-center justify-center text-xs">⚽</span>{event.minute}' - Autogol</p>
       </div>
     );
   }
-
   if (event.type === "opponent-goal") {
     return (
       <div className="bg-blue-50 p-3 rounded border border-blue-200">
-        <p className="font-medium text-blue-800">
-          ⚽ {event.minute}' - Gol {opponentName}
-        </p>
+        <p className="font-medium text-blue-800">⚽ {event.minute}' - Gol {opponentName}</p>
       </div>
     );
   }
-
   if (event.type === "penalty-goal") {
     return (
       <div className="bg-green-50 p-3 rounded border border-green-200">
-        <p className="font-medium text-green-800">
-          ⚽ {event.minute}' - Gol RIG. - {event.scorer} {event.scorerName}
-        </p>
+        <p className="font-medium text-green-800">⚽ {event.minute}' - Gol RIG. - {event.scorer} {event.scorerName}</p>
       </div>
     );
   }
-
   if (event.type === "penalty-missed") {
     return (
       <div className="bg-red-50 p-3 rounded border border-red-200">
-        <p className="font-medium text-red-800 flex items-center gap-2">
-          <span className="bg-red-600 rounded-full w-6 h-6 flex items-center justify-center text-white text-xs">
-            ⚽
-          </span>
-          {event.minute}' - RIG. FALLITO
-        </p>
+        <p className="font-medium text-red-800 flex items-center gap-2"><span className="bg-red-600 rounded-full w-6 h-6 flex items-center justify-center text-white text-xs">⚽</span>{event.minute}' - RIG. FALLITO</p>
       </div>
     );
   }
-
   if (event.type === "penalty-opponent-goal") {
     return (
       <div className="bg-blue-50 p-3 rounded border border-blue-200">
-        <p className="font-medium text-blue-800">
-          ⚽ {event.minute}' - Gol RIG. {opponentName}
-        </p>
+        <p className="font-medium text-blue-800">⚽ {event.minute}' - Gol RIG. {opponentName}</p>
       </div>
     );
   }
-
   if (event.type === "penalty-opponent-missed") {
     return (
       <div className="bg-red-50 p-3 rounded border border-red-200">
-        <p className="font-medium text-red-800 flex items-center gap-2">
-          <span className="bg-red-600 rounded-full w-6 h-6 flex items-center justify-center text-white text-xs">
-            ⚽
-          </span>
-          {event.minute}' - RIG. FALLITO {opponentName}
-        </p>
+        <p className="font-medium text-red-800 flex items-center gap-2"><span className="bg-red-600 rounded-full w-6 h-6 flex items-center justify-center text-white text-xs">⚽</span>{event.minute}' - RIG. FALLITO {opponentName}</p>
       </div>
     );
   }
-
   return null;
 };
 
