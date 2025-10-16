@@ -1,4 +1,4 @@
-// App.jsx (simplified cloud-first with resume functionality)
+// App.jsx (fix: password organizzatore + updateScore condiviso)
 import React, { useState, useEffect, useCallback } from "react";
 
 // Hooks
@@ -81,35 +81,47 @@ const VigontinaStats = () => {
   const currentPeriod = sharedMatch.sharedMatch ? sharedMatch.sharedMatch.currentPeriod : match.currentPeriod;
   const isSharedMode = !!sharedMatch.sharedMatch;
 
-  // Start new match - automatically create in cloud
-  const handleCreateNewMatch = useCallback(async (matchData) => {
+  // Start new match - con autenticazione password
+  const handleCreateNewMatch = useCallback(async (matchData, organizerPassword = '') => {
     try {
-      // Always try to create shared match first
-      const matchId = await sharedMatch.createSharedMatch(matchData);
+      // Prova sempre a creare partita condivisa con password
+      const matchId = await sharedMatch.createSharedMatch(matchData, organizerPassword);
       setActiveMatchCode(matchId);
       setHasActiveMatch(true);
       setPage("match-overview");
     } catch (error) {
-      console.error('Failed to create shared match, using local:', error);
-      // Fallback to local match
+      console.error('Failed to create shared match:', error);
+      // Se fallisce per password errata, mostra errore
+      if (error.message.includes('Password')) {
+        alert('❌ ' + error.message);
+        return;
+      }
+      // Altri errori: fallback a match locale
       match.createMatch(matchData);
       setPage("match-overview");
     }
   }, [match, sharedMatch]);
 
-  // Resume active match
-  const handleResumeMatch = useCallback(async () => {
+  // Resume active match - con possibilità di inserire password
+  const handleResumeMatch = useCallback(async (password = '') => {
     const code = getActiveMatchCode();
     if (!code) return;
     
     try {
-      await sharedMatch.joinMatch(code, 'organizer');
+      await sharedMatch.joinMatch(code, password);
       setPage("match-overview");
     } catch (error) {
       console.error('Failed to resume match:', error);
-      // Clean up invalid match code
-      setActiveMatchCode(null);
-      setHasActiveMatch(false);
+      // Se fallisce, chiedi password
+      const userPassword = prompt('Inserisci password organizzatore (lascia vuoto per modalità sola lettura):');
+      if (userPassword !== null) {
+        try {
+          await sharedMatch.joinMatch(code, userPassword);
+          setPage("match-overview");
+        } catch (error2) {
+          alert('Errore: ' + error2.message);
+        }
+      }
     }
   }, [sharedMatch]);
 
@@ -238,11 +250,17 @@ const VigontinaStats = () => {
     }
   }, [match, sharedMatch, timer, isSharedMode]);
 
+  // FIX: handleUpdateScore ora gestisce anche modalità condivisa
   const handleUpdateScore = useCallback((team, delta) => {
-    if (!isSharedMode) {
+    if (isSharedMode) {
+      if (canModifyShared(sharedMatch.userRole)) {
+        // Usa la nuova funzione updateScore condivisa
+        sharedMatch.updateScore(team, delta);
+      }
+    } else {
       match.updateScore(team, delta);
     }
-  }, [match, isSharedMode]);
+  }, [match, sharedMatch, isSharedMode]);
 
   // RENDER
   if (page === "home") {
@@ -281,6 +299,7 @@ const VigontinaStats = () => {
         onSubmit={handleCreateNewMatch}
         onCancel={() => setPage("home")}
         isShared={true} // Always cloud-enabled
+        requestPassword={true} // FIX: Richiedi password
       />
     );
   }
@@ -314,7 +333,7 @@ const VigontinaStats = () => {
         onAddOwnGoal={handleAddOwnGoal}
         onAddOpponentGoal={handleAddOpponentGoal}
         onAddPenalty={handleAddPenalty}
-        onUpdateScore={handleUpdateScore}
+        onUpdateScore={handleUpdateScore} // FIX: Passa la funzione corretta
         onFinish={handleFinishPeriod}
         onSetLineup={!isSharedMode ? match.setLineup : null}
         onBack={handleBackFromPeriod}
@@ -334,7 +353,7 @@ const VigontinaStats = () => {
         onAddOwnGoal={handleAddOwnGoal}
         onAddOpponentGoal={handleAddOpponentGoal}
         onAddPenalty={handleAddPenalty}
-        onUpdateScore={handleUpdateScore}
+        onUpdateScore={handleUpdateScore} // FIX: Passa la funzione corretta
         onFinish={handleFinishPeriod}
         isEditing={true}
         onSetLineup={!isSharedMode ? match.setLineup : null}
@@ -527,6 +546,16 @@ const HomeScreen = ({
         >
           Storico Partite ({stats.totalMatches})
         </button>
+      </div>
+
+      {/* INFO PASSWORD ORGANIZZATORE */}
+      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <p className="text-xs text-blue-800 text-center">
+          <strong>Password Organizzatore:</strong> <code>vigontina2025</code>
+        </p>
+        <p className="text-xs text-blue-600 text-center mt-1">
+          Usa questa password per creare partite e modificare eventi
+        </p>
       </div>
     </div>
   );
