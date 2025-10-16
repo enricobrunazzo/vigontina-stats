@@ -1,12 +1,25 @@
-// components/LiveDashboard.jsx
-import React from 'react';
-import { Eye, Shield } from 'lucide-react';
+// components/LiveDashboard.jsx (add Copy Link button)
+import React, { useState } from 'react';
+import { Eye, Shield, Link as LinkIcon, Check } from 'lucide-react';
 
 const LiveDashboard = ({ match, lastEvent, onManage }) => {
+  const [copied, setCopied] = useState(false);
   if (!match) return null;
   const score = {
     vigontina: match.periods?.reduce((a,p)=>a+(p?.vigontina||0),0) || 0,
     opponent: match.periods?.reduce((a,p)=>a+(p?.opponent||0),0) || 0,
+  };
+  const shareUrl = `${window.location.origin}?match=${match.id || ''}`;
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(()=>setCopied(false), 2000);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = shareUrl; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+      setCopied(true); setTimeout(()=>setCopied(false), 2000);
+    }
   };
   return (
     <div className="bg-white rounded-lg shadow p-4 border mb-4">
@@ -15,9 +28,15 @@ const LiveDashboard = ({ match, lastEvent, onManage }) => {
           <span className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></span>
           <span className="text-red-700 font-semibold">LIVE</span>
         </div>
-        <button onClick={onManage} className="flex items-center gap-2 text-sm bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700">
-          <Shield className="w-4 h-4" /> Gestisci Partita
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={copyLink} className="flex items-center gap-1 text-sm px-3 py-1.5 border rounded hover:bg-gray-50" title="Copia link live">
+            {copied ? <Check className="w-4 h-4 text-green-600"/> : <LinkIcon className="w-4 h-4"/>}
+            {copied ? 'Copiato' : 'Copia link'}
+          </button>
+          <button onClick={onManage} className="flex items-center gap-2 text-sm bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700">
+            <Shield className="w-4 h-4" /> Gestisci Partita
+          </button>
+        </div>
       </div>
       <div className="text-center py-2">
         <div className="text-sm text-gray-600 mb-1">{match.isHome ? '🏠 Casa' : '✈️ Trasferta'} • {new Date(match.date).toLocaleDateString('it-IT')}</div>
