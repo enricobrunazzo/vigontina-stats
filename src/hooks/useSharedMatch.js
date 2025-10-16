@@ -1,4 +1,4 @@
-// hooks/useSharedMatch.js (fix: autenticazione password + updateScore)
+// hooks/useSharedMatch.js (fix: debug eventi + password corretta)
 import { useState, useEffect, useCallback } from "react";
 import { ref, onValue, set, off, serverTimestamp } from "firebase/database";
 import { realtimeDb } from "../config/firebase";
@@ -8,7 +8,7 @@ import { getActiveMatchCode, pushRealtimeEvent } from "./cloudPersistence";
 
 const isOrganizer = (role) => role === 'organizer';
 
-// Password semplice per organizzatore (può essere cambiata qui)
+// Password semplice per organizzatore (CORRETTA)
 const ORGANIZER_PASSWORD = "vigontina2025";
 
 export const useSharedMatch = () => {
@@ -22,13 +22,15 @@ export const useSharedMatch = () => {
 
   // Verifica password organizzatore
   const authenticateOrganizer = useCallback((password) => {
+    console.log('🔐 Verifica password:', { input: password, expected: ORGANIZER_PASSWORD, match: password === ORGANIZER_PASSWORD });
     return password === ORGANIZER_PASSWORD;
   }, []);
 
   const createSharedMatch = useCallback(async (matchData, organizerPassword = '') => {
+    console.log('🆕 Creazione partita con password:', organizerPassword);
     // Verifica password per creare partita
     if (!authenticateOrganizer(organizerPassword)) {
-      throw new Error('Password organizzatore non corretta');
+      throw new Error('Password organizzatore non corretta. Usa: vigontina2025');
     }
 
     const newMatchId = generateMatchCode();
@@ -46,10 +48,12 @@ export const useSharedMatch = () => {
     await set(ref(realtimeDb, `active-matches/${newMatchId}`), sharedMatchData);
     setMatchId(newMatchId);
     setUserRole('organizer');
+    console.log('✅ Partita creata con successo, ruolo:', 'organizer');
     return newMatchId;
   }, [generateMatchCode, authenticateOrganizer]);
 
   const joinMatch = useCallback(async (code, password = '') => {
+    console.log('🔗 Join partita con password:', password);
     const matchRef = ref(realtimeDb, `active-matches/${code}`);
     return new Promise((resolve, reject) => {
       const unsubscribe = onValue(matchRef, (snap) => {
@@ -60,6 +64,7 @@ export const useSharedMatch = () => {
         
         // Determina il ruolo in base alla password
         const role = authenticateOrganizer(password) ? 'organizer' : 'viewer';
+        console.log('👤 Ruolo assegnato:', role);
         
         setMatchId(code);
         setUserRole(role);
@@ -84,21 +89,31 @@ export const useSharedMatch = () => {
   }, [matchId]);
 
   const updateSharedMatch = useCallback(async (updates) => {
-    if (!matchId) return;
+    if (!matchId) {
+      console.warn('❌ Nessun matchId per aggiornamento');
+      return;
+    }
     if (!isOrganizer(userRole)) { 
-      console.warn('Bloccato aggiornamento: utente non organizzatore'); 
+      console.warn('❌ Bloccato aggiornamento: utente non organizzatore, ruolo:', userRole);
+      alert('❌ Solo l\'organizzatore può modificare la partita. Il tuo ruolo: ' + userRole);
       return; 
     }
     try { 
+      console.log('📝 Aggiornamento partita:', updates);
       await set(ref(realtimeDb, `active-matches/${matchId}`), { ...sharedMatch, ...updates }); 
+      console.log('✅ Partita aggiornata con successo');
     }
     catch (e) { 
-      console.error('Errore aggiornamento partita condivisa:', e); 
+      console.error('❌ Errore aggiornamento partita condivisa:', e); 
     }
   }, [matchId, sharedMatch, userRole]);
 
   const setSharedPeriod = useCallback(async (periodIndex) => {
-    if (!isOrganizer(userRole)) return;
+    console.log('⏱️ Impostazione periodo:', periodIndex, 'Ruolo:', userRole);
+    if (!isOrganizer(userRole)) {
+      console.warn('❌ Solo l\'organizzatore può avviare periodi');
+      return;
+    }
     await updateSharedMatch({ currentPeriod: periodIndex });
   }, [updateSharedMatch, userRole]);
 
@@ -116,8 +131,17 @@ export const useSharedMatch = () => {
   }, [sharedMatch]);
 
   const addSharedGoal = useCallback(async (scorerNum, assistNum, getCurrentMinute) => {
-    if (!sharedMatch || sharedMatch.currentPeriod === null) return;
-    if (!isOrganizer(userRole)) return;
+    console.log('⚽ Tentativo aggiunta gol - Ruolo:', userRole, 'È organizzatore:', isOrganizer(userRole));
+    
+    if (!sharedMatch || sharedMatch.currentPeriod === null) {
+      console.warn('❌ Match o periodo non validi');
+      return;
+    }
+    if (!isOrganizer(userRole)) {
+      console.warn('❌ Solo l\'organizzatore può aggiungere gol');
+      alert('❌ Solo l\'organizzatore può aggiungere eventi. Il tuo ruolo: ' + userRole);
+      return;
+    }
     
     // Blocca eventi nella Prova Tecnica
     if (isProvaTecnica()) {
@@ -125,6 +149,7 @@ export const useSharedMatch = () => {
       return;
     }
 
+    console.log('✅ Aggiunta gol autorizzata, procedo...');
     const minute = getCurrentMinute();
     const goal = {
       scorer: scorerNum,
@@ -135,6 +160,7 @@ export const useSharedMatch = () => {
       type: 'goal',
       timestamp: Date.now()
     };
+    
     const updated = { ...sharedMatch };
     updated.periods = [...sharedMatch.periods];
     updated.periods[sharedMatch.currentPeriod] = {
@@ -142,14 +168,21 @@ export const useSharedMatch = () => {
       goals: [...updated.periods[sharedMatch.currentPeriod].goals, goal],
       vigontina: updated.periods[sharedMatch.currentPeriod].vigontina + 1,
     };
+    
     await updateSharedMatch(updated);
     const txt = `Gol: ${goal.scorer} ${goal.scorerName}${goal.assist ? ` (assist ${goal.assistName})` : ''}`;
     await composeAndPushEvent(txt, minute);
+    console.log('✅ Gol aggiunto con successo');
   }, [sharedMatch, updateSharedMatch, userRole, composeAndPushEvent, isProvaTecnica]);
 
   const addOpponentGoal = useCallback(async (getCurrentMinute) => {
+    console.log('⚽ Tentativo aggiunta gol avversario - Ruolo:', userRole);
+    
     if (!sharedMatch || sharedMatch.currentPeriod === null) return;
-    if (!isOrganizer(userRole)) return;
+    if (!isOrganizer(userRole)) {
+      alert('❌ Solo l\'organizzatore può aggiungere eventi. Il tuo ruolo: ' + userRole);
+      return;
+    }
     
     // Blocca eventi nella Prova Tecnica
     if (isProvaTecnica()) {
@@ -170,8 +203,13 @@ export const useSharedMatch = () => {
   }, [sharedMatch, updateSharedMatch, userRole, composeAndPushEvent, isProvaTecnica]);
 
   const addOwnGoal = useCallback(async (getCurrentMinute) => {
+    console.log('⚽ Tentativo aggiunta autogol - Ruolo:', userRole);
+    
     if (!sharedMatch || sharedMatch.currentPeriod === null) return;
-    if (!isOrganizer(userRole)) return;
+    if (!isOrganizer(userRole)) {
+      alert('❌ Solo l\'organizzatore può aggiungere eventi. Il tuo ruolo: ' + userRole);
+      return;
+    }
     
     // Blocca eventi nella Prova Tecnica
     if (isProvaTecnica()) {
@@ -192,8 +230,13 @@ export const useSharedMatch = () => {
   }, [sharedMatch, updateSharedMatch, userRole, composeAndPushEvent, isProvaTecnica]);
 
   const addPenalty = useCallback(async (team, scored, scorerNum, getCurrentMinute) => {
+    console.log('🎯 Tentativo aggiunta rigore - Ruolo:', userRole);
+    
     if (!sharedMatch || sharedMatch.currentPeriod === null) return;
-    if (!isOrganizer(userRole)) return;
+    if (!isOrganizer(userRole)) {
+      alert('❌ Solo l\'organizzatore può aggiungere eventi. Il tuo ruolo: ' + userRole);
+      return;
+    }
     
     // Blocca eventi nella Prova Tecnica
     if (isProvaTecnica()) {
@@ -226,10 +269,15 @@ export const useSharedMatch = () => {
     await composeAndPushEvent(txt, minute);
   }, [sharedMatch, updateSharedMatch, userRole, composeAndPushEvent, isProvaTecnica]);
 
-  // NUOVA FUNZIONE: updateScore per modifiche manuali (Prova Tecnica)
+  // FUNZIONE: updateScore per modifiche manuali (Prova Tecnica)
   const updateScore = useCallback(async (team, delta) => {
+    console.log('📊 Tentativo aggiorna punteggio - Ruolo:', userRole, 'Team:', team, 'Delta:', delta);
+    
     if (!sharedMatch || sharedMatch.currentPeriod === null) return;
-    if (!isOrganizer(userRole)) return;
+    if (!isOrganizer(userRole)) {
+      alert('❌ Solo l\'organizzatore può modificare i punteggi. Il tuo ruolo: ' + userRole);
+      return;
+    }
 
     const updated = { ...sharedMatch };
     updated.periods = [...sharedMatch.periods];
@@ -250,6 +298,7 @@ export const useSharedMatch = () => {
       const action = delta > 0 ? "+" : "";
       await composeAndPushEvent(`Punteggio ${teamName}: ${action}${delta} (${period[team]} punti)`, null);
     }
+    console.log('✅ Punteggio aggiornato con successo');
   }, [sharedMatch, updateSharedMatch, userRole, isProvaTecnica, composeAndPushEvent]);
 
   const endSharedMatch = useCallback(async () => {
@@ -286,7 +335,7 @@ export const useSharedMatch = () => {
     addOpponentGoal,
     addOwnGoal,
     addPenalty,
-    updateScore, // NUOVA FUNZIONE AGGIUNTA
+    updateScore, 
     getShareUrl,
     generateMatchCode,
     authenticateOrganizer,
