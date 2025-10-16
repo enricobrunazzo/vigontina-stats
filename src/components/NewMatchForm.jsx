@@ -1,14 +1,17 @@
-// components/NewMatchForm.jsx (add button disabled to prevent invalid submit)
+// components/NewMatchForm.jsx (fix: aggiungi campo password)
 import React, { useState, useMemo } from "react";
-import { ArrowLeft, Users, Crown, X } from "lucide-react";
+import { ArrowLeft, Users, Crown, X, Lock } from "lucide-react";
 import { PLAYERS } from "../constants/players";
 
-const NewMatchForm = ({ onSubmit, onCancel }) => {
+const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
   const [competition, setCompetition] = useState("Torneo Provinciale Autunnale");
   const [matchDay, setMatchDay] = useState("");
   const [isHome, setIsHome] = useState(true);
   const [opponent, setOpponent] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  
+  // NUOVO: Password organizzatore
+  const [organizerPassword, setOrganizerPassword] = useState("");
 
   // Staff
   const [assistantReferee, setAssistantReferee] = useState("");
@@ -45,6 +48,12 @@ const NewMatchForm = ({ onSubmit, onCancel }) => {
       alert("Seleziona il capitano");
       return;
     }
+    if (requestPassword && !organizerPassword.trim()) {
+      alert("Inserisci la password organizzatore per creare la partita");
+      return;
+    }
+    
+    // Passa tutti i dati inclusa la password
     onSubmit({
       competition,
       matchDay: competition.includes("Torneo") ? matchDay : null,
@@ -55,10 +64,10 @@ const NewMatchForm = ({ onSubmit, onCancel }) => {
       teamManager,
       notCalled,
       captain,
-    });
+    }, organizerPassword); // Password come secondo parametro
   };
 
-  const canSubmit = opponent.trim().length > 0 && !!captain;
+  const canSubmit = opponent.trim().length > 0 && !!captain && (!requestPassword || organizerPassword.trim().length > 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
@@ -76,6 +85,29 @@ const NewMatchForm = ({ onSubmit, onCancel }) => {
             </button>
           </div>
           <h2 className="text-xl font-semibold mb-4">Nuova Partita</h2>
+
+          {/* NUOVO: Campo Password Organizzatore */}
+          {requestPassword && (
+            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Lock size={16} className="text-blue-600" />
+                <label className="block text-sm font-medium text-blue-800">
+                  Password Organizzatore *
+                </label>
+              </div>
+              <input
+                type="password"
+                value={organizerPassword}
+                onChange={(e) => setOrganizerPassword(e.target.value)}
+                placeholder="Inserisci password organizzatore..."
+                className="w-full border rounded px-3 py-2 mb-2"
+                required
+              />
+              <p className="text-xs text-blue-600">
+                Necessaria per creare partite condivise e gestire eventi durante il match
+              </p>
+            </div>
+          )}
 
           {/* Campi principali */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -267,6 +299,15 @@ const NewMatchForm = ({ onSubmit, onCancel }) => {
               Inizia Partita
             </button>
           </div>
+
+          {/* Info password */}
+          {requestPassword && (
+            <div className="mt-4 p-3 bg-gray-50 border rounded-lg">
+              <p className="text-xs text-gray-600 text-center">
+                <strong>Suggerimento:</strong> La password è <code className="bg-gray-200 px-1 rounded">vigontina2025</code>
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
