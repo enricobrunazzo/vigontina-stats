@@ -1,0 +1,136 @@
+// App.jsx enhancements: cloud-first live on Home with resume via password
+import React, { useState, useEffect, useCallback } from "react";
+import LiveDashboard from "./components/LiveDashboard";
+import ManageAccessDialog from "./components/ManageAccessDialog";
+import { getActiveMatchCode, setActiveMatchCode, isMatchActive, getMatchSnapshot, ensureOrganizerAccess, watchMatch } from "./hooks/cloudPersistence";
+// ...existing imports remain
+
+const VigontinaStats = () => {
+  // existing state ...
+  const [showManageDialog, setShowManageDialog] = useState(false);
+  const [liveMatchData, setLiveMatchData] = useState(null);
+  const [liveLastEvent, setLiveLastEvent] = useState("");
+
+  // Detect active shared match on Home and show live dashboard
+  useEffect(() => {
+    const saved = getActiveMatchCode();
+    if (!saved) return;
+    isMatchActive(saved).then((active) => {
+      if (active) {
+        // subscribe to live updates
+        const unsub = watchMatch(saved, (data) => {
+          setLiveMatchData(data);
+          setLiveLastEvent(data?.realtime?.lastEvent || "");
+        });
+        return () => unsub && unsub();
+      } else {
+        setActiveMatchCode(null);
+      }
+    });
+  }, []);
+
+  // When creating or joining shared, persist code for cross-device resume
+  const handleCreateNewMatch = useCallback((matchData) => {
+    if (matchMode === 'shared') {
+      sharedMatch.createSharedMatch(matchData).then(() => {
+        setActiveMatchCode(sharedMatch.matchId || null);
+        setPage("home");
+      }).catch(error => {
+        console.error('Errore creazione partita condivisa:', error);
+        match.createMatch(matchData);
+        setMatchMode('local');
+        setPage("match-overview");
+      });
+    } else {
+      match.createMatch(matchData);
+      setPage("match-overview");
+    }
+  }, [match, sharedMatch, matchMode]);
+
+  const handleJoinSharedMatch = useCallback(async (code) => {
+    await sharedMatch.joinMatch(code);
+    setMatchMode('shared');
+    setActiveMatchCode(code);
+    setPage("match-overview");
+  }, [sharedMatch]);
+
+  const handleAbandonMatch = () => {
+    if (window.confirm("Sei sicuro? I dati non salvati andranno persi.")) {
+      if (matchMode === 'shared') {
+        sharedMatch.leaveMatch();
+        setActiveMatchCode(null);
+        setMatchMode('local');
+      } else {
+        match.resetMatch();
+      }
+      setPage("home");
+    }
+  };
+
+  // Manage (organizer) via password
+  const requestManage = useCallback(() => setShowManageDialog(true), []);
+  const confirmManage = useCallback(async (pwd) => {
+    const code = getActiveMatchCode();
+    if (!code) throw new Error('Nessuna partita attiva');
+    await ensureOrganizerAccess(code, pwd);
+    // elevate role locally
+    setShowManageDialog(false);
+    setMatchMode('shared');
+    // If not connected, join now as organizer
+    if (!sharedMatch.matchId) {
+      await sharedMatch.joinMatch(code, 'organizer');
+    }
+    setPage('match-overview');
+  }, [sharedMatch]);
+
+  // Home render override: show live dashboard if active shared match exists
+  const renderHome = (base) => {
+    const code = getActiveMatchCode();
+    if (code && liveMatchData?.isActive) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
+          <div className="max-w-2xl mx-auto">
+            <LiveDashboard match={liveMatchData} lastEvent={liveLastEvent} onManage={requestManage} />
+            {showManageDialog && (
+              <ManageAccessDialog onConfirm={confirmManage} onCancel={()=>setShowManageDialog(false)} />
+            )}
+            {base}
+          </div>
+        </div>
+      );
+    }
+    return base;
+  };
+
+  // original Home branch
+  if (page === "home") {
+    const base = (
+      <HomeScreen
+        stats={stats}
+        lastPlayedMatch={lastPlayedMatch}
+        onNewMatch={openNewMatch}
+        onViewHistory={() => setPage("history")}
+        onViewLastMatch={(selectedMatch) => {
+          setSelectedHistoryMatch(selectedMatch);
+          setPage("history-summary");
+        }}
+        sharedBanner={
+          sharedMatch.matchId && sharedMatch.isConnected ? (
+            <LiveBanner matchId={sharedMatch.matchId} onOpen={() => setPage("match-overview")} />
+          ) : null
+        }
+        modeDialog={
+          showModeDialog ? (
+            <NewMatchModeDialog
+              onSelect={handleModeSelected}
+              onCancel={() => setShowModeDialog(false)}
+            />
+          ) : null
+        }
+      />
+    );
+    return renderHome(base);
+  }
+
+  // ...rest unchanged
+}
