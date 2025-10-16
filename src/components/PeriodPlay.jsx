@@ -35,7 +35,7 @@ const PeriodPlay = ({
   const [manualScoreMode, setManualScoreMode] = useState(false);
 
   const availablePlayers = useMemo(
-    () => PLAYERS.filter((p) => !match.notCalled.includes(p.num)),
+    () => PLAYERS.filter((p) => !(match.notCalled?.includes?.(p.num))),
     [match.notCalled]
   );
 
