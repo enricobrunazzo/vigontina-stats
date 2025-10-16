@@ -1,86 +1,191 @@
-# Struttura Modulare - Vigontina Stats App
+# ⚽ Vigontina Stats - Applicazione Gestione Statistiche
 
-## 📁 Struttura delle Cartelle
+**Versione:** 2.0.0  
+**Demo Live:** https://vigontina-stats.vercel.app  
+**Sviluppatore:** Enrico Brunazzo
+
+## 📝 Descrizione
+
+Applicazione web per la gestione delle statistiche della squadra **Vigontina San Paolo**. L'app consente di tracciare partite in tempo reale, gestire formazioni, registrare eventi di gioco e generare report dettagliati.
+
+## ✨ Caratteristiche Principali
+
+- 📊 **Gestione Partite in Tempo Reale**: Timer automatico con persistenza su Firebase
+- 👥 **Gestione Formazioni**: Selezione giocatori e posizioni
+- ⚽ **Eventi di Gioco**: Gol, rigori, sostituzioni
+- 📈 **Statistiche Dettagliate**: Analisi prestazioni per giocatore e squadra
+- 📄 **Export Multipli**: Excel e PDF per report completi
+- 🔄 **Sincronizzazione Cloud**: Dati salvati su Firebase Realtime Database
+- 📱 **Design Responsivo**: Ottimizzato per desktop e mobile
+- 🎨 **UI Moderna**: Interfaccia pulita con Tailwind CSS
+
+## 🛠️ Tecnologie Utilizzate
+
+### Frontend
+- **React 18** - Framework JavaScript
+- **Vite** - Build tool e dev server
+- **Tailwind CSS** - Framework CSS utility-first
+- **Lucide React** - Libreria di icone
+
+### Backend & Database
+- **Firebase Realtime Database** - Database NoSQL in tempo reale
+- **Firebase Hosting** - Hosting statico
+
+### Librerie Aggiuntive
+- **ExcelJS** - Generazione file Excel
+- **jsPDF + jsPDF-AutoTable** - Generazione PDF
+- **XLSX** - Manipolazione file Excel
+
+## 📁 Struttura del Progetto
 
 ```
-vigontina-stats3_modular/
+vigontina-stats/
+├── 📁 public/
+│   ├── favicon.png
+│   └── logo-vigontina.png
+├── 📁 src/
+│   ├── App.jsx                    # Componente principale
+│   ├── main.jsx                   # Entry point React
+│   ├── index.css                  # Stili globali
+│   ├── 📁 components/             # Componenti React
+│   │   ├── MatchHistory.jsx       # Cronologia partite
+│   │   ├── MatchOverview.jsx      # Panoramica partita
+│   │   ├── MatchSummary.jsx       # Riassunto partita
+│   │   ├── NewMatchForm.jsx       # Form nuova partita
+│   │   ├── PeriodPlay.jsx         # Gestione periodo di gioco
+│   │   └── 📁 modals/             # Componenti modal
+│   │       ├── GoalModal.jsx      # Modal registrazione gol
+│   │       ├── LineupModal.jsx    # Modal gestione formazione
+│   │       └── PenaltyModal.jsx   # Modal gestione rigori
+│   ├── 📁 config/
+│   │   └── firebase.js            # Configurazione Firebase
+│   ├── 📁 constants/
+│   │   └── players.js             # Database giocatori
+│   ├── 📁 hooks/                  # Custom React Hooks
+│   │   ├── useMatch.js            # Gestione stato partita
+│   │   ├── useMatchHistory.js     # Cronologia partite
+│   │   └── useTimer.js            # Timer e wake lock
+│   └── 📁 utils/                  # Funzioni utility
+│       ├── dateUtils.js           # Utility per date
+│       ├── exportUtils.js         # Export Excel/PDF
+│       └── matchUtils.js          # Calcoli e statistiche
 ├── index.html
 ├── package.json
 ├── vite.config.js
 ├── tailwind.config.js
 ├── postcss.config.js
-├── public/
-│   ├── favicon.png
-│   └── logo-vigontina.png
-└── src/
-    ├── App.jsx
-    ├── main.jsx
-    ├── index.css
-    ├── components/
-    │   ├── MatchHistory.jsx
-    │   ├── MatchOverview.jsx
-    │   ├── MatchSummary.jsx
-    │   ├── NewMatchForm.jsx
-    │   ├── PeriodPlay.jsx
-    │   └── modals/
-    │       ├── GoalModal.jsx
-    │       ├── LineupModal.jsx
-    │       └── PenaltyModal.jsx
-    ├── config/firebase.js
-    ├── constants/players.js
-    ├── hooks/
-    │   ├── useMatch.js
-    │   ├── useMatchHistory.js
-    │   └── useTimer.js
-    └── utils/
-        ├── dateUtils.js
-        ├── exportUtils.js
-        └── matchUtils.js
-
-
+└── README.md
 ```
 
-## 🔧 File da Creare
+## 🚀 Installazione e Avvio
 
-### 1. config/firebase.js
-Contiene la configurazione e l'inizializzazione di Firebase.
+### Prerequisiti
+- Node.js >= 18
+- npm o yarn
+- Account Firebase (per database)
 
-### 2. constants/players.js
-Esporta l'array PLAYERS con tutti i giocatori.
+### Setup Locale
 
-### 3. hooks/useTimer.js
-Gestisce lo stato del timer, wake lock, e persistenza su Firebase.
+```bash
+# Clone del repository
+git clone https://github.com/enricobrunazzo/vigontina-stats.git
+cd vigontina-stats
 
-### 4. hooks/useMatchHistory.js
-Gestisce il caricamento, salvataggio ed eliminazione delle partite.
+# Installazione dipendenze
+npm install
 
-### 5. hooks/useMatch.js
-Gestisce lo stato della partita corrente e le operazioni su periodi e eventi.
+# Avvio server di sviluppo
+npm run dev
+```
 
-### 6. utils/exportUtils.js
-Contiene le funzioni `exportMatchToExcel` e `exportMatchToPDF`.
+### Configurazione Firebase
 
-### 7. utils/matchUtils.js
-Funzioni di utility per calcoli (punti, gol totali, statistiche).
+1. Crea un progetto su [Firebase Console](https://console.firebase.google.com/)
+2. Abilita **Realtime Database**
+3. Copia le credenziali nel file `src/config/firebase.js`
+4. Configura le regole del database per permettere lettura/scrittura
 
-### 8. components/modals/
-Componenti per i vari modal riutilizzabili.
+## 📋 Funzionalità Dettagliate
 
-### 9. components/
-Tutti i componenti principali separati in file distinti.
+### 🎮 Gestione Partita
+- **Timer Automatico**: Cronometro con pausa/riavvio
+- **Periodi di Gioco**: Supporto per 2 tempi + eventuali supplementari
+- **Wake Lock**: Mantiene schermo attivo durante la partita
+- **Salvataggio Automatico**: Stato partita salvato in tempo reale
 
-## 🚀 Vantaggi della Modularizzazione
+### 👥 Gestione Giocatori
+- **Database Completo**: Lista giocatori con posizioni
+- **Formazioni**: Selezione 11 titolari + panchina
+- **Sostituzioni**: Sistema di cambi con tracciamento minuti
+- **Statistiche Individuali**: Gol, rigori, presenze per giocatore
 
-- **Manutenibilità**: Ogni file ha una responsabilità specifica
-- **Riusabilità**: I componenti e le funzioni possono essere riutilizzati
-- **Testing**: Più facile testare singoli moduli
-- **Performance**: Possibilità di code splitting e lazy loading
-- **Collaborazione**: Team possono lavorare su file diversi
-- **Debugging**: Più facile individuare e risolvere problemi
+### 📊 Eventi e Statistiche
+- **Gol**: Registrazione con marcatore, assist, minuto
+- **Rigori**: Tracciamento rigori segnati/sbagliati
+- **Cartellini**: Sistema ammonizioni (futuro sviluppo)
+- **Report Automatici**: Generazione statistiche partita
 
-## 📝 Note di Implementazione
+### 📤 Export e Condivisione
+- **Excel**: Report dettagliato con tutti i dati partita
+- **PDF**: Documento stampabile con riassunto
+- **Cronologia**: Archivio partite precedenti
+- **Backup**: Esportazione dati completa
 
-1. Inizia creando le cartelle nella struttura del progetto
-2. Sposta i file uno alla volta, testando dopo ogni spostamento
-3. Aggiorna gli import in tutti i file che utilizzano i moduli spostati
-4. Verifica che l'applicazione funzioni correttamente dopo ogni modifica
+## 🎨 Design e UX
+
+- **Responsive Design**: Ottimizzato per tutti i dispositivi
+- **Dark/Light Mode**: Supporto temi (futuro sviluppo)
+- **Iconografia Consistente**: Lucide React icons
+- **Animazioni Fluide**: Transizioni CSS smooth
+- **Accessibilità**: Supporto screen reader e navigazione keyboard
+
+## 🔧 Scripts Disponibili
+
+```bash
+npm run dev      # Avvia server sviluppo (Vite)
+npm run build    # Build per produzione
+npm run preview  # Anteprima build locale
+npm start        # Alias per npm run dev
+```
+
+## 🚀 Deploy
+
+L'applicazione è configurata per il deploy automatico su **Vercel**:
+
+1. Connetti il repository GitHub a Vercel
+2. Configura le variabili ambiente Firebase
+3. Il deploy avviene automaticamente ad ogni push su `main`
+
+## 🤝 Contribuire
+
+1. Fork del progetto
+2. Crea un branch per la feature (`git checkout -b feature/nuova-feature`)
+3. Commit delle modifiche (`git commit -m 'Aggiunge nuova feature'`)
+4. Push del branch (`git push origin feature/nuova-feature`)
+5. Apri una Pull Request
+
+## 📝 Roadmap
+
+- [ ] Sistema cartellini gialli/rossi
+- [ ] Statistiche avanzate (possesso palla, tiri, etc.)
+- [ ] Modalità torneo/campionato
+- [ ] Notifiche push per eventi importanti
+- [ ] Integrazione video highlights
+- [ ] API REST per integrazioni esterne
+- [ ] App mobile native (React Native)
+
+## 📄 Licenza
+
+Progetto sviluppato per uso privato della **Vigontina San Paolo**.
+
+## 👨‍💻 Autore
+
+**Enrico Brunazzo**  
+- GitHub: [@enricobrunazzo](https://github.com/enricobrunazzo)
+- Email: enrico.br@gmail.com
+
+---
+
+⭐ Se il progetto ti è utile, lascia una stella su GitHub!
+
+🔄 **Ultimo aggiornamento:** Ottobre 2025
