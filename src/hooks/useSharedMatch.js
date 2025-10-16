@@ -1,11 +1,12 @@
-// hooks/useSharedMatch.js (harden updates: block non-organizer writes)
+// hooks/useSharedMatch.js (log realtime events on scoring actions)
 import { useState, useEffect, useCallback } from "react";
 import { ref, onValue, set, off, serverTimestamp } from "firebase/database";
 import { realtimeDb } from "../config/firebase";
 import { PLAYERS } from "../constants/players";
 import { createMatchStructure } from "../utils/matchUtils";
+import { getActiveMatchCode } from "./cloudPersistence";
+import { pushRealtimeEvent } from "./cloudPersistence";
 
-// Helper: simple role check
 const isOrganizer = (role) => role === 'organizer';
 
 export const useSharedMatch = () => {
@@ -15,9 +16,7 @@ export const useSharedMatch = () => {
   const [userRole, setUserRole] = useState('viewer');
   const [participants, setParticipants] = useState([]);
 
-  const generateMatchCode = useCallback(() => {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  }, []);
+  const generateMatchCode = useCallback(() => Math.floor(100000 + Math.random() * 900000).toString(), []);
 
   const createSharedMatch = useCallback(async (matchData) => {
     const newMatchId = generateMatchCode();
@@ -29,9 +28,7 @@ export const useSharedMatch = () => {
       createdBy: 'organizer',
       isActive: true,
       currentPeriod: null,
-      participants: {
-        organizer: { role: 'organizer', joinedAt: serverTimestamp() }
-      },
+      participants: { organizer: { role: 'organizer', joinedAt: serverTimestamp() } },
       settings: { allowViewers: true, allowCollaborators: false }
     };
     await set(ref(realtimeDb, `active-matches/${newMatchId}`), sharedMatchData);
@@ -50,12 +47,6 @@ export const useSharedMatch = () => {
         if (!data.isActive) return reject(new Error('Partita non più attiva'));
         setMatchId(code);
         setUserRole(role);
-        // register participant
-        const participantKey = `p_${Date.now()}`;
-        set(ref(realtimeDb, `active-matches/${code}/participants/${participantKey}`), {
-          role,
-          joinedAt: serverTimestamp()
-        });
         resolve(code);
       });
     });
@@ -76,18 +67,11 @@ export const useSharedMatch = () => {
     return () => { off(matchRef, 'value', unsub); };
   }, [matchId]);
 
-  // HARDEN: block any write from non-organizer
   const updateSharedMatch = useCallback(async (updates) => {
     if (!matchId) return;
-    if (!isOrganizer(userRole)) {
-      console.warn('Bloccato aggiornamento: utente non organizzatore');
-      return;
-    }
-    try {
-      await set(ref(realtimeDb, `active-matches/${matchId}`), { ...sharedMatch, ...updates });
-    } catch (e) {
-      console.error('Errore aggiornamento partita condivisa:', e);
-    }
+    if (!isOrganizer(userRole)) { console.warn('Bloccato aggiornamento: utente non organizzatore'); return; }
+    try { await set(ref(realtimeDb, `active-matches/${matchId}`), { ...sharedMatch, ...updates }); }
+    catch (e) { console.error('Errore aggiornamento partita condivisa:', e); }
   }, [matchId, sharedMatch, userRole]);
 
   const setSharedPeriod = useCallback(async (periodIndex) => {
@@ -98,12 +82,13 @@ export const useSharedMatch = () => {
   const addSharedGoal = useCallback(async (scorerNum, assistNum, getCurrentMinute) => {
     if (!sharedMatch || sharedMatch.currentPeriod === null) return;
     if (!isOrganizer(userRole)) return;
+    const minute = getCurrentMinute();
     const goal = {
       scorer: scorerNum,
       scorerName: PLAYERS.find((p) => p.num === scorerNum)?.name,
       assist: assistNum,
       assistName: assistNum ? PLAYERS.find((p) => p.num === assistNum)?.name : null,
-      minute: getCurrentMinute(),
+      minute,
       type: 'goal',
       timestamp: Date.now()
     };
@@ -115,7 +100,9 @@ export const useSharedMatch = () => {
       vigontina: updated.periods[sharedMatch.currentPeriod].vigontina + 1,
     };
     await updateSharedMatch(updated);
-  }, [sharedMatch, updateSharedMatch, userRole]);
+    const code = matchId || getActiveMatchCode();
+    if (code) await pushRealtimeEvent(code, { text: `${minute}' Gol: ${goal.scorer} ${goal.scorerName}${goal.assist ? ` (assist ${goal.assistName})` : ''}`, ts: Date.now() });
+  }, [sharedMatch, updateSharedMatch, userRole, matchId]);
 
   const endSharedMatch = useCallback(async () => {
     if (!isOrganizer(userRole)) return;
@@ -123,14 +110,9 @@ export const useSharedMatch = () => {
     setMatchId(null); setSharedMatch(null); setIsConnected(false);
   }, [updateSharedMatch, userRole]);
 
-  const leaveMatch = useCallback(() => {
-    setMatchId(null); setSharedMatch(null); setIsConnected(false); setUserRole('viewer');
-  }, []);
+  const leaveMatch = useCallback(() => { setMatchId(null); setSharedMatch(null); setIsConnected(false); setUserRole('viewer'); }, []);
 
-  const getShareUrl = useCallback(() => {
-    if (!matchId) return null;
-    return `${window.location.origin}?match=${matchId}`;
-  }, [matchId]);
+  const getShareUrl = useCallback(() => { if (!matchId) return null; return `${window.location.origin}?match=${matchId}`; }, [matchId]);
 
   return {
     sharedMatch,
