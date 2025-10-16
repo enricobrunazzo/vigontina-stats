@@ -392,28 +392,28 @@ const FIGCReport = ({ match, onBack }) => {
             />
           </div>
 
-          {/* Firme compatte */}
+          {/* Firme più grandi per facilitare firma con dito */}
           <div className="mb-3">
-            <h3 className="font-semibold text-sm mb-2">Firme Digitali</h3>
-            <div className="grid grid-cols-2 gap-2 mb-2">
+            <h3 className="font-semibold text-sm mb-2">Firme Digitali (usa il dito o il mouse)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
               <SignatureBox
                 label="Firma Dirigente OSPITANTE"
                 signature={formData.homeManagerSignature}
                 onSave={(sig) => handleInputChange('homeManagerSignature', sig)}
-                height={80}
+                height={120}
               />
               <SignatureBox
                 label="Firma Dirigente OSPITATO"
                 signature={formData.awayManagerSignature}
                 onSave={(sig) => handleInputChange('awayManagerSignature', sig)}
-                height={80}
+                height={120}
               />
             </div>
             
             {/* Arbitro: cellulare e firma affiancati */}
-            <div className="bg-yellow-50 p-2 rounded border border-yellow-200">
-              <h4 className="font-semibold text-xs mb-2">Dirigente Arbitro</h4>
-              <div className="grid grid-cols-2 gap-2">
+            <div className="bg-yellow-50 p-3 rounded border border-yellow-200">
+              <h4 className="font-semibold text-sm mb-2">Dirigente Arbitro</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium mb-1">
                     Cellulare reperibile
@@ -422,7 +422,7 @@ const FIGCReport = ({ match, onBack }) => {
                     type="tel"
                     value={formData.refereePhone}
                     onChange={(e) => handleInputChange('refereePhone', e.target.value)}
-                    className="w-full border rounded px-2 py-1 text-sm mb-2"
+                    className="w-full border rounded px-2 py-1 text-sm"
                     placeholder="340 1234567"
                   />
                 </div>
@@ -430,7 +430,7 @@ const FIGCReport = ({ match, onBack }) => {
                   label="Firma Arbitro"
                   signature={formData.refereeSignature}
                   onSave={(sig) => handleInputChange('refereeSignature', sig)}
-                  height={80}
+                  height={120}
                   compact
                 />
               </div>
@@ -456,8 +456,8 @@ const FIGCReport = ({ match, onBack }) => {
   );
 };
 
-// Componente SignatureBox compatto
-const SignatureBox = ({ label, signature, onSave, height = 80, compact = false }) => {
+// Componente SignatureBox più grande per firmare con il dito
+const SignatureBox = ({ label, signature, onSave, height = 120, compact = false }) => {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
@@ -496,7 +496,7 @@ const SignatureBox = ({ label, signature, onSave, height = 80, compact = false }
     const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
     ctx.lineTo(x, y);
     ctx.strokeStyle = '#000';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3; // Linea più spessa per vedere meglio
     ctx.lineCap = 'round';
     ctx.stroke();
     setHasSignature(true);
@@ -522,10 +522,10 @@ const SignatureBox = ({ label, signature, onSave, height = 80, compact = false }
     <div>
       {!compact && <label className="block text-xs font-medium mb-1">{label}</label>}
       {compact && <label className="block text-xs font-medium mb-1">{label}</label>}
-      <div className="border-2 border-gray-300 rounded overflow-hidden bg-white">
+      <div className="border-2 border-gray-400 rounded overflow-hidden bg-white">
         <canvas
           ref={canvasRef}
-          width={250}
+          width={400}
           height={height}
           className="w-full touch-none cursor-crosshair"
           onMouseDown={startDrawing}
@@ -540,9 +540,9 @@ const SignatureBox = ({ label, signature, onSave, height = 80, compact = false }
       {hasSignature && (
         <button
           onClick={clearSignature}
-          className="mt-1 text-xs text-red-600 hover:text-red-800"
+          className="mt-1 text-xs text-red-600 hover:text-red-800 font-medium"
         >
-          Cancella
+          🗑️ Cancella firma
         </button>
       )}
     </div>
