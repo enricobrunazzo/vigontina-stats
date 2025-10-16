@@ -1,4 +1,4 @@
-// components/NewMatchForm.jsx
+// components/NewMatchForm.jsx (add button disabled to prevent invalid submit)
 import React, { useState, useMemo } from "react";
 import { ArrowLeft, Users, Crown, X } from "lucide-react";
 import { PLAYERS } from "../constants/players";
@@ -31,7 +31,6 @@ const NewMatchForm = ({ onSubmit, onCancel }) => {
     setNotCalled((prev) => {
       const exists = prev.includes(num);
       const next = exists ? prev.filter((n) => n !== num) : [...prev, num];
-      // se il capitano viene messo tra i non convocati, lo azzeriamo
       if (next.includes(captain)) setCaptain(null);
       return next;
     });
@@ -58,6 +57,8 @@ const NewMatchForm = ({ onSubmit, onCancel }) => {
       captain,
     });
   };
+
+  const canSubmit = opponent.trim().length > 0 && !!captain;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
@@ -258,7 +259,10 @@ const NewMatchForm = ({ onSubmit, onCancel }) => {
             </button>
             <button
               onClick={handleSubmit}
-              className="px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600"
+              disabled={!canSubmit}
+              className={`px-4 py-2 rounded text-white ${
+                canSubmit ? "bg-blue-500 hover:bg-blue-600" : "bg-blue-300 cursor-not-allowed"
+              }`}
             >
               Inizia Partita
             </button>
