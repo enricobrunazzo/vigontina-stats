@@ -1,15 +1,8 @@
-// hooks/useTimer.js
+// hooks/useTimer.js (migrated to Realtime Database)
 import { useState, useEffect, useRef, useCallback } from "react";
-import {
-  collection,
-  addDoc,
-  getDocs,
-  query,
-  deleteDoc,
-  doc,
-  updateDoc,
-} from "firebase/firestore";
-import { db } from "../config/firebase";
+import { ref, onValue, update, remove, serverTimestamp } from "firebase/database";
+import { realtimeDb } from "../config/firebase";
+import { getActiveMatchCode } from "./cloudPersistence";
 
 const TIMER_DURATION = 1200; // 20 minuti in secondi
 
@@ -20,66 +13,55 @@ export const useTimer = () => {
   const timerRef = useRef(null);
   const wakeLockRef = useRef(null);
 
-  // Carica lo stato del timer da Firebase all'avvio
-  const loadTimerState = useCallback(async () => {
-    try {
-      const q = query(collection(db, "activeTimer"));
-      const querySnapshot = await getDocs(q);
-      
-      if (!querySnapshot.empty) {
-        const timerData = querySnapshot.docs[0].data();
-        
-        if (timerData.isRunning) {
-          setTimerStartTime(timerData.startTime);
-          setIsTimerRunning(true);
-          const elapsed = Math.floor((Date.now() - timerData.startTime) / 1000);
-          setTimerSeconds(Math.min(elapsed, TIMER_DURATION));
-        }
-      }
-    } catch (error) {
-      console.error("Errore caricamento timer:", error);
-    }
+  // Helpers RTDB
+  const getTimerRef = useCallback(() => {
+    const code = getActiveMatchCode();
+    return code ? ref(realtimeDb, `active-matches/${code}/timer`) : null;
   }, []);
 
-  // Salva lo stato del timer su Firebase
-  const saveTimerState = async (startTime, isRunning) => {
+  const loadTimerState = useCallback(async () => {
     try {
-      const q = query(collection(db, "activeTimer"));
-      const querySnapshot = await getDocs(q);
-      
-      const timerData = {
-        startTime: startTime,
-        isRunning: isRunning,
-        lastUpdate: Date.now(),
-      };
-
-      if (querySnapshot.empty) {
-        await addDoc(collection(db, "activeTimer"), timerData);
-      } else {
-        const timerDoc = querySnapshot.docs[0];
-        await updateDoc(doc(db, "activeTimer", timerDoc.id), timerData);
-      }
+      const r = getTimerRef();
+      if (!r) return;
+      // one-shot read via onValue with { onlyOnce: true } alternative is get(), but keep onValue for consistency
+      await new Promise((resolve) => {
+        const unsub = onValue(r, (snap) => {
+          const data = snap.exists() ? snap.val() : null;
+          if (data?.isRunning && data?.startTime) {
+            setTimerStartTime(data.startTime);
+            setIsTimerRunning(true);
+            const elapsed = Math.floor((Date.now() - data.startTime) / 1000);
+            setTimerSeconds(Math.min(elapsed, TIMER_DURATION));
+          }
+          unsub();
+          resolve();
+        });
+      });
     } catch (error) {
-      console.error("Errore salvataggio timer:", error);
+      console.error("Errore caricamento timer (RTDB):", error);
     }
-  };
+  }, [getTimerRef]);
 
-  // Elimina lo stato del timer da Firebase
-  const clearTimerState = async () => {
+  const saveTimerState = useCallback(async (startTime, running) => {
     try {
-      const q = query(collection(db, "activeTimer"));
-      const querySnapshot = await getDocs(q);
-      
-      if (!querySnapshot.empty) {
-        const timerDoc = querySnapshot.docs[0];
-        await deleteDoc(doc(db, "activeTimer", timerDoc.id));
-      }
+      const r = getTimerRef();
+      if (!r) return;
+      await update(r, { startTime, isRunning: running, lastUpdate: serverTimestamp() });
     } catch (error) {
-      console.error("Errore eliminazione timer:", error);
+      console.error("Errore salvataggio timer (RTDB):", error);
     }
-  };
+  }, [getTimerRef]);
 
-  // Richiede il wake lock per mantenere lo schermo acceso
+  const clearTimerState = useCallback(async () => {
+    try {
+      const r = getTimerRef();
+      if (!r) return;
+      await remove(r);
+    } catch (error) {
+      console.error("Errore eliminazione timer (RTDB):", error);
+    }
+  }, [getTimerRef]);
+
   const requestWakeLock = async () => {
     try {
       if ("wakeLock" in navigator) {
@@ -90,7 +72,6 @@ export const useTimer = () => {
     }
   };
 
-  // Rilascia il wake lock
   const releaseWakeLock = () => {
     if (wakeLockRef.current) {
       wakeLockRef.current.release();
@@ -98,81 +79,57 @@ export const useTimer = () => {
     }
   };
 
-  // Avvia il timer
   const startTimer = useCallback(() => {
     const startTime = Date.now() - timerSeconds * 1000;
     setTimerStartTime(startTime);
     setIsTimerRunning(true);
     saveTimerState(startTime, true);
-  }, [timerSeconds]);
+  }, [timerSeconds, saveTimerState]);
 
-  // Mette in pausa il timer
   const pauseTimer = useCallback(() => {
     setIsTimerRunning(false);
     saveTimerState(timerStartTime, false);
-  }, [timerStartTime]);
+  }, [timerStartTime, saveTimerState]);
 
-  // Resetta il timer
   const resetTimer = useCallback(() => {
     setIsTimerRunning(false);
     setTimerSeconds(0);
     setTimerStartTime(null);
     clearTimerState();
-  }, []);
+  }, [clearTimerState]);
 
-  // Formatta il tempo in MM:SS
   const formatTime = useCallback((seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   }, []);
 
-  // Ottiene il minuto corrente
   const getCurrentMinute = useCallback(() => Math.floor(timerSeconds / 60), [timerSeconds]);
 
-  // Effetto per gestire il tick del timer e il wake lock
   useEffect(() => {
     if (isTimerRunning && timerStartTime) {
       requestWakeLock();
-
       timerRef.current = setInterval(() => {
         const elapsed = Math.floor((Date.now() - timerStartTime) / 1000);
-        
         if (elapsed >= TIMER_DURATION) {
           setTimerSeconds(TIMER_DURATION);
           setIsTimerRunning(false);
           clearTimerState();
-          
           alert("⏰ FINE TEMPO!\n\nIl tempo è scaduto.");
-          
-          if (navigator.vibrate) {
-            navigator.vibrate([500, 200, 500, 200, 500]);
-          }
+          if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500]);
         } else {
           setTimerSeconds(elapsed);
         }
       }, 100);
     } else {
       releaseWakeLock();
-      
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
+      if (timerRef.current) clearInterval(timerRef.current);
     }
 
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
-  }, [isTimerRunning, timerStartTime]);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [isTimerRunning, timerStartTime, clearTimerState]);
 
-  // Cleanup al unmount
-  useEffect(() => {
-    return () => {
-      releaseWakeLock();
-    };
-  }, []);
+  useEffect(() => { return () => { releaseWakeLock(); }; }, []);
 
   return {
     timerSeconds,
