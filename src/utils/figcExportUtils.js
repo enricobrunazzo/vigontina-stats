@@ -40,20 +40,27 @@ export const exportFIGCReportToPDF = async (match, formData, calculatePeriodPoin
     console.log("Logo non disponibile:", error);
   }
 
-  // Titoli header
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text("Federazione Italiana Giuoco Calcio", pageWidth / 2, y + 15, { align: "center" });
+  // Titoli header - più fedeli all'originale
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(14);
+  doc.setTextColor(0, 0, 0);
+  doc.text("Federazione Italiana Giuoco Calcio", pageWidth / 2, y + 12, { align: "center" });
   
   doc.setFontSize(12);
-  doc.text("Lega Nazionale Dilettanti", pageWidth / 2, y + 30, { align: "center" });
+  doc.text("Lega Nazionale Dilettanti", pageWidth / 2, y + 27, { align: "center" });
   
-  doc.setFontSize(14);
-  doc.setTextColor(0, 0, 139);
-  doc.text("DELEGAZIONE PROVINCIALE DI PADOVA", pageWidth / 2, y + 45, { align: "center" });
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(0, 51, 153); // Blu scuro
+  
+  // Testo sottolineato
+  const delegazioneText = "DELEGAZIONE PROVINCIALE DI PADOVA";
+  const textWidth = doc.getTextWidth(delegazioneText);
+  doc.text(delegazioneText, pageWidth / 2, y + 45, { align: "center" });
+  doc.line(pageWidth / 2 - textWidth / 2, y + 47, pageWidth / 2 + textWidth / 2, y + 47);
   
   doc.setTextColor(0, 0, 0);
-  y += 70;
+  y += 65;
 
   // Box competizione
   doc.setFillColor(220, 235, 255);
@@ -277,27 +284,27 @@ export const exportFIGCReportToPDF = async (match, formData, calculatePeriodPoin
   
   y += 25;
 
-  // Firme
+  // Firme - più grandi per leggibilità
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.text("FIRMA DEI DIRIGENTI:", margin, y);
   
-  // Box firma ospitante
-  const signWidth = 120;
-  const signHeight = 50;
-  doc.rect(margin + 150, y - 10, signWidth, signHeight);
+  // Box firma ospitante - più grande
+  const signWidth = 140;
+  const signHeight = 60;
+  doc.rect(margin + 120, y - 10, signWidth, signHeight);
   if (formData.homeManagerSignature) {
     try {
-      doc.addImage(formData.homeManagerSignature, 'PNG', margin + 155, y - 5, signWidth - 10, signHeight - 10);
+      doc.addImage(formData.homeManagerSignature, 'PNG', margin + 125, y - 5, signWidth - 10, signHeight - 10);
     } catch (e) {
       console.log("Errore firma ospitante:", e);
     }
   }
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  doc.text("(Ospitante)", margin + 190, y + 50);
+  doc.text("(Ospitante)", margin + 165, y + 55);
 
-  // Box firma ospitato
+  // Box firma ospitato - più grande
   doc.rect(pageWidth - margin - signWidth, y - 10, signWidth, signHeight);
   if (formData.awayManagerSignature) {
     try {
@@ -306,9 +313,9 @@ export const exportFIGCReportToPDF = async (match, formData, calculatePeriodPoin
       console.log("Errore firma ospitato:", e);
     }
   }
-  doc.text("(Ospitato)", pageWidth - margin - 65, y + 50);
+  doc.text("(Ospitato)", pageWidth - margin - 75, y + 55);
 
-  y += 70;
+  y += 75;
 
   // Dirigente Arbitro - Cellulare e firma affiancati
   doc.setFont("helvetica", "bold");
@@ -317,9 +324,9 @@ export const exportFIGCReportToPDF = async (match, formData, calculatePeriodPoin
   doc.setFont("helvetica", "normal");
   doc.text(formData.refereePhone || '_______________', margin + 220, y);
   
-  // Box firma arbitro più piccola, a destra
-  const refSignWidth = 100;
-  const refSignHeight = 35;
+  // Box firma arbitro più grande, a destra
+  const refSignWidth = 120;
+  const refSignHeight = 50;
   doc.rect(pageWidth - margin - refSignWidth, y - 10, refSignWidth, refSignHeight);
   if (formData.refereeSignature) {
     try {
@@ -330,9 +337,9 @@ export const exportFIGCReportToPDF = async (match, formData, calculatePeriodPoin
   }
   doc.setFont("helvetica", "italic");
   doc.setFontSize(8);
-  doc.text("(Firma dell'arbitro)", pageWidth - margin - 55, y + 30);
+  doc.text("(Firma dell'arbitro)", pageWidth - margin - 60, y + 45);
 
-  y += 50;
+  y += 60;
 
   // Footer
   if (y > pageHeight - 80) {
