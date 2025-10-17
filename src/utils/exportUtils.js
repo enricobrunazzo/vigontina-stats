@@ -152,10 +152,11 @@ export const exportMatchToPDF = async (match, opts = {}) => {
 
   doc.setFont("helvetica", "bold"); doc.text("CRONOLOGIA EVENTI", margin, y); y += 6;
   const rows = []; nonTechnicalPeriods(match).forEach((p) => { const events = Array.isArray(p.goals) ? p.goals : []; if (events.length === 0 && p.vigontina === 0 && p.opponent === 0) return; if (events.length === 0) { rows.push([p.name, "- nessun evento registrato -"]); } else { events.forEach((e, idx) => { rows.push([idx === 0 ? p.name : "", eventLabel(e, opponentName)]); }); } });
-  if (rows.length > 0) { autoTable(doc, { startY: y, head: [["Periodo", "Evento"]], body: rows, theme: "grid", styles: { fontSize: 9, cellPadding: 3 }, headStyles: { fillColor: [16, 185, 129], textColor: 255 }, margin: { left: margin, right: margin }, }); }
+  if (rows.length > 0) { autoTable(doc, { startY: y, head: [["Periodo", "Evento"]], body: rows, theme: "grid", styles: { fontSize: 9, cellPadding: 3 }, headStyles: { fillColor: [16, 185, 129], textColor: 255 }, margin: { left: margin, right: margin }, }); y = doc.lastAutoTable.finalY + 14; }
 
+  // Nota sui punti spostata in fondo
   doc.setFont("helvetica", "italic"); doc.setFontSize(9);
-  doc.text("Nota: i PUNTI considerano solo i tempi giocati (Prova Tecnica esclusa).", margin, Math.min(y, doc.internal.pageSize.getHeight() - margin));
+  doc.text("Nota: i PUNTI considerano solo i tempi giocati (Prova Tecnica esclusa).", margin, y + 10);
 
   const fileName = `Vigontina_vs_${(opponentName || "").replace(/\s+/g, "_")}_${fmtDateIT(match.date)}.pdf`;
   doc.save(fileName);
