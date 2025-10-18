@@ -92,16 +92,16 @@ export const useMatch = () => {
     [currentMatch, currentPeriod, guardProvaTecnica]
   );
 
-  /** Aggiunge un autogol */
+  /** Aggiunge un autogol - NUOVO: accetta parametro squadra */
   const addOwnGoal = useCallback(
-    (getCurrentMinute) => {
+    (team, getCurrentMinute) => {
       if (currentMatch === null || currentPeriod === null) return;
       if (guardProvaTecnica("l'aggiunta dell'AUTOGOL")) return;
-      if (!window.confirm("⚠️ Confermi di aggiungere un AUTOGOL?")) return;
 
       const ownGoal = {
         minute: getCurrentMinute(),
-        type: "own-goal",
+        type: team === 'vigontina' ? "own-goal" : "opponent-own-goal",
+        team: team,
       };
 
       setCurrentMatch((prev) => {
@@ -110,7 +110,9 @@ export const useMatch = () => {
         updated.periods[currentPeriod] = {
           ...updated.periods[currentPeriod],
           goals: [...updated.periods[currentPeriod].goals, ownGoal],
-          vigontina: updated.periods[currentPeriod].vigontina + 1,
+          // Autogol: il gol va alla squadra avversaria
+          vigontina: team === 'opponent' ? updated.periods[currentPeriod].vigontina + 1 : updated.periods[currentPeriod].vigontina,
+          opponent: team === 'vigontina' ? updated.periods[currentPeriod].opponent + 1 : updated.periods[currentPeriod].opponent,
         };
         return updated;
       });
