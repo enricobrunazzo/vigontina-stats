@@ -1,7 +1,6 @@
 // components/modals/PenaltyAdvancedModal.jsx
 import React, { useState } from "react";
 import { X } from "lucide-react";
-import { PLAYERS } from "../../constants/players";
 
 const PenaltyAdvancedModal = ({ onConfirm, onCancel, opponentName, availablePlayers }) => {
   const [selectedTeam, setSelectedTeam] = useState(null);
@@ -11,12 +10,10 @@ const PenaltyAdvancedModal = ({ onConfirm, onCancel, opponentName, availablePlay
   const handleConfirm = () => {
     if (!selectedTeam || isScored === null) return;
     if (selectedTeam === 'vigontina' && isScored && !selectedScorer) return;
-    
     onConfirm(selectedTeam, isScored, selectedScorer);
   };
 
-  const canConfirm = selectedTeam && isScored !== null && 
-    (selectedTeam !== 'vigontina' || !isScored || selectedScorer);
+  const canConfirm = selectedTeam && isScored !== null && (selectedTeam !== 'vigontina' || !isScored || selectedScorer);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -32,24 +29,10 @@ const PenaltyAdvancedModal = ({ onConfirm, onCancel, opponentName, availablePlay
         <div className="mb-4">
           <p className="text-sm font-medium text-gray-700 mb-2">Chi calcia il rigore?</p>
           <div className="space-y-2">
-            <button
-              onClick={() => setSelectedTeam('vigontina')}
-              className={`w-full p-3 rounded-lg border-2 text-left ${
-                selectedTeam === 'vigontina'
-                  ? 'border-purple-500 bg-purple-50'
-                  : 'border-gray-200 bg-white hover:bg-gray-50'
-              }`}
-            >
+            <button onClick={() => setSelectedTeam('vigontina')} className={`w-full p-3 rounded-lg border-2 text-left ${selectedTeam === 'vigontina' ? 'border-purple-500 bg-purple-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
               <p className="font-medium text-gray-800">Vigontina</p>
             </button>
-            <button
-              onClick={() => setSelectedTeam('opponent')}
-              className={`w-full p-3 rounded-lg border-2 text-left ${
-                selectedTeam === 'opponent'
-                  ? 'border-purple-500 bg-purple-50'
-                  : 'border-gray-200 bg-white hover:bg-gray-50'
-              }`}
-            >
+            <button onClick={() => setSelectedTeam('opponent')} className={`w-full p-3 rounded-lg border-2 text-left ${selectedTeam === 'opponent' ? 'border-purple-500 bg-purple-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
               <p className="font-medium text-gray-800">{opponentName}</p>
             </button>
           </div>
@@ -60,26 +43,8 @@ const PenaltyAdvancedModal = ({ onConfirm, onCancel, opponentName, availablePlay
           <div className="mb-4">
             <p className="text-sm font-medium text-gray-700 mb-2">Esito del rigore:</p>
             <div className="flex gap-2">
-              <button
-                onClick={() => setIsScored(true)}
-                className={`flex-1 p-2 rounded-lg border-2 ${
-                  isScored === true
-                    ? 'border-green-500 bg-green-50 text-green-800'
-                    : 'border-gray-200 bg-white hover:bg-gray-50'
-                }`}
-              >
-                ⚽ Segnato
-              </button>
-              <button
-                onClick={() => setIsScored(false)}
-                className={`flex-1 p-2 rounded-lg border-2 ${
-                  isScored === false
-                    ? 'border-red-500 bg-red-50 text-red-800'
-                    : 'border-gray-200 bg-white hover:bg-gray-50'
-                }`}
-              >
-                ❌ Sbagliato
-              </button>
+              <button onClick={() => setIsScored(true)} className={`flex-1 p-2 rounded-lg border-2 ${isScored === true ? 'border-green-500 bg-green-50 text-green-800' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>⚽ Segnato</button>
+              <button onClick={() => setIsScored(false)} className={`flex-1 p-2 rounded-lg border-2 ${isScored === false ? 'border-red-500 bg-red-50 text-red-800' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>❌ Sbagliato</button>
             </div>
           </div>
         )}
@@ -90,15 +55,7 @@ const PenaltyAdvancedModal = ({ onConfirm, onCancel, opponentName, availablePlay
             <p className="text-sm font-medium text-gray-700 mb-2">Chi ha segnato?</p>
             <div className="max-h-40 overflow-y-auto space-y-1">
               {availablePlayers.map((player) => (
-                <button
-                  key={player.num}
-                  onClick={() => setSelectedScorer(player.num)}
-                  className={`w-full p-2 rounded text-left text-sm ${
-                    selectedScorer === player.num
-                      ? 'bg-green-500 text-white'
-                      : 'bg-gray-100 hover:bg-gray-200'
-                  }`}
-                >
+                <button key={player.num} onClick={() => setSelectedScorer(player.num)} className={`w-full p-2 rounded text-left text-sm ${selectedScorer === player.num ? 'bg-green-500 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>
                   {player.num} {player.name}
                 </button>
               ))}
@@ -107,27 +64,12 @@ const PenaltyAdvancedModal = ({ onConfirm, onCancel, opponentName, availablePlay
         )}
 
         <div className="flex gap-2">
-          <button
-            onClick={onCancel}
-            className="flex-1 px-4 py-2 rounded bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium"
-          >
-            Annulla
-          </button>
-          <button
-            onClick={handleConfirm}
-            disabled={!canConfirm}
-            className={`flex-1 px-4 py-2 rounded font-medium ${
-              canConfirm
-                ? 'bg-purple-500 hover:bg-purple-600 text-white'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            Conferma
-          </button>
+          <button onClick={onCancel} className="flex-1 px-4 py-2 rounded bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium">Annulla</button>
+          <button onClick={handleConfirm} disabled={!canConfirm} className={`flex-1 px-4 py-2 rounded font-medium ${canConfirm ? 'bg-purple-500 hover:bg-purple-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>Conferma</button>
         </div>
       </div>
     </div>
   );
 };
 
-export default OwnGoalModal;
+export default PenaltyAdvancedModal;
