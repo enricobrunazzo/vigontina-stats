@@ -58,6 +58,12 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
                 {match.isHome ? "🏠 Casa" : "✈️ Trasferta"}
                 {" • "}
                 {new Date(match.date).toLocaleDateString("it-IT")}
+                {match.coach && (
+                  <>
+                    {" • "}
+                    <span><strong>Allenatore:</strong> {match.coach}</span>
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -200,12 +206,17 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
             )}
 
             {/* Additional Info */}
-            {(match.assistantReferee || match.teamManager) && (
+            {(match.assistantReferee || match.teamManager || match.coach) && (
               <div className="border-t pt-4">
                 <h3 className="font-semibold mb-2 text-sm text-gray-600">
                   Informazioni Aggiuntive
                 </h3>
                 <div className="bg-gray-50 p-3 rounded text-sm space-y-1">
+                  {match.coach && (
+                    <p>
+                      <strong>Allenatore:</strong> {match.coach}
+                    </p>
+                  )}
                   {match.assistantReferee && (
                     <p>
                       <strong>Assistente Arbitro:</strong>{" "}
