@@ -314,7 +314,8 @@ const PeriodPlay = ({
 
 // Event Card Component
 const EventCard = ({ event, opponentName }) => {
-  if (event.type === "goal") {
+  // Regola: mostra nello stile della squadra beneficiaria
+  if (event.type === "goal" || event.type === "penalty-goal") {
     return (
       <div className="bg-green-50 p-3 rounded border border-green-200">
         <p className="font-medium text-green-800">⚽ {event.minute}' - {event.scorer} {event.scorerName}</p>
@@ -322,31 +323,26 @@ const EventCard = ({ event, opponentName }) => {
       </div>
     );
   }
-  if (event.type === "own-goal") {
+  if (event.type === "opponent-goal" || event.type === "penalty-opponent-goal") {
     return (
-      <div className="bg-red-50 p-3 rounded border border-red-200">
-        <p className="font-medium text-red-800 flex items-center gap-2"><span className="bg-red-800 rounded-full w-5 h-5 flex items-center justify-center text-xs">⚽</span>{event.minute}' - Autogol Vigontina (gol a {opponentName})</p>
+      <div className="bg-blue-50 p-3 rounded border border-blue-200">
+        <p className="font-medium text-blue-800">⚽ {event.minute}' - {event.type.includes('penalty') ? 'Gol RIG. ' : 'Gol '}{opponentName}</p>
+      </div>
+    );
+  }
+  if (event.type === "own-goal") {
+    // Autogol Vigontina → gol per avversario
+    return (
+      <div className="bg-blue-50 p-3 rounded border border-blue-200">
+        <p className="font-medium text-blue-800 flex items-center gap-2"><span className="bg-red-800 rounded-full w-5 h-5 flex items-center justify-center text-xs">⚽</span>{event.minute}' - Autogol Vigontina (gol a {opponentName})</p>
       </div>
     );
   }
   if (event.type === "opponent-own-goal") {
-    return (
-      <div className="bg-red-50 p-3 rounded border border-red-200">
-        <p className="font-medium text-red-800 flex items-center gap-2"><span className="bg-red-800 rounded-full w-5 h-5 flex items-center justify-center text-xs">⚽</span>{event.minute}' - Autogol {opponentName} (gol a Vigontina)</p>
-      </div>
-    );
-  }
-  if (event.type === "opponent-goal") {
-    return (
-      <div className="bg-blue-50 p-3 rounded border border-blue-200">
-        <p className="font-medium text-blue-800">⚽ {event.minute}' - Gol {opponentName}</p>
-      </div>
-    );
-  }
-  if (event.type === "penalty-goal") {
+    // Autogol avversario → gol per Vigontina
     return (
       <div className="bg-green-50 p-3 rounded border border-green-200">
-        <p className="font-medium text-green-800">⚽ {event.minute}' - Gol RIG. - {event.scorer} {event.scorerName}</p>
+        <p className="font-medium text-green-800 flex items-center gap-2"><span className="bg-red-800 rounded-full w-5 h-5 flex items-center justify-center text-xs">⚽</span>{event.minute}' - Autogol {opponentName} (gol a Vigontina)</p>
       </div>
     );
   }
@@ -354,13 +350,6 @@ const EventCard = ({ event, opponentName }) => {
     return (
       <div className="bg-red-50 p-3 rounded border border-red-200">
         <p className="font-medium text-red-800 flex items-center gap-2"><span className="bg-red-600 rounded-full w-6 h-6 flex items-center justify-center text-white text-xs">⚽</span>{event.minute}' - RIG. FALLITO Vigontina</p>
-      </div>
-    );
-  }
-  if (event.type === "penalty-opponent-goal") {
-    return (
-      <div className="bg-blue-50 p-3 rounded border border-blue-200">
-        <p className="font-medium text-blue-800">⚽ {event.minute}' - Gol RIG. {opponentName}</p>
       </div>
     );
   }
