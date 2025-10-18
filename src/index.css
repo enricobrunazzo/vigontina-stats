@@ -15,3 +15,18 @@ html, body {
   background-repeat: no-repeat;
   background-position: center;
 }
+
+/* iOS date input tweak: riduce sbordo del picker nativo senza stravolgere layout */
+input[type="date"] {
+  -webkit-appearance: none; /* iOS Safari: rimuove stile nativo troppo alto */
+  appearance: none;
+}
+
+@supports (padding-top: env(safe-area-inset-top)) {
+  input[type="date"] {
+    line-height: 1.2;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    height: 42px; /* allinea all'altezza dei campi Tailwind px-2 */
+  }
+}
