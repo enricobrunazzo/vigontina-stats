@@ -187,6 +187,7 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
                     const opponentEvents = periodEvents.filter(
                       (e) =>
                         e.type === "opponent-goal" ||
+                        e.type === "opponent-own-goal" ||
                         e.type === "penalty-opponent-goal" ||
                         e.type === "penalty-opponent-missed"
                     );
@@ -298,7 +299,7 @@ const PeriodTimeline = ({
             </p>
             <div className="space-y-2">
               {vigontinaEvents.map((event, idx) => (
-                <EventCard key={idx} event={event} />
+                <EventCard key={idx} event={event} opponentName={opponentName} />
               ))}
               {vigontinaEvents.length === 0 && (
                 <p className="text-xs text-gray-400 text-center py-4">
@@ -314,7 +315,7 @@ const PeriodTimeline = ({
             </p>
             <div className="space-y-2">
               {opponentEvents.map((event, idx) => (
-                <EventCard key={idx} event={event} isOpponent />
+                <EventCard key={idx} event={event} opponentName={opponentName} isOpponent />
               ))}
               {opponentEvents.length === 0 && (
                 <p className="text-xs text-gray-400 text-center py-4">
@@ -333,8 +334,8 @@ const PeriodTimeline = ({
   );
 };
 
-// Event Card Component for Timeline
-const EventCard = ({ event, isOpponent = false }) => {
+// Event Card Component for Timeline - AGGIORNATO per nuovi tipi autogol
+const EventCard = ({ event, opponentName, isOpponent = false }) => {
   const baseColor = isOpponent ? "blue" : "green";
 
   if (event.type === "goal") {
@@ -362,6 +363,7 @@ const EventCard = ({ event, isOpponent = false }) => {
     );
   }
 
+  // NUOVO: Gestisci autogol Vigontina (mostrato nella colonna Vigontina ma gol a avversario)
   if (event.type === "own-goal") {
     return (
       <div className="bg-red-50 p-2 rounded border border-red-200 text-sm">
@@ -370,6 +372,26 @@ const EventCard = ({ event, isOpponent = false }) => {
             ⚽
           </span>
           {event.minute}' - Autogol
+        </p>
+        <p className="text-xs text-red-700">
+          (gol a {opponentName})
+        </p>
+      </div>
+    );
+  }
+
+  // NUOVO: Gestisci autogol Avversario (mostrato nella colonna Avversario ma gol a Vigontina)  
+  if (event.type === "opponent-own-goal") {
+    return (
+      <div className="bg-red-50 p-2 rounded border border-red-200 text-sm">
+        <p className="font-medium text-red-800 flex items-center gap-1">
+          <span className="bg-red-600 rounded-full w-4 h-4 flex items-center justify-center text-white text-xs">
+            ⚽
+          </span>
+          {event.minute}' - Autogol
+        </p>
+        <p className="text-xs text-red-700">
+          (gol a Vigontina)
         </p>
       </div>
     );
