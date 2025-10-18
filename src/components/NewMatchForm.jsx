@@ -1,6 +1,6 @@
 // components/NewMatchForm.jsx (fix: aggiungi campo password)
 import React, { useState, useMemo } from "react";
-import { ArrowLeft, Users, Crown, X, Lock } from "lucide-react";
+import { ArrowLeft, Users, X, Lock } from "lucide-react";
 import { PLAYERS } from "../constants/players";
 
 const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
@@ -201,7 +201,7 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
               />
             </div>
 
-            {/* NUOVO: Allenatore */}
+            {/* Allenatore */}
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Allenatore
@@ -237,7 +237,7 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
               </div>
               {/* Dirigente Accompagnatore */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text sm font-medium text-slate-700 mb-1">
                   Dirigente Accompagnatore
                 </label>
                 <select
@@ -290,7 +290,9 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
                 onClick={() => setShowCaptainPicker(true)}
                 className="inline-flex items-center gap-2 bg-yellow-100 hover:bg-yellow-200 px-3 py-2 rounded border text-sm"
               >
-                <Crown size={16} />
+                <span className="inline-flex items-center justify-center w-5 h-5 bg-white text-yellow-600 rounded border border-yellow-600 text-xs font-bold">
+                  C
+                </span>
                 Capitano
               </button>
             </div>
