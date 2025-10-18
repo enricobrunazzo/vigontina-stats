@@ -177,17 +177,18 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
                     )
                       return null;
 
+                    // Regola: un evento va nella colonna della squadra a CUI VIENE ASSEGNATO IL GOL
                     const vigontinaEvents = periodEvents.filter(
                       (e) =>
                         e.type === "goal" ||
                         e.type === "penalty-goal" ||
-                        e.type === "own-goal" ||
+                        e.type === "opponent-own-goal" || // autogol avversario → gol per Vigontina
                         (e.type === "penalty-missed" && e.team === "vigontina")
                     );
                     const opponentEvents = periodEvents.filter(
                       (e) =>
                         e.type === "opponent-goal" ||
-                        e.type === "opponent-own-goal" ||
+                        e.type === "own-goal" || // autogol Vigontina → gol per avversario
                         e.type === "penalty-opponent-goal" ||
                         e.type === "penalty-opponent-missed"
                     );
@@ -334,7 +335,7 @@ const PeriodTimeline = ({
   );
 };
 
-// Event Card Component for Timeline - AGGIORNATO per nuovi tipi autogol
+// Event Card Component for Timeline
 const EventCard = ({ event, opponentName, isOpponent = false }) => {
   const baseColor = isOpponent ? "blue" : "green";
 
@@ -363,35 +364,25 @@ const EventCard = ({ event, opponentName, isOpponent = false }) => {
     );
   }
 
-  // NUOVO: Gestisci autogol Vigontina (mostrato nella colonna Vigontina ma gol a avversario)
   if (event.type === "own-goal") {
+    // Autogol Vigontina: in colonna avversario (beneficiario)
     return (
       <div className="bg-red-50 p-2 rounded border border-red-200 text-sm">
         <p className="font-medium text-red-800 flex items-center gap-1">
-          <span className="bg-red-600 rounded-full w-4 h-4 flex items-center justify-center text-white text-xs">
-            ⚽
-          </span>
-          {event.minute}' - Autogol
-        </p>
-        <p className="text-xs text-red-700">
-          (gol a {opponentName})
+          <span className="bg-red-600 rounded-full w-4 h-4 flex items-center justify-center text-white text-xs">⚽</span>
+          {event.minute}' - Autogol (gol a {opponentName})
         </p>
       </div>
     );
   }
 
-  // NUOVO: Gestisci autogol Avversario (mostrato nella colonna Avversario ma gol a Vigontina)  
   if (event.type === "opponent-own-goal") {
+    // Autogol Avversario: in colonna Vigontina (beneficiario)
     return (
       <div className="bg-red-50 p-2 rounded border border-red-200 text-sm">
         <p className="font-medium text-red-800 flex items-center gap-1">
-          <span className="bg-red-600 rounded-full w-4 h-4 flex items-center justify-center text-white text-xs">
-            ⚽
-          </span>
-          {event.minute}' - Autogol
-        </p>
-        <p className="text-xs text-red-700">
-          (gol a Vigontina)
+          <span className="bg-red-600 rounded-full w-4 h-4 flex items-center justify-center text-white text-xs">⚽</span>
+          {event.minute}' - Autogol (gol a Vigontina)
         </p>
       </div>
     );
