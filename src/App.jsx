@@ -114,8 +114,8 @@ const VigontinaStats = () => {
     },
     [match, timer]
   );
-  const handleAddOwnGoal = useCallback(() => {
-    match.addOwnGoal(timer.getCurrentMinute);
+  const handleAddOwnGoal = useCallback((team) => {
+    match.addOwnGoal(team, timer.getCurrentMinute);
   }, [match, timer]);
   const handleAddOpponentGoal = useCallback(() => {
     match.addOpponentGoal(timer.getCurrentMinute);
