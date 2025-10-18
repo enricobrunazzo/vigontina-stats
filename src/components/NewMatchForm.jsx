@@ -16,6 +16,7 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
   // Staff
   const [assistantReferee, setAssistantReferee] = useState("");
   const [teamManager, setTeamManager] = useState("");
+  const [coach, setCoach] = useState("Gianmaria Tonolo");
 
   // Giocatori
   const [notCalled, setNotCalled] = useState([]);
@@ -62,6 +63,7 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
       date,
       assistantReferee,
       teamManager,
+      coach,
       notCalled,
       captain,
     }, organizerPassword); // Password come secondo parametro
@@ -195,6 +197,19 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
+                className="w-full border rounded px-3 py-2"
+              />
+            </div>
+
+            {/* NUOVO: Allenatore */}
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Allenatore
+              </label>
+              <input
+                value={coach}
+                onChange={(e) => setCoach(e.target.value)}
+                placeholder="Gianmaria Tonolo"
                 className="w-full border rounded px-3 py-2"
               />
             </div>
