@@ -358,14 +358,18 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
                 key={player.num}
                 type="button"
                 onClick={() => setCaptain(player.num)}
-                className={`w-full text-left p-2 border rounded ${
+                className={`w-full text-left p-2 border rounded flex items-center gap-2 ${
                   captain === player.num
                     ? "bg-yellow-500 text-white border-yellow-600"
                     : "bg-white border-slate-200 hover:bg-gray-50"
                 }`}
               >
-                {captain === player.num && "⭐ "}
-                {player.num} {player.name}
+                {captain === player.num && (
+                  <span className="inline-flex items-center justify-center w-5 h-5 bg-white text-yellow-600 rounded border border-yellow-600 text-xs font-bold">
+                    C
+                  </span>
+                )}
+                <span>{player.num} {player.name}</span>
               </button>
             ))}
           </div>
