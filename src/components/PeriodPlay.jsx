@@ -1,9 +1,10 @@
-// components/PeriodPlay.jsx (hide actions for shared viewers)
+// components/PeriodPlay.jsx (riorganizzato con nuovi modali autogol/rigore)
 import React, { useState, useEffect, useMemo } from "react";
 import { ArrowLeft, Play, Pause, Plus, Minus } from "lucide-react";
 import { PLAYERS } from "../constants/players";
 import GoalModal from "./modals/GoalModal";
-import PenaltyModal from "./modals/PenaltyModal";
+import OwnGoalModal from "./modals/OwnGoalModal";
+import PenaltyAdvancedModal from "./modals/PenaltyAdvancedModal";
 import LineupModal from "./modals/LineupModal";
 
 const PeriodPlay = ({
@@ -28,6 +29,7 @@ const PeriodPlay = ({
 
   // Modal states
   const [showGoalDialog, setShowGoalDialog] = useState(false);
+  const [showOwnGoalDialog, setShowOwnGoalDialog] = useState(false);
   const [showPenaltyDialog, setShowPenaltyDialog] = useState(false);
   const [showLineupDialog, setShowLineupDialog] = useState(false);
 
@@ -58,6 +60,11 @@ const PeriodPlay = ({
     setShowGoalDialog(false);
   };
 
+  const handleAddOwnGoal = (team) => {
+    onAddOwnGoal(team);
+    setShowOwnGoalDialog(false);
+  };
+
   const handleAddPenalty = (team, scored, scorerNum) => {
     onAddPenalty(team, scored, scorerNum);
     setShowPenaltyDialog(false);
@@ -80,8 +87,16 @@ const PeriodPlay = ({
           />
         )}
 
+        {!isViewer && showOwnGoalDialog && (
+          <OwnGoalModal
+            opponentName={match.opponent}
+            onConfirm={handleAddOwnGoal}
+            onCancel={() => setShowOwnGoalDialog(false)}
+          />
+        )}
+
         {!isViewer && showPenaltyDialog && (
-          <PenaltyModal
+          <PenaltyAdvancedModal
             availablePlayers={availablePlayers}
             opponentName={match.opponent}
             onConfirm={handleAddPenalty}
@@ -189,7 +204,7 @@ const PeriodPlay = ({
             </div>
           </div>
 
-          {/* Action Buttons */}
+          {/* Action Buttons - NUOVA DISPOSIZIONE */}
           {!isViewer && (
             <div className="space-y-3 mb-6">
               {isProvaTecnica ? (
@@ -227,11 +242,42 @@ const PeriodPlay = ({
                   <p className="text-xs text-gray-500 text-center">Nota: le modifiche manuali aggiornano il punteggio del tempo ma non creano eventi Gol.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => setShowGoalDialog(true)} className="bg-green-500 text-white py-2 rounded hover:bg-green-600 font-medium text-sm">⚽ GOL</button>
-                  <button onClick={onAddOwnGoal} className="bg-red-500 text-white py-2 rounded hover:bg-red-600 font-medium flex items-center justify-center gap-1 text-sm"><span className="bg-red-800 rounded-full w-4 h-4 flex items-center justify-center text-xs">⚽</span>AUTOGOL</button>
-                  <button onClick={onAddOpponentGoal} className="bg-blue-500 text-white py-2 rounded hover:bg-blue-600 font-medium text-sm">Gol {match.opponent}</button>
-                  <button onClick={() => setShowPenaltyDialog(true)} className="bg-purple-500 text-white py-2 rounded hover:bg-purple-600 font-medium text-sm">🎯 RIGORE</button>
+                // NUOVA DISPOSIZIONE: GOL top, AUTOGOL + RIGORE bottom
+                <div className="space-y-3">
+                  {/* Riga superiore: Gol Vigontina + Gol Avversario */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <button 
+                      onClick={() => setShowGoalDialog(true)} 
+                      className="bg-green-500 text-white py-3 rounded hover:bg-green-600 font-medium text-sm flex items-center justify-center gap-2"
+                    >
+                      ⚽ Gol Vigontina
+                    </button>
+                    <button 
+                      onClick={onAddOpponentGoal} 
+                      className="bg-blue-500 text-white py-3 rounded hover:bg-blue-600 font-medium text-sm flex items-center justify-center gap-2"
+                    >
+                      ⚽ Gol {match.opponent}
+                    </button>
+                  </div>
+                  
+                  {/* Riga inferiore: Autogol + Rigore */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <button 
+                      onClick={() => setShowOwnGoalDialog(true)} 
+                      className="bg-red-500 text-white py-3 rounded hover:bg-red-600 font-medium text-sm flex items-center justify-center gap-2"
+                    >
+                      <span className="bg-red-800 rounded-full w-4 h-4 flex items-center justify-center text-xs">
+                        ⚽
+                      </span>
+                      Autogol
+                    </button>
+                    <button 
+                      onClick={() => setShowPenaltyDialog(true)} 
+                      className="bg-purple-500 text-white py-3 rounded hover:bg-purple-600 font-medium text-sm flex items-center justify-center gap-2"
+                    >
+                      🎯 Rigore
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -279,7 +325,14 @@ const EventCard = ({ event, opponentName }) => {
   if (event.type === "own-goal") {
     return (
       <div className="bg-red-50 p-3 rounded border border-red-200">
-        <p className="font-medium text-red-800 flex items-center gap-2"><span className="bg-red-800 rounded-full w-5 h-5 flex items-center justify-center text-xs">⚽</span>{event.minute}' - Autogol</p>
+        <p className="font-medium text-red-800 flex items-center gap-2"><span className="bg-red-800 rounded-full w-5 h-5 flex items-center justify-center text-xs">⚽</span>{event.minute}' - Autogol Vigontina (gol a {opponentName})</p>
+      </div>
+    );
+  }
+  if (event.type === "opponent-own-goal") {
+    return (
+      <div className="bg-red-50 p-3 rounded border border-red-200">
+        <p className="font-medium text-red-800 flex items-center gap-2"><span className="bg-red-800 rounded-full w-5 h-5 flex items-center justify-center text-xs">⚽</span>{event.minute}' - Autogol {opponentName} (gol a Vigontina)</p>
       </div>
     );
   }
@@ -300,7 +353,7 @@ const EventCard = ({ event, opponentName }) => {
   if (event.type === "penalty-missed") {
     return (
       <div className="bg-red-50 p-3 rounded border border-red-200">
-        <p className="font-medium text-red-800 flex items-center gap-2"><span className="bg-red-600 rounded-full w-6 h-6 flex items-center justify-center text-white text-xs">⚽</span>{event.minute}' - RIG. FALLITO</p>
+        <p className="font-medium text-red-800 flex items-center gap-2"><span className="bg-red-600 rounded-full w-6 h-6 flex items-center justify-center text-white text-xs">⚽</span>{event.minute}' - RIG. FALLITO Vigontina</p>
       </div>
     );
   }
