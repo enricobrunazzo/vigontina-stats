@@ -30,7 +30,7 @@ function periodOutcome(period, opponentName = "Avversari") {
   return { label: opponentName, winner: "opponent" };
 }
 
-// Formattazione evento migliorata: "Gol [marcatore] assist [assist]" e varianti
+// Formattazione evento migliorata: gestisce nuovi tipi autogol
 function eventLabel(e, opponentName = "Avversari") {
   const min = e.minute != null ? `${e.minute}'` : "";
   const scorer = e.scorerName || e.scorer || "";
@@ -41,7 +41,9 @@ function eventLabel(e, opponentName = "Avversari") {
       return assistName ? `${base} assist ${assistName}` : base;
     }
     case "own-goal":
-      return `${min} - Autogol`;
+      return `${min} - Autogol Vigontina (gol a ${opponentName})`;
+    case "opponent-own-goal":
+      return `${min} - Autogol ${opponentName} (gol a Vigontina)`;
     case "opponent-goal":
       return `${min} - Gol ${opponentName}`;
     case "penalty-goal": {
@@ -49,7 +51,7 @@ function eventLabel(e, opponentName = "Avversari") {
       return assistName ? `${base} assist ${assistName}` : base;
     }
     case "penalty-missed":
-      return `${min} - Rigore fallito`;
+      return `${min} - Rigore fallito Vigontina`;
     case "penalty-opponent-goal":
       return `${min} - Gol (Rig.) ${opponentName}`;
     case "penalty-opponent-missed":
@@ -314,7 +316,7 @@ export const exportHistoryToExcel = async (matches) => {
 
     // Logo e banner
     try { const res = await fetch(`${import.meta.env.BASE_URL}forza-vigontina.png`); const blob = await res.blob(); const ab = await blob.arrayBuffer(); const imageId = workbook.addImage({ buffer: ab, extension: 'png' }); sheet.addImage(imageId, { tl: { col: 0.1, row: 0.1 }, ext: { width: 80, height: 80 }, editAs: 'oneCell' }); } catch {}
-    sheet.mergeCells('B3:F3'); const titleTop = sheet.getCell('B3'); titleTop.value='VIGонтINA CALCIO - STAGIONE 2025/2026'; titleTop.font={ size:18, bold:true, color:{argb:colors.white} }; titleTop.fill={ type:'pattern', pattern:'solid', fgColor:{argb:colors.primaryGreen} }; titleTop.alignment={ vertical:'middle', horizontal:'center' }; sheet.getRow(3).height=28;
+    sheet.mergeCells('B3:F3'); const titleTop = sheet.getCell('B3'); titleTop.value='VIGONTINA CALCIO - STAGIONE 2025/2026'; titleTop.font={ size:18, bold:true, color:{argb:colors.white} }; titleTop.fill={ type:'pattern', pattern:'solid', fgColor:{argb:colors.primaryGreen} }; titleTop.alignment={ vertical:'middle', horizontal:'center' }; sheet.getRow(3).height=28;
     sheet.mergeCells('B4:F4'); const subtitleTop = sheet.getCell('B4'); subtitleTop.value='STORICO PARTITE'; subtitleTop.font={ size:14, bold:true, color:{argb:colors.white} }; subtitleTop.fill={ type:'pattern', pattern:'solid', fgColor:{argb:colors.darkGreen} }; subtitleTop.alignment={ vertical:'middle', horizontal:'center' }; sheet.getRow(4).height=24;
 
     // Riga vuota
@@ -323,7 +325,7 @@ export const exportHistoryToExcel = async (matches) => {
     // Riepilogo stagione (ripristinato interamente)
     let r = 6;
     const stats = { totPartite: matches.length, vittorie: 0, pareggi: 0, sconfitte: 0, golFatti: 0, golSubiti: 0, puntiFatti: 0, puntiSubiti: 0 };
-    matches.forEach(m => { const vp = calculatePoints(m, "vigонтina"); const op = calculatePoints(m, "opponent"); const vg = calculateTotalGoals(m, "vigонтina"); const og = calculateTotalGoals(m, "opponent"); stats.puntiFatti += vp; stats.puntiSubiti += op; stats.golFatti += vg; stats.golSubiti += og; if (vp > op) stats.vittorie++; else if (vp === op) stats.pareggi++; else stats.sconfitte++; });
+    matches.forEach(m => { const vp = calculatePoints(m, "vigontina"); const op = calculatePoints(m, "opponent"); const vg = calculateTotalGoals(m, "vigontina"); const og = calculateTotalGoals(m, "opponent"); stats.puntiFatti += vp; stats.puntiSubiti += op; stats.golFatti += vg; stats.golSubiti += og; if (vp > op) stats.vittorie++; else if (vp === op) stats.pareggi++; else stats.sconfitte++; });
 
     sheet.mergeCells(`B${r}:E${r}`); const statsHdr = sheet.getCell(`B${r}`); statsHdr.value='STATISTICHE STAGIONE'; statsHdr.font={ bold:true, size:12, color:{argb:colors.white} }; statsHdr.fill={ type:'pattern', pattern:'solid', fgColor:{argb:colors.lightGreen} }; statsHdr.alignment={ horizontal:'center', vertical:'middle' }; sheet.getRow(r).height=22; r++;
 
@@ -341,8 +343,8 @@ export const exportHistoryToExcel = async (matches) => {
 
     const sortedMatches = [...matches].sort((a, b) => new Date(b.date) - new Date(a.date));
     sortedMatches.forEach(m => {
-      const vp = calculatePoints(m, "vigонтina"); const op = calculatePoints(m, "opponent");
-      const vg = calculateTotalGoals(m, "vigонтina"); const og = calculateTotalGoals(m, "opponent");
+      const vp = calculatePoints(m, "vigontina"); const op = calculatePoints(m, "opponent");
+      const vg = calculateTotalGoals(m, "vigontina"); const og = calculateTotalGoals(m, "opponent");
       const isWin = vp > op; const isLoss = vp < op; const rowData = [ fmtDateIT(m.date), m.opponent, `${vg} - ${og}`, `${vp} - ${op}`, m.competition || '-', m.isHome ? 'Casa' : 'Trasferta' ];
       const dataRow = sheet.addRow(['', ...rowData]); dataRow.height=22; dataRow.alignment={ vertical:'middle', horizontal:'center', wrapText:true };
       const rowColor = isWin ? 'FFD1FAE5' : isLoss ? 'FFFECACA' : 'FFFEF3C7';
