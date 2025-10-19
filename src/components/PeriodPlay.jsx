@@ -9,6 +9,7 @@ import LineupModal from "./modals/LineupModal";
 import SaveModal from "./modals/SaveModal";
 import MissedShotModal from "./modals/MissedShotModal";
 import PostCrossbarModal from "./modals/PostCrossbarModal";
+import DeleteEventModal from "./modals/DeleteEventModal";
 
 const PeriodPlay = ({
   match,
@@ -22,6 +23,7 @@ const PeriodPlay = ({
   onAddMissedShot,
   onAddPostCrossbar,
   onUpdateScore,
+  onDeleteEvent,
   onFinish,
   isEditing,
   onBack,
@@ -42,6 +44,7 @@ const PeriodPlay = ({
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showMissedShotDialog, setShowMissedShotDialog] = useState(false);
   const [showPostCrossbarDialog, setShowPostCrossbarDialog] = useState(false);
+  const [showDeleteEventDialog, setShowDeleteEventDialog] = useState(false);
 
   // Manual score mode
   const [manualScoreMode, setManualScoreMode] = useState(false);
@@ -94,6 +97,11 @@ const PeriodPlay = ({
   const handleAddPostCrossbar = (type, team, playerNum) => {
     onAddPostCrossbar(type, team, playerNum);
     setShowPostCrossbarDialog(false);
+  };
+
+  const handleDeleteEvent = (eventIndex, reason) => {
+    onDeleteEvent?.(periodIndex, eventIndex, reason);
+    setShowDeleteEventDialog(false);
   };
 
   const handleSetLineup = (lineupNums) => {
@@ -164,6 +172,16 @@ const PeriodPlay = ({
             opponentName={match.opponent}
             onConfirm={handleAddPostCrossbar}
             onCancel={() => setShowPostCrossbarDialog(false)}
+          />
+        )}
+
+        {/* MODAL PER ELIMINAZIONE EVENTI */}
+        {!isViewer && showDeleteEventDialog && (
+          <DeleteEventModal
+            events={period.goals || []}
+            opponentName={match.opponent}
+            onConfirm={handleDeleteEvent}
+            onCancel={() => setShowDeleteEventDialog(false)}
           />
         )}
 
@@ -258,7 +276,7 @@ const PeriodPlay = ({
             </div>
           </div>
 
-          {/* Action Buttons - NUOVA DISPOSIZIONE CON AZIONI SALIENTI */}
+          {/* Action Buttons - MODIFICATI CON DIMENSIONI UNIFORMI */}
           {!isViewer && (
             <div className="space-y-4 mb-6">
               {isProvaTecnica ? (
@@ -296,29 +314,29 @@ const PeriodPlay = ({
                   <p className="text-xs text-gray-500 text-center">Nota: le modifiche manuali aggiornano il punteggio del tempo ma non creano eventi Gol.</p>
                 </div>
               ) : (
-                // NUOVA DISPOSIZIONE: GOL top, AUTOGOL + RIGORE middle, AZIONI SALIENTI bottom
+                // NUOVA DISPOSIZIONE: GOL top, AUTOGOL + RIGORE middle, AZIONI SALIENTI bottom CON DIMENSIONI UNIFORMI
                 <div className="space-y-3">
-                  {/* Riga 1: Gol Vigontina + Gol Avversario */}
+                  {/* Riga 1: Gol Vigontina + Gol Avversario - DIMENSIONI UNIFORMI */}
                   <div className="grid grid-cols-2 gap-3">
                     <button 
                       onClick={() => setShowGoalDialog(true)} 
-                      className="bg-green-500 text-white py-3 rounded hover:bg-green-600 font-medium text-sm flex items-center justify-center gap-2"
+                      className="bg-green-500 text-white py-3 px-4 rounded hover:bg-green-600 font-medium text-sm flex items-center justify-center gap-2 min-h-[44px]"
                     >
                       ⚽ Gol Vigontina
                     </button>
                     <button 
                       onClick={onAddOpponentGoal} 
-                      className="bg-blue-500 text-white py-3 rounded hover:bg-blue-600 font-medium text-sm flex items-center justify-center gap-2"
+                      className="bg-blue-500 text-white py-3 px-4 rounded hover:bg-blue-600 font-medium text-sm flex items-center justify-center gap-2 min-h-[44px]"
                     >
                       ⚽ Gol {match.opponent}
                     </button>
                   </div>
                   
-                  {/* Riga 2: Autogol + Rigore */}
+                  {/* Riga 2: Autogol + Rigore - DIMENSIONI UNIFORMI */}
                   <div className="grid grid-cols-2 gap-3">
                     <button 
                       onClick={() => setShowOwnGoalDialog(true)} 
-                      className="bg-red-500 text-white py-3 rounded hover:bg-red-600 font-medium text-sm flex items-center justify-center gap-2"
+                      className="bg-red-500 text-white py-3 px-4 rounded hover:bg-red-600 font-medium text-sm flex items-center justify-center gap-2 min-h-[44px]"
                     >
                       <span className="bg-red-800 rounded-full w-4 h-4 flex items-center justify-center text-xs">
                         ⚽
@@ -327,33 +345,41 @@ const PeriodPlay = ({
                     </button>
                     <button 
                       onClick={() => setShowPenaltyDialog(true)} 
-                      className="bg-purple-500 text-white py-3 rounded hover:bg-purple-600 font-medium text-sm flex items-center justify-center gap-2"
+                      className="bg-purple-500 text-white py-3 px-4 rounded hover:bg-purple-600 font-medium text-sm flex items-center justify-center gap-2 min-h-[44px]"
                     >
                       🎯 Rigore
                     </button>
                   </div>
 
-                  {/* NUOVA SEZIONE: Azioni Salienti */}
+                  {/* NUOVA SEZIONE: Azioni Salienti CON 4 PULSANTI UNIFORMI */}
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                     <p className="text-sm font-semibold text-yellow-800 text-center mb-3">Azioni Salienti</p>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <button 
                         onClick={() => setShowSaveDialog(true)} 
-                        className="bg-orange-500 text-white py-2 px-2 rounded hover:bg-orange-600 font-medium text-xs flex items-center justify-center gap-1"
+                        className="bg-orange-500 text-white py-3 px-2 rounded hover:bg-orange-600 font-medium text-xs flex items-center justify-center gap-1 min-h-[44px]"
                       >
                         🧤 Parata
                       </button>
                       <button 
                         onClick={() => setShowMissedShotDialog(true)} 
-                        className="bg-gray-500 text-white py-2 px-2 rounded hover:bg-gray-600 font-medium text-xs flex items-center justify-center gap-1"
+                        className="bg-gray-500 text-white py-3 px-2 rounded hover:bg-gray-600 font-medium text-xs flex items-center justify-center gap-1 min-h-[44px]"
                       >
                         🎯 Tiro Fuori
                       </button>
                       <button 
                         onClick={() => setShowPostCrossbarDialog(true)} 
-                        className="bg-yellow-600 text-white py-2 px-2 rounded hover:bg-yellow-700 font-medium text-xs flex items-center justify-center gap-1"
+                        className="bg-yellow-600 text-white py-3 px-2 rounded hover:bg-yellow-700 font-medium text-xs flex items-center justify-center gap-1 min-h-[44px]"
                       >
                         🧱 Palo/Traversa
+                      </button>
+                      {/* NUOVO PULSANTE: Elimina Evento */}
+                      <button 
+                        onClick={() => setShowDeleteEventDialog(true)} 
+                        className="bg-red-600 text-white py-3 px-2 rounded hover:bg-red-700 font-medium text-xs flex items-center justify-center gap-1 min-h-[44px]"
+                        disabled={(period.goals || []).length === 0}
+                      >
+                        🗑️ Elimina Evento
                       </button>
                     </div>
                   </div>
@@ -399,6 +425,9 @@ const EventCard = ({ event, opponentName }) => {
       <div className="bg-green-50 p-3 rounded border border-green-200">
         <p className="font-medium text-green-800">⚽ {event.minute}' - {event.scorer} {event.scorerName}</p>
         {event.assist && (<p className="text-sm text-green-700">Assist: {event.assist} {event.assistName}</p>)}
+        {event.deletionReason && (
+          <p className="text-xs text-red-600 mt-1 italic">⚠️ Evento eliminato: {event.deletionReason}</p>
+        )}
       </div>
     );
   }
@@ -406,6 +435,9 @@ const EventCard = ({ event, opponentName }) => {
     return (
       <div className="bg-blue-50 p-3 rounded border border-blue-200">
         <p className="font-medium text-blue-800">⚽ {event.minute}' - {event.type.includes('penalty') ? 'Gol RIG. ' : 'Gol '}{opponentName}</p>
+        {event.deletionReason && (
+          <p className="text-xs text-red-600 mt-1 italic">⚠️ Evento eliminato: {event.deletionReason}</p>
+        )}
       </div>
     );
   }
@@ -413,6 +445,9 @@ const EventCard = ({ event, opponentName }) => {
     return (
       <div className="bg-blue-50 p-3 rounded border border-blue-200">
         <p className="font-medium text-blue-800 flex items-center gap-2"><span className="bg-red-800 rounded-full w-5 h-5 flex items-center justify-center text-xs">⚽</span>{event.minute}' - Autogol Vigontina (gol a {opponentName})</p>
+        {event.deletionReason && (
+          <p className="text-xs text-red-600 mt-1 italic">⚠️ Evento eliminato: {event.deletionReason}</p>
+        )}
       </div>
     );
   }
@@ -420,6 +455,9 @@ const EventCard = ({ event, opponentName }) => {
     return (
       <div className="bg-green-50 p-3 rounded border border-green-200">
         <p className="font-medium text-green-800 flex items-center gap-2"><span className="bg-red-800 rounded-full w-5 h-5 flex items-center justify-center text-xs">⚽</span>{event.minute}' - Autogol {opponentName} (gol a Vigontina)</p>
+        {event.deletionReason && (
+          <p className="text-xs text-red-600 mt-1 italic">⚠️ Evento eliminato: {event.deletionReason}</p>
+        )}
       </div>
     );
   }
