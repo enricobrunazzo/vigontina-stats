@@ -35,7 +35,7 @@ Applicazione per la gestione live delle statistiche partita della Vigontina San 
 
 ## Note UI
 
-- L'icona di Palo/Traversa è stata resa neutra ("🧱") per evitare ambiguità. La distinzione Palo vs Traversa viene effettuata nel modal e visualizzata negli eventi come "🧱 Palo" oppure "⎯ Traversa".
+- L'icona di Palo/Traversa è stata resa neutra e uniforme: **🧱** è usata sia nel pulsante principale sia all'interno del modal per le opzioni "Palo" e "Traversa". La distinzione viene comunque mostrata negli eventi come "🧱 Palo" oppure "⎯ Traversa".
 - In Prova Tecnica non sono consentiti eventi gol/azioni: modificare solo il punteggio manualmente.
 
 ## Esportazione
