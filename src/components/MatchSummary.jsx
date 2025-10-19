@@ -177,18 +177,18 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
                     )
                       return null;
 
-                    // Regola: un evento va nella colonna della squadra a CUI VIENE ASSEGNATO IL GOL
+                    // Filtra solo eventi di rete per timeline, includendo anche rigori falliti
                     const vigontinaEvents = periodEvents.filter(
                       (e) =>
                         e.type === "goal" ||
                         e.type === "penalty-goal" ||
-                        e.type === "opponent-own-goal" || // autogol avversario → gol per Vigontina
-                        (e.type === "penalty-missed" && e.team === "vigontina")
+                        e.type === "opponent-own-goal" ||
+                        e.type === "penalty-missed"
                     );
                     const opponentEvents = periodEvents.filter(
                       (e) =>
                         e.type === "opponent-goal" ||
-                        e.type === "own-goal" || // autogol Vigontina → gol per avversario
+                        e.type === "own-goal" ||
                         e.type === "penalty-opponent-goal" ||
                         e.type === "penalty-opponent-missed"
                     );
@@ -235,18 +235,18 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
               </div>
             )}
 
-            {/* Export Buttons */}
+            {/* Export Buttons - colori più tenui */}
             <div className="pt-4 border-t grid grid-cols-2 gap-2">
               <button
                 onClick={onExportExcel}
-                className="bg-green-500 text-white py-2 rounded hover:bg-green-600 font-medium flex items-center justify-center gap-2 text-sm"
+                className="bg-green-400 text-white py-2 rounded hover:bg-green-500 font-medium flex items-center justify-center gap-2 text-sm"
               >
                 <Download className="w-4 h-4" />
                 Esporta Excel
               </button>
               <button
                 onClick={onExportPDF}
-                className="bg-red-500 text-white py-2 rounded hover:bg-red-600 font-medium flex items-center justify-center gap-2 text-sm"
+                className="bg-red-400 text-white py-2 rounded hover:bg-red-500 font-medium flex items-center justify-center gap-2 text-sm"
               >
                 <Download className="w-4 h-4" />
                 Esporta PDF
@@ -258,7 +258,7 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
               <div className="pt-2">
                 <button
                   onClick={onFIGCReport}
-                  className="w-full bg-blue-700 text-white py-2 rounded hover:bg-blue-800 font-medium flex items-center justify-center gap-2 text-sm"
+                  className="w-full bg-blue-400 text-white py-2 rounded hover:bg-blue-500 font-medium flex items-center justify-center gap-2 text-sm"
                 >
                   <FileText className="w-4 h-4" />
                   Genera Rapporto FIGC
@@ -335,20 +335,26 @@ const PeriodTimeline = ({
   );
 };
 
-// Event Card Component for Timeline
+// Event Card Component for Timeline con supporto eventi annullati
 const EventCard = ({ event, opponentName, isOpponent = false }) => {
   const baseColor = isOpponent ? "blue" : "green";
+  const isDeleted = !!event.deletionReason;
+  const baseClasses = isDeleted ? "opacity-60" : "";
+  const textClasses = isDeleted ? "line-through" : "";
 
   if (event.type === "goal") {
     return (
-      <div className={`bg-${baseColor}-50 p-2 rounded border border-${baseColor}-200 text-sm`}>
-        <p className={`font-medium text-${baseColor}-800`}>
+      <div className={`bg-${baseColor}-50 p-2 rounded border border-${baseColor}-200 text-sm ${baseClasses}`}>
+        <p className={`font-medium text-${baseColor}-800 ${textClasses}`}>
           ⚽ {event.minute}' - {event.scorer} {event.scorerName}
         </p>
         {event.assist && (
-          <p className={`text-xs text-${baseColor}-700`}>
+          <p className={`text-xs text-${baseColor}-700 ${textClasses}`}>
             Assist: {event.assist} {event.assistName}
           </p>
+        )}
+        {isDeleted && (
+          <p className="text-xs text-red-600 mt-1 italic">⚠️ Annullato: {event.deletionReason}</p>
         )}
       </div>
     );
@@ -356,10 +362,13 @@ const EventCard = ({ event, opponentName, isOpponent = false }) => {
 
   if (event.type === "penalty-goal") {
     return (
-      <div className={`bg-${baseColor}-50 p-2 rounded border border-${baseColor}-200 text-sm`}>
-        <p className={`font-medium text-${baseColor}-800`}>
+      <div className={`bg-${baseColor}-50 p-2 rounded border border-${baseColor}-200 text-sm ${baseClasses}`}>
+        <p className={`font-medium text-${baseColor}-800 ${textClasses}`}>
           🎯 {event.minute}' - Rigore {event.scorer} {event.scorerName}
         </p>
+        {isDeleted && (
+          <p className="text-xs text-red-600 mt-1 italic">⚠️ Annullato: {event.deletionReason}</p>
+        )}
       </div>
     );
   }
@@ -367,11 +376,14 @@ const EventCard = ({ event, opponentName, isOpponent = false }) => {
   if (event.type === "own-goal") {
     // Autogol Vigontina: in colonna avversario (beneficiario)
     return (
-      <div className="bg-red-50 p-2 rounded border border-red-200 text-sm">
-        <p className="font-medium text-red-800 flex items-center gap-1">
+      <div className={`bg-red-50 p-2 rounded border border-red-200 text-sm ${baseClasses}`}>
+        <p className={`font-medium text-red-800 flex items-center gap-1 ${textClasses}`}>
           <span className="bg-red-600 rounded-full w-4 h-4 flex items-center justify-center text-white text-xs">⚽</span>
           {event.minute}' - Autogol (gol a {opponentName})
         </p>
+        {isDeleted && (
+          <p className="text-xs text-red-600 mt-1 italic">⚠️ Annullato: {event.deletionReason}</p>
+        )}
       </div>
     );
   }
@@ -379,11 +391,14 @@ const EventCard = ({ event, opponentName, isOpponent = false }) => {
   if (event.type === "opponent-own-goal") {
     // Autogol Avversario: in colonna Vigontina (beneficiario)
     return (
-      <div className="bg-red-50 p-2 rounded border border-red-200 text-sm">
-        <p className="font-medium text-red-800 flex items-center gap-1">
+      <div className={`bg-red-50 p-2 rounded border border-red-200 text-sm ${baseClasses}`}>
+        <p className={`font-medium text-red-800 flex items-center gap-1 ${textClasses}`}>
           <span className="bg-red-600 rounded-full w-4 h-4 flex items-center justify-center text-white text-xs">⚽</span>
           {event.minute}' - Autogol (gol a Vigontina)
         </p>
+        {isDeleted && (
+          <p className="text-xs text-red-600 mt-1 italic">⚠️ Annullato: {event.deletionReason}</p>
+        )}
       </div>
     );
   }
@@ -400,16 +415,22 @@ const EventCard = ({ event, opponentName, isOpponent = false }) => {
 
   if (event.type === "opponent-goal") {
     return (
-      <div className="bg-blue-50 p-2 rounded border border-blue-200 text-sm">
-        <p className="font-medium text-blue-800">⚽ {event.minute}' - Gol</p>
+      <div className={`bg-blue-50 p-2 rounded border border-blue-200 text-sm ${baseClasses}`}>
+        <p className={`font-medium text-blue-800 ${textClasses}`}>⚽ {event.minute}' - Gol</p>
+        {isDeleted && (
+          <p className="text-xs text-red-600 mt-1 italic">⚠️ Annullato: {event.deletionReason}</p>
+        )}
       </div>
     );
   }
 
   if (event.type === "penalty-opponent-goal") {
     return (
-      <div className="bg-blue-50 p-2 rounded border border-blue-200 text-sm">
-        <p className="font-medium text-blue-800">🎯 {event.minute}' - Rigore</p>
+      <div className={`bg-blue-50 p-2 rounded border border-blue-200 text-sm ${baseClasses}`}>
+        <p className={`font-medium text-blue-800 ${textClasses}`}>🎯 {event.minute}' - Rigore</p>
+        {isDeleted && (
+          <p className="text-xs text-red-600 mt-1 italic">⚠️ Annullato: {event.deletionReason}</p>
+        )}
       </div>
     );
   }
