@@ -127,6 +127,28 @@ const VigontinaStats = () => {
     [match, timer]
   );
 
+  // NUOVI HANDLERS per le azioni salienti
+  const handleAddSave = useCallback(
+    (team, playerNum) => {
+      match.addSave(team, playerNum, timer.getCurrentMinute);
+    },
+    [match, timer]
+  );
+
+  const handleAddMissedShot = useCallback(
+    (team, playerNum) => {
+      match.addMissedShot(team, playerNum, timer.getCurrentMinute);
+    },
+    [match, timer]
+  );
+
+  const handleAddPostCrossbar = useCallback(
+    (type, team, playerNum) => {
+      match.addPostCrossbar(type, team, playerNum, timer.getCurrentMinute);
+    },
+    [match, timer]
+  );
+
   // Render routes
   if (page === "home") {
     return (
@@ -179,6 +201,9 @@ const VigontinaStats = () => {
         onAddOwnGoal={handleAddOwnGoal}
         onAddOpponentGoal={handleAddOpponentGoal}
         onAddPenalty={handleAddPenalty}
+        onAddSave={handleAddSave}            // NUOVO
+        onAddMissedShot={handleAddMissedShot} // NUOVO
+        onAddPostCrossbar={handleAddPostCrossbar} // NUOVO
         onUpdateScore={match.updateScore}
         onFinish={handleFinishPeriod}
         onSetLineup={match.setLineup}
@@ -197,6 +222,9 @@ const VigontinaStats = () => {
         onAddOwnGoal={handleAddOwnGoal}
         onAddOpponentGoal={handleAddOpponentGoal}
         onAddPenalty={handleAddPenalty}
+        onAddSave={handleAddSave}            // NUOVO
+        onAddMissedShot={handleAddMissedShot} // NUOVO
+        onAddPostCrossbar={handleAddPostCrossbar} // NUOVO
         onUpdateScore={match.updateScore}
         onFinish={handleFinishPeriod}
         isEditing={true}
