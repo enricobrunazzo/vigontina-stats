@@ -1,4 +1,4 @@
-// components/PeriodPlay.jsx (riorganizzato con nuovi modali autogol/rigore)
+// components/PeriodPlay.jsx (riorganizzato con nuove azioni salienti)
 import React, { useState, useEffect, useMemo } from "react";
 import { ArrowLeft, Play, Pause, Plus, Minus } from "lucide-react";
 import { PLAYERS } from "../constants/players";
@@ -6,6 +6,9 @@ import GoalModal from "./modals/GoalModal";
 import OwnGoalModal from "./modals/OwnGoalModal";
 import PenaltyAdvancedModal from "./modals/PenaltyAdvancedModal";
 import LineupModal from "./modals/LineupModal";
+import SaveModal from "./modals/SaveModal";
+import MissedShotModal from "./modals/MissedShotModal";
+import PostCrossbarModal from "./modals/PostCrossbarModal";
 
 const PeriodPlay = ({
   match,
@@ -15,6 +18,9 @@ const PeriodPlay = ({
   onAddOwnGoal,
   onAddOpponentGoal,
   onAddPenalty,
+  onAddSave,
+  onAddMissedShot,
+  onAddPostCrossbar,
   onUpdateScore,
   onFinish,
   isEditing,
@@ -32,6 +38,10 @@ const PeriodPlay = ({
   const [showOwnGoalDialog, setShowOwnGoalDialog] = useState(false);
   const [showPenaltyDialog, setShowPenaltyDialog] = useState(false);
   const [showLineupDialog, setShowLineupDialog] = useState(false);
+  // NUOVI modal states
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [showMissedShotDialog, setShowMissedShotDialog] = useState(false);
+  const [showPostCrossbarDialog, setShowPostCrossbarDialog] = useState(false);
 
   // Manual score mode
   const [manualScoreMode, setManualScoreMode] = useState(false);
@@ -68,6 +78,22 @@ const PeriodPlay = ({
   const handleAddPenalty = (team, scored, scorerNum) => {
     onAddPenalty(team, scored, scorerNum);
     setShowPenaltyDialog(false);
+  };
+
+  // NUOVI handlers
+  const handleAddSave = (team, playerNum) => {
+    onAddSave(team, playerNum);
+    setShowSaveDialog(false);
+  };
+
+  const handleAddMissedShot = (team, playerNum) => {
+    onAddMissedShot(team, playerNum);
+    setShowMissedShotDialog(false);
+  };
+
+  const handleAddPostCrossbar = (type, team, playerNum) => {
+    onAddPostCrossbar(type, team, playerNum);
+    setShowPostCrossbarDialog(false);
   };
 
   const handleSetLineup = (lineupNums) => {
@@ -110,6 +136,34 @@ const PeriodPlay = ({
             initialLineup={period.lineup || []}
             onConfirm={handleSetLineup}
             onCancel={() => setShowLineupDialog(false)}
+          />
+        )}
+
+        {/* NUOVI MODALI */}
+        {!isViewer && showSaveDialog && (
+          <SaveModal
+            availablePlayers={availablePlayers}
+            opponentName={match.opponent}
+            onConfirm={handleAddSave}
+            onCancel={() => setShowSaveDialog(false)}
+          />
+        )}
+
+        {!isViewer && showMissedShotDialog && (
+          <MissedShotModal
+            availablePlayers={availablePlayers}
+            opponentName={match.opponent}
+            onConfirm={handleAddMissedShot}
+            onCancel={() => setShowMissedShotDialog(false)}
+          />
+        )}
+
+        {!isViewer && showPostCrossbarDialog && (
+          <PostCrossbarModal
+            availablePlayers={availablePlayers}
+            opponentName={match.opponent}
+            onConfirm={handleAddPostCrossbar}
+            onCancel={() => setShowPostCrossbarDialog(false)}
           />
         )}
 
@@ -204,9 +258,9 @@ const PeriodPlay = ({
             </div>
           </div>
 
-          {/* Action Buttons - NUOVA DISPOSIZIONE */}
+          {/* Action Buttons - NUOVA DISPOSIZIONE CON AZIONI SALIENTI */}
           {!isViewer && (
-            <div className="space-y-3 mb-6">
+            <div className="space-y-4 mb-6">
               {isProvaTecnica ? (
                 <>
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3">
@@ -242,9 +296,9 @@ const PeriodPlay = ({
                   <p className="text-xs text-gray-500 text-center">Nota: le modifiche manuali aggiornano il punteggio del tempo ma non creano eventi Gol.</p>
                 </div>
               ) : (
-                // NUOVA DISPOSIZIONE: GOL top, AUTOGOL + RIGORE bottom
+                // NUOVA DISPOSIZIONE: GOL top, AUTOGOL + RIGORE middle, AZIONI SALIENTI bottom
                 <div className="space-y-3">
-                  {/* Riga superiore: Gol Vigontina + Gol Avversario */}
+                  {/* Riga 1: Gol Vigontina + Gol Avversario */}
                   <div className="grid grid-cols-2 gap-3">
                     <button 
                       onClick={() => setShowGoalDialog(true)} 
@@ -260,7 +314,7 @@ const PeriodPlay = ({
                     </button>
                   </div>
                   
-                  {/* Riga inferiore: Autogol + Rigore */}
+                  {/* Riga 2: Autogol + Rigore */}
                   <div className="grid grid-cols-2 gap-3">
                     <button 
                       onClick={() => setShowOwnGoalDialog(true)} 
@@ -277,6 +331,31 @@ const PeriodPlay = ({
                     >
                       🎯 Rigore
                     </button>
+                  </div>
+
+                  {/* NUOVA SEZIONE: Azioni Salienti */}
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <p className="text-sm font-semibold text-yellow-800 text-center mb-3">Azioni Salienti</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button 
+                        onClick={() => setShowSaveDialog(true)} 
+                        className="bg-orange-500 text-white py-2 px-2 rounded hover:bg-orange-600 font-medium text-xs flex items-center justify-center gap-1"
+                      >
+                        🧤 Parata
+                      </button>
+                      <button 
+                        onClick={() => setShowMissedShotDialog(true)} 
+                        className="bg-gray-500 text-white py-2 px-2 rounded hover:bg-gray-600 font-medium text-xs flex items-center justify-center gap-1"
+                      >
+                        🎯 Tiro Fuori
+                      </button>
+                      <button 
+                        onClick={() => setShowPostCrossbarDialog(true)} 
+                        className="bg-yellow-600 text-white py-2 px-2 rounded hover:bg-yellow-700 font-medium text-xs flex items-center justify-center gap-1"
+                      >
+                        🎥 Palo/Traversa
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -312,7 +391,7 @@ const PeriodPlay = ({
   );
 };
 
-// Event Card Component
+// Event Card Component - AGGIORNATO per nuovi eventi
 const EventCard = ({ event, opponentName }) => {
   // Regola: mostra nello stile della squadra beneficiaria
   if (event.type === "goal" || event.type === "penalty-goal") {
@@ -331,7 +410,6 @@ const EventCard = ({ event, opponentName }) => {
     );
   }
   if (event.type === "own-goal") {
-    // Autogol Vigontina → gol per avversario
     return (
       <div className="bg-blue-50 p-3 rounded border border-blue-200">
         <p className="font-medium text-blue-800 flex items-center gap-2"><span className="bg-red-800 rounded-full w-5 h-5 flex items-center justify-center text-xs">⚽</span>{event.minute}' - Autogol Vigontina (gol a {opponentName})</p>
@@ -339,7 +417,6 @@ const EventCard = ({ event, opponentName }) => {
     );
   }
   if (event.type === "opponent-own-goal") {
-    // Autogol avversario → gol per Vigontina
     return (
       <div className="bg-green-50 p-3 rounded border border-green-200">
         <p className="font-medium text-green-800 flex items-center gap-2"><span className="bg-red-800 rounded-full w-5 h-5 flex items-center justify-center text-xs">⚽</span>{event.minute}' - Autogol {opponentName} (gol a Vigontina)</p>
@@ -360,6 +437,52 @@ const EventCard = ({ event, opponentName }) => {
       </div>
     );
   }
+  
+  // NUOVI EVENTI: Parata
+  if (event.type === "save") {
+    return (
+      <div className="bg-orange-50 p-3 rounded border border-orange-200">
+        <p className="font-medium text-orange-800">🧤 {event.minute}' - Parata {event.player} {event.playerName}</p>
+      </div>
+    );
+  }
+  if (event.type === "opponent-save") {
+    return (
+      <div className="bg-orange-50 p-3 rounded border border-orange-200">
+        <p className="font-medium text-orange-800">🧤 {event.minute}' - Parata portiere {opponentName}</p>
+      </div>
+    );
+  }
+  
+  // NUOVI EVENTI: Tiro Fuori
+  if (event.type === "missed-shot") {
+    return (
+      <div className="bg-gray-50 p-3 rounded border border-gray-200">
+        <p className="font-medium text-gray-800">🎯 {event.minute}' - Tiro fuori {event.player} {event.playerName}</p>
+      </div>
+    );
+  }
+  if (event.type === "opponent-missed-shot") {
+    return (
+      <div className="bg-gray-50 p-3 rounded border border-gray-200">
+        <p className="font-medium text-gray-800">🎯 {event.minute}' - Tiro fuori {opponentName}</p>
+      </div>
+    );
+  }
+  
+  // NUOVI EVENTI: Palo/Traversa
+  if (event.type?.includes('palo-') || event.type?.includes('traversa-')) {
+    const isVigontina = event.team === 'vigontina';
+    const hitTypeDisplay = event.hitType === 'palo' ? '🎥 Palo' : '— Traversa';
+    return (
+      <div className="bg-yellow-50 p-3 rounded border border-yellow-200">
+        <p className="font-medium text-yellow-800">
+          {hitTypeDisplay} {event.minute}' - {isVigontina ? `${event.player} ${event.playerName}` : opponentName}
+        </p>
+      </div>
+    );
+  }
+  
   return null;
 };
 
