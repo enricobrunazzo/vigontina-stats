@@ -161,11 +161,11 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
               )}
             </div>
 
-            {/* Match Timeline */}
+            {/* Match Timeline: INCLUDI TUTTI GLI EVENTI */}
             {match.periods && match.periods.length > 0 && (
               <div>
                 <h3 className="font-semibold mb-4 text-lg">
-                  📋 Cronologia Partita
+                  📋 Cronologia Partita (tutti gli eventi)
                 </h3>
                 <div className="space-y-6">
                   {match.periods.map((period, periodIdx) => {
@@ -177,28 +177,10 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
                     )
                       return null;
 
-                    // Filtra solo eventi di rete per timeline, includendo anche rigori falliti
-                    const vigontinaEvents = periodEvents.filter(
-                      (e) =>
-                        e.type === "goal" ||
-                        e.type === "penalty-goal" ||
-                        e.type === "opponent-own-goal" ||
-                        e.type === "penalty-missed"
-                    );
-                    const opponentEvents = periodEvents.filter(
-                      (e) =>
-                        e.type === "opponent-goal" ||
-                        e.type === "own-goal" ||
-                        e.type === "penalty-opponent-goal" ||
-                        e.type === "penalty-opponent-missed"
-                    );
-
                     return (
-                      <PeriodTimeline
+                      <FullPeriodTimeline
                         key={periodIdx}
                         period={period}
-                        vigontinaEvents={vigontinaEvents}
-                        opponentEvents={opponentEvents}
                         opponentName={match.opponent}
                       />
                     );
@@ -272,13 +254,9 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
   );
 };
 
-// Period Timeline Component
-const PeriodTimeline = ({
-  period,
-  vigontinaEvents,
-  opponentEvents,
-  opponentName,
-}) => {
+// Full Period Timeline: include tutti i tipi di evento con stile coerente
+const FullPeriodTimeline = ({ period, opponentName }) => {
+  const events = period.goals || [];
   return (
     <div className="border rounded-lg overflow-hidden">
       <div className="bg-gradient-to-r from-slate-100 to-slate-50 p-3 border-b">
@@ -292,160 +270,91 @@ const PeriodTimeline = ({
         </div>
       </div>
 
-      {vigontinaEvents.length > 0 || opponentEvents.length > 0 ? (
-        <div className="grid grid-cols-2 divide-x">
-          <div className="p-3">
-            <p className="text-xs font-semibold text-gray-500 mb-2 text-center">
-              VIGONTINA
-            </p>
-            <div className="space-y-2">
-              {vigontinaEvents.map((event, idx) => (
-                <EventCard key={idx} event={event} opponentName={opponentName} />
-              ))}
-              {vigontinaEvents.length === 0 && (
-                <p className="text-xs text-gray-400 text-center py-4">
-                  Nessun evento
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="p-3">
-            <p className="text-xs font-semibold text-gray-500 mb-2 text-center uppercase">
-              {opponentName}
-            </p>
-            <div className="space-y-2">
-              {opponentEvents.map((event, idx) => (
-                <EventCard key={idx} event={event} opponentName={opponentName} isOpponent />
-              ))}
-              {opponentEvents.length === 0 && (
-                <p className="text-xs text-gray-400 text-center py-4">
-                  Nessun evento
-                </p>
-              )}
-            </div>
-          </div>
+      {events.length > 0 ? (
+        <div className="divide-y">
+          {events.map((event, idx) => (
+            <FullEventRow key={idx} event={event} opponentName={opponentName} />
+          ))}
         </div>
       ) : (
-        <div className="p-4 text-center text-sm text-gray-500">
-          Nessun evento registrato
-        </div>
+        <div className="p-4 text-center text-sm text-gray-500">Nessun evento registrato</div>
       )}
     </div>
   );
 };
 
-// Event Card Component for Timeline con supporto eventi annullati
-const EventCard = ({ event, opponentName, isOpponent = false }) => {
-  const baseColor = isOpponent ? "blue" : "green";
+// Riga evento singolo con supporto barratura e motivi per gol annullati
+const FullEventRow = ({ event, opponentName }) => {
   const isDeleted = !!event.deletionReason;
   const baseClasses = isDeleted ? "opacity-60" : "";
   const textClasses = isDeleted ? "line-through" : "";
+  const minute = event.minute ?? "?";
 
-  if (event.type === "goal") {
-    return (
-      <div className={`bg-${baseColor}-50 p-2 rounded border border-${baseColor}-200 text-sm ${baseClasses}`}>
-        <p className={`font-medium text-${baseColor}-800 ${textClasses}`}>
-          ⚽ {event.minute}' - {event.scorer} {event.scorerName}
-        </p>
-        {event.assist && (
-          <p className={`text-xs text-${baseColor}-700 ${textClasses}`}>
-            Assist: {event.assist} {event.assistName}
-          </p>
-        )}
-        {isDeleted && (
-          <p className="text-xs text-red-600 mt-1 italic">⚠️ Annullato: {event.deletionReason}</p>
-        )}
-      </div>
-    );
+  // Helper label per eventi palo/traversa
+  const hitLabel = event.hitType === 'palo' ? '🧱 Palo' : event.hitType === 'traversa' ? '⎯ Traversa' : null;
+
+  let content = null;
+  switch (event.type) {
+    case 'goal':
+      content = (
+        <>
+          <span className={`font-medium ${textClasses}`}>⚽ {minute}' - {event.scorer} {event.scorerName}</span>
+          {event.assist && (
+            <span className={`text-xs text-gray-600 ${textClasses}`}> • Assist: {event.assist} {event.assistName}</span>
+          )}
+        </>
+      );
+      break;
+    case 'opponent-goal':
+      content = <span className={`font-medium ${textClasses}`}>⚽ {minute}' - Gol {opponentName}</span>;
+      break;
+    case 'penalty-goal':
+      content = <span className={`font-medium ${textClasses}`}>🎯 {minute}' - Rigore {event.scorer} {event.scorerName}</span>;
+      break;
+    case 'penalty-opponent-goal':
+      content = <span className={`font-medium ${textClasses}`}>🎯 {minute}' - Rigore {opponentName}</span>;
+      break;
+    case 'penalty-missed':
+      content = <span className="font-medium">❌ {minute}' - Rigore fallito Vigontina</span>;
+      break;
+    case 'penalty-opponent-missed':
+      content = <span className="font-medium">❌ {minute}' - Rigore fallito {opponentName}</span>;
+      break;
+    case 'own-goal':
+      content = <span className={`font-medium ${textClasses}`}>⚽ {minute}' - Autogol Vigontina (gol a {opponentName})</span>;
+      break;
+    case 'opponent-own-goal':
+      content = <span className={`font-medium ${textClasses}`}>⚽ {minute}' - Autogol {opponentName} (gol a Vigontina)</span>;
+      break;
+    case 'save':
+      content = <span className="font-medium">🧤 {minute}' - Parata {event.player} {event.playerName}</span>;
+      break;
+    case 'opponent-save':
+      content = <span className="font-medium">🧤 {minute}' - Parata portiere {opponentName}</span>;
+      break;
+    case 'missed-shot':
+      content = <span className="font-medium">🎯 {minute}' - Tiro fuori {event.player} {event.playerName}</span>;
+      break;
+    case 'opponent-missed-shot':
+      content = <span className="font-medium">🎯 {minute}' - Tiro fuori {opponentName}</span>;
+      break;
+    default:
+      if (hitLabel) {
+        const who = event.team === 'vigontina' ? `${event.player} ${event.playerName}` : opponentName;
+        content = <span className="font-medium">{hitLabel} {minute}' - {who}</span>;
+      }
   }
 
-  if (event.type === "penalty-goal") {
-    return (
-      <div className={`bg-${baseColor}-50 p-2 rounded border border-${baseColor}-200 text-sm ${baseClasses}`}>
-        <p className={`font-medium text-${baseColor}-800 ${textClasses}`}>
-          🎯 {event.minute}' - Rigore {event.scorer} {event.scorerName}
-        </p>
-        {isDeleted && (
-          <p className="text-xs text-red-600 mt-1 italic">⚠️ Annullato: {event.deletionReason}</p>
-        )}
+  return (
+    <div className={`p-3 ${baseClasses}`}>
+      <div className="text-gray-900 text-sm flex flex-wrap items-center gap-1">
+        {content}
       </div>
-    );
-  }
-
-  if (event.type === "own-goal") {
-    // Autogol Vigontina: in colonna avversario (beneficiario)
-    return (
-      <div className={`bg-red-50 p-2 rounded border border-red-200 text-sm ${baseClasses}`}>
-        <p className={`font-medium text-red-800 flex items-center gap-1 ${textClasses}`}>
-          <span className="bg-red-600 rounded-full w-4 h-4 flex items-center justify-center text-white text-xs">⚽</span>
-          {event.minute}' - Autogol (gol a {opponentName})
-        </p>
-        {isDeleted && (
-          <p className="text-xs text-red-600 mt-1 italic">⚠️ Annullato: {event.deletionReason}</p>
-        )}
-      </div>
-    );
-  }
-
-  if (event.type === "opponent-own-goal") {
-    // Autogol Avversario: in colonna Vigontina (beneficiario)
-    return (
-      <div className={`bg-red-50 p-2 rounded border border-red-200 text-sm ${baseClasses}`}>
-        <p className={`font-medium text-red-800 flex items-center gap-1 ${textClasses}`}>
-          <span className="bg-red-600 rounded-full w-4 h-4 flex items-center justify-center text-white text-xs">⚽</span>
-          {event.minute}' - Autogol (gol a Vigontina)
-        </p>
-        {isDeleted && (
-          <p className="text-xs text-red-600 mt-1 italic">⚠️ Annullato: {event.deletionReason}</p>
-        )}
-      </div>
-    );
-  }
-
-  if (event.type === "penalty-missed") {
-    return (
-      <div className="bg-red-50 p-2 rounded border border-red-200 text-sm">
-        <p className="font-medium text-red-800 flex items-center gap-1">
-          ❌ {event.minute}' - Rigore fallito
-        </p>
-      </div>
-    );
-  }
-
-  if (event.type === "opponent-goal") {
-    return (
-      <div className={`bg-blue-50 p-2 rounded border border-blue-200 text-sm ${baseClasses}`}>
-        <p className={`font-medium text-blue-800 ${textClasses}`}>⚽ {event.minute}' - Gol</p>
-        {isDeleted && (
-          <p className="text-xs text-red-600 mt-1 italic">⚠️ Annullato: {event.deletionReason}</p>
-        )}
-      </div>
-    );
-  }
-
-  if (event.type === "penalty-opponent-goal") {
-    return (
-      <div className={`bg-blue-50 p-2 rounded border border-blue-200 text-sm ${baseClasses}`}>
-        <p className={`font-medium text-blue-800 ${textClasses}`}>🎯 {event.minute}' - Rigore</p>
-        {isDeleted && (
-          <p className="text-xs text-red-600 mt-1 italic">⚠️ Annullato: {event.deletionReason}</p>
-        )}
-      </div>
-    );
-  }
-
-  if (event.type === "penalty-opponent-missed") {
-    return (
-      <div className="bg-red-50 p-2 rounded border border-red-200 text-sm">
-        <p className="font-medium text-red-800 flex items-center gap-1">
-          ❌ {event.minute}' - Rigore fallito
-        </p>
-      </div>
-    );
-  }
-
-  return null;
+      {isDeleted && (
+        <p className="text-xs text-red-600 italic mt-1">⚠️ Annullato: {event.deletionReason}</p>
+      )}
+    </div>
+  );
 };
 
 export default MatchSummary;
