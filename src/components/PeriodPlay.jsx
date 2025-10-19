@@ -129,7 +129,7 @@ const PeriodPlay = ({
           <ShotBlockedModal availablePlayers={availablePlayers} opponentName={match.opponent} onConfirm={handleAddShotBlocked} onCancel={() => setShowShotBlockedDialog(false)} />
         )}
         {!isViewer && showDeleteEventDialog && (
-          <DeleteEventModal events={period.goals || []} opponentName={match.opponent} onConfirm={handleDeleteEvent} onCancel={() => setShowDeleteEventDialog(false)} />
+          <DeleteEventModal events={period.goals || []} opponentName={match.opponent} onConfirm={handleDeleteEvent} onCancel={() => setShowDeleteEventModal(false)} />
         )}
         {!isViewer && showShotSelectionDialog && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -207,7 +207,7 @@ const PeriodPlay = ({
                     <button onClick={onAddOpponentGoal} className="bg-blue-500 text-white py-2 px-3 rounded hover:bg-blue-600 font-medium text-sm flex items-center justify-center gap-2">⚽ Gol {match.opponent}</button>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => setShowOwnGoalDialog(true)} className="bg-red-500 text-white py-2 px-3 rounded hover:bg-red-600 font-medium text-sm flex items-center justify-center gap-2"><span className="bg-red-700 rounded_full w-4 h-4 flex items-center justify-center text-xs">⚽</span>Autogol</button>
+                    <button onClick={() => setShowOwnGoalDialog(true)} className="bg-red-500 text-white py-2 px-3 rounded hover:bg-red-600 font-medium text-sm flex items-center justify-center gap-2"><span className="bg-red-700 rounded_full w-4 h-4 flex items-center justify-center text-xs" style={{backgroundColor: '#dc2626', borderRadius: '50%', width: '16px', height: '16px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', marginRight: '4px'}}>⚽</span>Autogol</button>
                     <button onClick={() => setShowPenaltyDialog(true)} className="bg-purple-500 text-white py-2 px-3 rounded hover:bg-purple-600 font-medium text-sm flex items-center justify-center gap-2">🎯 Rigore</button>
                   </div>
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
@@ -270,6 +270,10 @@ const TeamEventCard = ({ event, team, opponentName }) => {
   const grayCard = (children) => (
     <div className={`bg-gray-50 p-2 rounded border border-gray-200 text-xs ${baseClasses}`}>{children}</div>
   );
+  
+  // Pallone rosso per autogol
+  const redBall = <span className="text-red-600 font-bold" style={{color: '#dc2626'}}>⚽</span>;
+  
   if (event.type === "goal" || event.type === "penalty-goal") {
     const isRig = event.type === 'penalty-goal';
     return (
@@ -295,12 +299,33 @@ const TeamEventCard = ({ event, team, opponentName }) => {
       </div>
     );
   }
-  if (event.type === "own-goal") {
-    return grayCard(<p className={`font-medium text-gray-800 ${textClasses}`}>⚽ {event.minute}' - Autogol Vigontina</p>);
-  }
+  
+  // MODIFICATO: Autogol a favore Vigontina (verde come gol Vigontina)
   if (event.type === "opponent-own-goal") {
-    return grayCard(<p className={`font-medium text-gray-800 ${textClasses}`}>⚽ {event.minute}' - Autogol {opponentName}</p>);
+    return (
+      <div className={`bg-green-50 p-2 rounded border border-green-200 text-xs ${baseClasses}`}>
+        <p className={`font-medium text-green-800 ${textClasses}`}>
+          {redBall} {event.minute}' - Autogol {opponentName}
+          <Badge color="red">AUTOGOL</Badge>
+        </p>
+        {event.deletionReason && (<p className="text-red-600 italic mt-1">⚠️ {event.deletionReason}</p>)}
+      </div>
+    );
   }
+  
+  // MODIFICATO: Autogol a favore avversario (blu come gol avversario)
+  if (event.type === "own-goal") {
+    return (
+      <div className={`bg-blue-50 p-2 rounded border border-blue-200 text-xs ${baseClasses}`}>
+        <p className={`font-medium text-blue-800 ${textClasses}`}>
+          {redBall} {event.minute}' - Autogol Vigontina
+          <Badge color="red">AUTOGOL</Badge>
+        </p>
+        {event.deletionReason && (<p className="text-red-600 italic mt-1">⚠️ {event.deletionReason}</p>)}
+      </div>
+    );
+  }
+  
   if (event.type.includes('penalty') && event.type.includes('missed')) {
     const isVig = event.type === 'penalty-missed';
     return grayCard(
