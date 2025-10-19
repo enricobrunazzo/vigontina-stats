@@ -181,6 +181,88 @@ export const useMatch = () => {
     [currentMatch, currentPeriod, guardProvaTecnica]
   );
 
+  /** NUOVA FUNZIONE: Aggiunge una parata */
+  const addSave = useCallback(
+    (team, playerNum, getCurrentMinute) => {
+      if (currentMatch === null || currentPeriod === null) return;
+      if (guardProvaTecnica("l'aggiunta della parata")) return;
+
+      const save = {
+        minute: getCurrentMinute(),
+        type: team === "vigontina" ? "save" : "opponent-save",
+        team: team,
+        player: playerNum,
+        playerName: playerNum ? PLAYERS.find((p) => p.num === playerNum)?.name : null,
+      };
+
+      setCurrentMatch((prev) => {
+        const updated = { ...prev };
+        updated.periods = [...prev.periods];
+        updated.periods[currentPeriod] = {
+          ...updated.periods[currentPeriod],
+          goals: [...updated.periods[currentPeriod].goals, save],
+        };
+        return updated;
+      });
+    },
+    [currentMatch, currentPeriod, guardProvaTecnica]
+  );
+
+  /** NUOVA FUNZIONE: Aggiunge un tiro fuori */
+  const addMissedShot = useCallback(
+    (team, playerNum, getCurrentMinute) => {
+      if (currentMatch === null || currentPeriod === null) return;
+      if (guardProvaTecnica("l'aggiunta del tiro fuori")) return;
+
+      const missedShot = {
+        minute: getCurrentMinute(),
+        type: team === "vigontina" ? "missed-shot" : "opponent-missed-shot",
+        team: team,
+        player: playerNum,
+        playerName: playerNum ? PLAYERS.find((p) => p.num === playerNum)?.name : null,
+      };
+
+      setCurrentMatch((prev) => {
+        const updated = { ...prev };
+        updated.periods = [...prev.periods];
+        updated.periods[currentPeriod] = {
+          ...updated.periods[currentPeriod],
+          goals: [...updated.periods[currentPeriod].goals, missedShot],
+        };
+        return updated;
+      });
+    },
+    [currentMatch, currentPeriod, guardProvaTecnica]
+  );
+
+  /** NUOVA FUNZIONE: Aggiunge palo/traversa */
+  const addPostCrossbar = useCallback(
+    (type, team, playerNum, getCurrentMinute) => {
+      if (currentMatch === null || currentPeriod === null) return;
+      if (guardProvaTecnica(`l'aggiunta del ${type}`)) return;
+
+      const postCrossbar = {
+        minute: getCurrentMinute(),
+        type: `${type}-${team}`, // "palo-vigontina", "palo-opponent", "traversa-vigontina", "traversa-opponent"
+        hitType: type, // "palo" o "traversa"
+        team: team,
+        player: playerNum,
+        playerName: playerNum ? PLAYERS.find((p) => p.num === playerNum)?.name : null,
+      };
+
+      setCurrentMatch((prev) => {
+        const updated = { ...prev };
+        updated.periods = [...prev.periods];
+        updated.periods[currentPeriod] = {
+          ...updated.periods[currentPeriod],
+          goals: [...updated.periods[currentPeriod].goals, postCrossbar],
+        };
+        return updated;
+      });
+    },
+    [currentMatch, currentPeriod, guardProvaTecnica]
+  );
+
   /** Aggiorna manualmente il punteggio */
 const updateScore = useCallback(
   (team, delta) => {
@@ -279,6 +361,9 @@ const updateScore = useCallback(
     addOwnGoal,
     addOpponentGoal,
     addPenalty,
+    addSave,        // NUOVO
+    addMissedShot,  // NUOVO
+    addPostCrossbar, // NUOVO
     updateScore,
 
     // Lineup operations
