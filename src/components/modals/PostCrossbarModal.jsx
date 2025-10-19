@@ -8,7 +8,7 @@ const PostCrossbarModal = ({ availablePlayers, opponentName, onConfirm, onCancel
 
   const handleConfirm = () => {
     if (selectedTeam === "vigontina" && !selectedPlayer) {
-      alert("Seleziona il giocatore che ha colpito il " + selectedType);
+      alert("Seleziona il giocatore che ha colpito");
       return;
     }
     onConfirm(selectedType, selectedTeam, selectedPlayer);
@@ -18,10 +18,10 @@ const PostCrossbarModal = ({ availablePlayers, opponentName, onConfirm, onCancel
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-[80vh] overflow-y-auto">
         <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-          🎥 Palo/Traversa
+          🧱 Palo/Traversa
         </h3>
 
-        {/* Selezione tipo: Palo o Traversa */}
+        {/* Selezione tipo: Palo o Traversa (icona uniforme 🧱) */}
         <div className="mb-4">
           <label className="block font-medium mb-2">Cosa è stato colpito?</label>
           <div className="grid grid-cols-2 gap-2 mb-4">
@@ -33,7 +33,7 @@ const PostCrossbarModal = ({ availablePlayers, opponentName, onConfirm, onCancel
                   : "bg-white border-gray-300"
               }`}
             >
-              🎥 Palo
+              🧱 Palo
             </button>
             <button
               onClick={() => setSelectedType("traversa")}
@@ -43,14 +43,14 @@ const PostCrossbarModal = ({ availablePlayers, opponentName, onConfirm, onCancel
                   : "bg-white border-gray-300"
               }`}
             >
-              ― Traversa
+              🧱 Traversa
             </button>
           </div>
         </div>
 
         {/* Selezione squadra */}
         <div className="mb-4">
-          <label className="block font-medium mb-2">Chi ha colpito il {selectedType}?</label>
+          <label className="block font-medium mb-2">Chi ha colpito?</label>
           <div className="grid grid-cols-2 gap-2 mb-4">
             <button
               onClick={() => {
