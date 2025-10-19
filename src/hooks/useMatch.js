@@ -263,6 +263,56 @@ export const useMatch = () => {
     [currentMatch, currentPeriod, guardProvaTecnica]
   );
 
+  /** NUOVA FUNZIONE: Elimina un evento */
+  const deleteEvent = useCallback(
+    (periodIndex, eventIndex, reason = null) => {
+      if (currentMatch === null || periodIndex === null) return;
+      
+      const period = currentMatch.periods[periodIndex];
+      if (!period || !period.goals || eventIndex >= period.goals.length) return;
+      
+      const event = period.goals[eventIndex];
+      if (!event) return;
+      
+      // Verifica se l'evento influisce sul punteggio
+      const isGoalEvent = event.type?.includes('goal') || event.type?.includes('penalty');
+      
+      setCurrentMatch((prev) => {
+        const updated = { ...prev };
+        updated.periods = [...prev.periods];
+        const updatedPeriod = { ...updated.periods[periodIndex] };
+        
+        // Rimuovi l'evento dalla lista
+        updatedPeriod.goals = updatedPeriod.goals.filter((_, idx) => idx !== eventIndex);
+        
+        // Aggiorna il punteggio se necessario
+        if (isGoalEvent && !event.type.includes('missed')) {
+          // Determina quale squadra aveva segnato per decrementare il punteggio corretto
+          if (event.type === 'goal' || event.type === 'penalty-goal' || event.type === 'opponent-own-goal') {
+            // Era un gol per la Vigontina
+            updatedPeriod.vigontina = Math.max(0, updatedPeriod.vigontina - 1);
+          } else if (event.type === 'opponent-goal' || event.type === 'penalty-opponent-goal' || event.type === 'own-goal') {
+            // Era un gol per l'avversario
+            updatedPeriod.opponent = Math.max(0, updatedPeriod.opponent - 1);
+          }
+        }
+        
+        updated.periods[periodIndex] = updatedPeriod;
+        return updated;
+      });
+      
+      // Mostra conferma con motivazione se fornita
+      if (reason && isGoalEvent) {
+        setTimeout(() => {
+          if (typeof window !== "undefined" && window?.alert) {
+            window.alert(`Evento eliminato: ${reason}`);
+          }
+        }, 100);
+      }
+    },
+    [currentMatch]
+  );
+
   /** Aggiorna manualmente il punteggio */
 const updateScore = useCallback(
   (team, delta) => {
@@ -364,6 +414,7 @@ const updateScore = useCallback(
     addSave,        // NUOVO
     addMissedShot,  // NUOVO
     addPostCrossbar, // NUOVO
+    deleteEvent,    // NUOVO
     updateScore,
 
     // Lineup operations
