@@ -263,7 +263,7 @@ export const useMatch = () => {
     [currentMatch, currentPeriod, guardProvaTecnica]
   );
 
-  /** NUOVA FUNZIONE: Elimina un evento */
+  /** NUOVA FUNZIONE: Elimina un evento - AGGIORNATA per mantenere l'evento ma marcarlo come eliminato */
   const deleteEvent = useCallback(
     (periodIndex, eventIndex, reason = null) => {
       if (currentMatch === null || periodIndex === null) return;
@@ -275,18 +275,23 @@ export const useMatch = () => {
       if (!event) return;
       
       // Verifica se l'evento influisce sul punteggio
-      const isGoalEvent = event.type?.includes('goal') || event.type?.includes('penalty');
+      const isGoalEvent = event.type?.includes('goal') || (event.type?.includes('penalty') && !event.type?.includes('missed'));
       
       setCurrentMatch((prev) => {
         const updated = { ...prev };
         updated.periods = [...prev.periods];
         const updatedPeriod = { ...updated.periods[periodIndex] };
         
-        // Rimuovi l'evento dalla lista
-        updatedPeriod.goals = updatedPeriod.goals.filter((_, idx) => idx !== eventIndex);
+        // Marca l'evento come eliminato invece di rimuoverlo
+        updatedPeriod.goals = [...updatedPeriod.goals];
+        updatedPeriod.goals[eventIndex] = {
+          ...event,
+          deletionReason: reason || "Evento eliminato",
+          deleted: true
+        };
         
-        // Aggiorna il punteggio se necessario
-        if (isGoalEvent && !event.type.includes('missed')) {
+        // Aggiorna il punteggio se necessario (solo se non era già eliminato)
+        if (isGoalEvent && !event.deleted) {
           // Determina quale squadra aveva segnato per decrementare il punteggio corretto
           if (event.type === 'goal' || event.type === 'penalty-goal' || event.type === 'opponent-own-goal') {
             // Era un gol per la Vigontina
@@ -300,15 +305,6 @@ export const useMatch = () => {
         updated.periods[periodIndex] = updatedPeriod;
         return updated;
       });
-      
-      // Mostra conferma con motivazione se fornita
-      if (reason && isGoalEvent) {
-        setTimeout(() => {
-          if (typeof window !== "undefined" && window?.alert) {
-            window.alert(`Evento eliminato: ${reason}`);
-          }
-        }, 100);
-      }
     },
     [currentMatch]
   );
@@ -414,7 +410,7 @@ const updateScore = useCallback(
     addSave,        // NUOVO
     addMissedShot,  // NUOVO
     addPostCrossbar, // NUOVO
-    deleteEvent,    // NUOVO
+    deleteEvent,    // AGGIORNATO
     updateScore,
 
     // Lineup operations
