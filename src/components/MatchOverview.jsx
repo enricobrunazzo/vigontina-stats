@@ -31,31 +31,15 @@ const MatchOverview = ({
         </button>
 
         <div className="bg-white rounded-lg shadow-lg p-6">
-          {/* Header con titolo e bottoni export discreti */}
+          {/* Header con titolo */}
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-2xl font-bold">
               Vigontina vs {match.opponent}
             </h2>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={onExportExcel}
-                className="text-xs px-2 py-1 rounded bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 flex items-center gap-1"
-                title="Esporta Excel"
-              >
-                <Download className="w-3 h-3" /> Excel
-              </button>
-              <button
-                onClick={onExportPDF}
-                className="text-xs px-2 py-1 rounded bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 flex items-center gap-1"
-                title="Esporta PDF"
-              >
-                <Download className="w-3 h-3" /> PDF
-              </button>
-            </div>
           </div>
 
           {isTimerRunning && (
-            <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse inline-flex items-center gap-1 mb-2">
+            <span className="bg-red-400 text-white text-xs px-2 py-1 rounded-full animate-pulse inline-flex items-center gap-1 mb-2">
               <span className="w-2 h-2 bg-white rounded-full"></span>
               LIVE
             </span>
@@ -117,7 +101,7 @@ const MatchOverview = ({
                     !isViewer && (
                       <button
                         onClick={() => onStartPeriod(idx)}
-                        className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
+                        className="bg-blue-400 text-white px-3 py-1 rounded hover:bg-blue-500 text-sm"
                       >
                         {period.name === "PROVA TECNICA" ? "Inizia" : "Gioca"}
                       </button>
@@ -125,7 +109,7 @@ const MatchOverview = ({
                   ) : (
                     <button
                       onClick={() => onViewPeriod(idx)}
-                      className="bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600 flex items-center gap-1 text-sm"
+                      className="bg-purple-400 text-white px-3 py-1 rounded hover:bg-purple-500 flex items-center gap-1 text-sm"
                     >
                       <FileText className="w-3 h-3" />
                       Dettagli
@@ -145,7 +129,7 @@ const MatchOverview = ({
                 <p className="text-xs text-blue-800 mb-3">Compila il rapporto gara ufficiale da inviare alla Delegazione Provinciale di Padova</p>
                 <button
                   onClick={onFIGCReport}
-                  className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 text-sm font-medium"
+                  className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2 text-sm font-medium"
                 >
                   <ClipboardCheck className="w-4 h-4" />
                   Compila Rapporto FIGC
@@ -157,19 +141,37 @@ const MatchOverview = ({
           {/* Azione unica sotto Dettagli */}
           <button
             onClick={onSummary}
-            className="w-full bg-purple-500 text-white py-2 rounded hover:bg-purple-600 flex items-center justify-center gap-2 text-sm"
+            className="w-full bg-purple-400 text-white py-2 rounded hover:bg-purple-500 flex items-center justify-center gap-2 text-sm mb-3"
           >
             <FileText className="w-4 h-4" />
             Riepilogo
           </button>
 
+          {/* PULSANTI EXCEL E PDF SPOSTATI PRIMA DI SALVA PARTITA */}
           {!isViewer && (
-            <button
-              onClick={onSave}
-              className="w-full mt-2 bg-blue-500 text-white py-2 rounded hover:bg-blue-600 font-medium flex items-center justify-center gap-2 text-sm"
-            >
-              Salva Partita
-            </button>
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={onExportExcel}
+                  className="bg-green-400 text-white py-2 rounded hover:bg-green-500 flex items-center justify-center gap-2 text-sm"
+                >
+                  <Download className="w-4 h-4" /> Excel
+                </button>
+                <button
+                  onClick={onExportPDF}
+                  className="bg-red-400 text-white py-2 rounded hover:bg-red-500 flex items-center justify-center gap-2 text-sm"
+                >
+                  <Download className="w-4 h-4" /> PDF
+                </button>
+              </div>
+              
+              <button
+                onClick={onSave}
+                className="w-full bg-blue-400 text-white py-2 rounded hover:bg-blue-500 font-medium flex items-center justify-center gap-2 text-sm"
+              >
+                Salva Partita
+              </button>
+            </div>
           )}
 
           {isViewer && (
