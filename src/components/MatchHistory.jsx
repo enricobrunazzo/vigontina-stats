@@ -27,16 +27,15 @@ const MatchHistory = ({
           <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
             <h2 className="text-2xl font-bold">Storico Partite</h2>
             
-            {/* PULSANTE EXPORT STORICO */}
+            {/* PULSANTE EXPORT STORICO - reso discreto ma con colore acceso */}
             {matches.length > 0 && (
               <button
                 onClick={onExportHistory}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2 text-sm font-medium shadow-md transition-all hover:shadow-lg"
+                className="text-xs px-3 py-1 rounded bg-green-500 text-white border border-green-500 hover:bg-green-600 flex items-center gap-1 shadow-sm"
                 title="Esporta tutto lo storico in Excel"
               >
-                <FileSpreadsheet className="w-4 h-4" />
-                <span className="hidden sm:inline">Esporta Storico</span>
-                <span className="sm:hidden">Storico</span>
+                <FileSpreadsheet className="w-3 h-3" />
+                Esporta Storico
               </button>
             )}
           </div>
@@ -129,7 +128,7 @@ const MatchCard = ({
       </button>
 
       <div className="pr-8">
-        {/* Titolo e bottoni export discreti inline */}
+        {/* Titolo e bottoni export con colore acceso */}
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold text-base">
             Vigontina vs {match.opponent}
@@ -137,14 +136,14 @@ const MatchCard = ({
           <div className="flex items-center gap-2">
             <button
               onClick={onExportExcel}
-              className="text-[11px] px-2 py-1 rounded bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 flex items-center gap-1"
+              className="text-[11px] px-2 py-1 rounded bg-green-500 text-white border border-green-600 hover:bg-green-600 flex items-center gap-1 shadow-sm"
               title="Esporta Excel"
             >
               <Download className="w-3 h-3" /> Excel
             </button>
             <button
               onClick={onExportPDF}
-              className="text-[11px] px-2 py-1 rounded bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 flex items-center gap-1"
+              className="text-[11px] px-2 py-1 rounded bg-red-500 text-white border border-red-600 hover:bg-red-600 flex items-center gap-1 shadow-sm"
               title="Esporta PDF"
             >
               <Download className="w-3 h-3" /> PDF
@@ -175,7 +174,7 @@ const MatchCard = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 gap-2">
         <button
           onClick={onViewStats}
           className="bg-blue-500 text-white py-2 rounded hover:bg-blue-600 flex items-center justify-center gap-2 text-xs font-medium"
@@ -183,19 +182,6 @@ const MatchCard = ({
           <FileText className="w-3 h-3" />
           Dettagli
         </button>
-        {/* I bottoni Excel/PDF sono stati spostati in alto accanto al titolo e resi discreti */}
-        <button
-          onClick={onExportExcel}
-          className="hidden"
-          aria-hidden="true"
-          tabIndex={-1}
-        />
-        <button
-          onClick={onExportPDF}
-          className="hidden"
-          aria-hidden="true"
-          tabIndex={-1}
-        />
       </div>
     </div>
   );
