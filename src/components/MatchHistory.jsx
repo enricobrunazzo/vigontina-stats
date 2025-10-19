@@ -178,6 +178,7 @@ const MatchCard = ({
         <button
           onClick={onViewStats}
           className="bg-blue-500 text-white py-2 rounded hover:bg-blue-600 flex items-center justify-center gap-2 text-xs font-medium"
+          title="Apri riepilogo partita"
         >
           <FileText className="w-3 h-3" />
           Dettagli
