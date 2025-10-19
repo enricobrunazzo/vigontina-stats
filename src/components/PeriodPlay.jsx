@@ -9,6 +9,7 @@ import LineupModal from "./modals/LineupModal";
 import SaveModal from "./modals/SaveModal";
 import MissedShotModal from "./modals/MissedShotModal";
 import PostCrossbarModal from "./modals/PostCrossbarModal";
+import ShotBlockedModal from "./modals/ShotBlockedModal";
 import DeleteEventModal from "./modals/DeleteEventModal";
 
 const PeriodPlay = ({
@@ -22,6 +23,7 @@ const PeriodPlay = ({
   onAddSave,
   onAddMissedShot,
   onAddPostCrossbar,
+  onAddShotBlocked, // NUOVO handler per tiri parati
   onUpdateScore,
   onDeleteEvent,
   onFinish,
@@ -47,6 +49,8 @@ const PeriodPlay = ({
   const [showDeleteEventDialog, setShowDeleteEventDialog] = useState(false);
   // NUOVO: Modal per selezione tiro
   const [showShotSelectionDialog, setShowShotSelectionDialog] = useState(false);
+  // NUOVO: Modal per tiro parato
+  const [showShotBlockedDialog, setShowShotBlockedDialog] = useState(false);
 
   // Manual score mode
   const [manualScoreMode, setManualScoreMode] = useState(false);
@@ -101,6 +105,12 @@ const PeriodPlay = ({
     setShowPostCrossbarDialog(false);
   };
 
+  // NUOVO: Handler per tiro parato
+  const handleAddShotBlocked = (team, playerNum) => {
+    onAddShotBlocked?.(team, playerNum);
+    setShowShotBlockedDialog(false);
+  };
+
   const handleDeleteEvent = (eventIndex, reason) => {
     onDeleteEvent?.(periodIndex, eventIndex, reason);
     setShowDeleteEventDialog(false);
@@ -116,13 +126,13 @@ const PeriodPlay = ({
     setShowShotSelectionDialog(true);
   };
 
-  // NUOVO: Handler per selezione esito tiro
+  // AGGIORNATO: Handler per selezione esito tiro con opzione "parato"
   const handleShotOutcome = (outcome) => {
     setShowShotSelectionDialog(false);
     if (outcome === 'fuori') {
       setShowMissedShotDialog(true);
     } else if (outcome === 'parato') {
-      setShowSaveDialog(true);
+      setShowShotBlockedDialog(true);
     }
   };
 
@@ -192,6 +202,16 @@ const PeriodPlay = ({
           />
         )}
 
+        {/* NUOVO MODAL per tiro parato */}
+        {!isViewer && showShotBlockedDialog && (
+          <ShotBlockedModal
+            availablePlayers={availablePlayers}
+            opponentName={match.opponent}
+            onConfirm={handleAddShotBlocked}
+            onCancel={() => setShowShotBlockedDialog(false)}
+          />
+        )}
+
         {/* MODAL PER ELIMINAZIONE EVENTI */}
         {!isViewer && showDeleteEventDialog && (
           <DeleteEventModal
@@ -202,7 +222,7 @@ const PeriodPlay = ({
           />
         )}
 
-        {/* NUOVO MODAL PER SELEZIONE ESITO TIRO */}
+        {/* AGGIORNATO: MODAL PER SELEZIONE ESITO TIRO con opzione "Parato" */}
         {!isViewer && showShotSelectionDialog && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-md">
@@ -216,7 +236,7 @@ const PeriodPlay = ({
                 </button>
                 <button
                   onClick={() => handleShotOutcome('parato')}
-                  className="w-full bg-gray-500 text-white p-3 rounded hover:bg-gray-600 font-medium"
+                  className="w-full bg-orange-500 text-white p-3 rounded hover:bg-orange-600 font-medium"
                 >
                   🧤 Parato
                 </button>
@@ -462,7 +482,7 @@ const PeriodPlay = ({
   );
 };
 
-// Event Card Component - AGGIORNATO per mostrare eventi eliminati barrati
+// Event Card Component - AGGIORNATO per mostrare eventi eliminati barrati e TIRI PARATI
 const EventCard = ({ event, opponentName }) => {
   const isDeleted = event.deletionReason;
   const baseClasses = isDeleted ? "opacity-60" : "";
@@ -553,6 +573,22 @@ const EventCard = ({ event, opponentName }) => {
     return (
       <div className="bg-gray-50 p-3 rounded border border-gray-200">
         <p className="font-medium text-gray-800">🎯 {event.minute}' - Tiro fuori {opponentName}</p>
+      </div>
+    );
+  }
+  
+  // NUOVI EVENTI: Tiro Parato (NUOVO TIPO DI EVENTO)
+  if (event.type === "shot-blocked") {
+    return (
+      <div className="bg-orange-100 p-3 rounded border border-orange-300">
+        <p className="font-medium text-orange-900">🧤 {event.minute}' - {event.player} {event.playerName} tiro parato</p>
+      </div>
+    );
+  }
+  if (event.type === "opponent-shot-blocked") {
+    return (
+      <div className="bg-orange-100 p-3 rounded border border-orange-300">
+        <p className="font-medium text-orange-900">🧤 {event.minute}' - {opponentName} tiro parato</p>
       </div>
     );
   }
