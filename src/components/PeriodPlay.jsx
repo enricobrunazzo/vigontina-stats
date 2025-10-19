@@ -1,6 +1,6 @@
 // components/PeriodPlay.jsx (riorganizzato con nuove azioni salienti)
 import React, { useState, useEffect, useMemo } from "react";
-import { ArrowLeft, Play, Pause, Plus, Minus } from "lucide-react";
+import { ArrowLeft, Play, Pause, Plus, Minus, Flag } from "lucide-react";
 import { PLAYERS } from "../constants/players";
 import GoalModal from "./modals/GoalModal";
 import OwnGoalModal from "./modals/OwnGoalModal";
@@ -103,7 +103,7 @@ const PeriodPlay = ({
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
       <div className="max-w-2xl mx-auto space-y-4">
-        {/* Modals */}
+        {/* Modals: invariati */}
         {!isViewer && showGoalDialog && (
           <GoalModal availablePlayers={availablePlayers} onConfirm={handleAddGoal} onCancel={() => setShowGoalDialog(false)} />
         )}
@@ -163,7 +163,7 @@ const PeriodPlay = ({
               </div>
               {!isViewer && (
                 <div className="flex gap-2">
-                  <button onClick={timer.isTimerRunning ? timer.pauseTimer : timer.startTimer} className="flex-1 bg-blue-400 text-white py-2 rounded hover:bg-blue-500 flex items-center justify-center gap-2 text-sm">
+                  <button onClick={timer.isTimerRunning ? timer.pauseTimer : timer.startTimer} className="flex-1 bg-blue-500 text-white py-2 rounded hover:bg-blue-600 flex items-center justify-center gap-2 text-sm">
                     {timer.isTimerRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                     {timer.isTimerRunning ? "Pausa" : "Avvia"}
                   </button>
@@ -183,33 +183,48 @@ const PeriodPlay = ({
             </div>
           </div>
 
+          {/* pulsanti azioni: colori leggermente aumentati */}
           {!isViewer && (
             <div className="space-y-4 mb-6">
               {isProvaTecnica ? (
                 <>
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3"><p className="text-sm text-blue-800 text-center"><strong>Prova Tecnica:</strong> Inserisci i punti manualmente. Al termine, la squadra vincente guadagna 1 punto nel punteggio finale.</p></div>
                   <div className="space-y-3">
-                    <div className="flex gap-2 items-center"><button onClick={() => onUpdateScore("vigontina", -1)} className="bg-red-400 text-white p-2 rounded hover:bg-red-500"><Minus className="w-4 h-4" /></button><div className="flex-1 text-center bg-gray-100 py-2 rounded text-sm"><span className="font-medium">Punti Vigontina</span></div><button onClick={() => onUpdateScore("vigontina", 1)} className="bg-green-400 text-white p-2 rounded hover:bg-green-500"><Plus className="w-4 h-4" /></button></div>
-                    <div className="flex gap-2 items-center"><button onClick={() => onUpdateScore("opponent", -1)} className="bg-red-400 text-white p-2 rounded hover:bg-red-500"><Minus className="w-4 h-4" /></button><div className="flex-1 text-center bg-gray-100 py-2 rounded text-sm"><span className="font-medium">Punti {match.opponent}</span></div><button onClick={() => onUpdateScore("opponent", 1)} className="bg-green-400 text-white p-2 rounded hover:bg-green-500"><Plus className="w-4 h-4" /></button></div>
+                    <div className="flex gap-2 items-center"><button onClick={() => onUpdateScore("vigontina", -1)} className="bg-red-500 text-white p-2 rounded hover:bg-red-600"><Minus className="w-4 h-4" /></button><div className="flex-1 text-center bg-gray-100 py-2 rounded text-sm"><span className="font-medium">Punti Vigontina</span></div><button onClick={() => onUpdateScore("vigontina", 1)} className="bg-green-500 text-white p-2 rounded hover:bg-green-600"><Plus className="w-4 h-4" /></button></div>
+                    <div className="flex gap-2 items-center"><button onClick={() => onUpdateScore("opponent", -1)} className="bg-red-500 text-white p-2 rounded hover:bg-red-600"><Minus className="w-4 h-4" /></button><div className="flex-1 text-center bg-gray-100 py-2 rounded text-sm"><span className="font-medium">Punti {match.opponent}</span></div><button onClick={() => onUpdateScore("opponent", 1)} className="bg-green-500 text-white p-2 rounded hover:bg-green-600"><Plus className="w-4 h-4" /></button></div>
                   </div>
                 </>
               ) : manualScoreMode ? (
                 <div className="space-y-3">
-                  <div className="flex gap-2 items-center"><button onClick={() => onUpdateScore("vigontina", -1)} className="bg-red-400 text-white p-2 rounded hover:bg-red-500"><Minus className="w-4 h-4" /></button><div className="flex-1 text-center bg-gray-100 py-2 rounded text-sm"><span className="font-medium">Gol Vigontina</span></div><button onClick={() => onUpdateScore("vigontina", 1)} className="bg-green-400 text-white p-2 rounded hover:bg-green-500"><Plus className="w-4 h-4" /></button></div>
-                  <div className="flex gap-2 items-center"><button onClick={() => onUpdateScore("opponent", -1)} className="bg-red-400 text-white p-2 rounded hover:bg-red-500"><Minus className="w-4 h-4" /></button><div className="flex-1 text-center bg-gray-100 py-2 rounded text-sm"><span className="font-medium">Gol {match.opponent}</span></div><button onClick={() => onUpdateScore("opponent", 1)} className="bg-green-400 text-white p-2 rounded hover:bg-green-500"><Plus className="w-4 h-4" /></button></div>
+                  <div className="flex gap-2 items-center"><button onClick={() => onUpdateScore("vigontina", -1)} className="bg-red-500 text-white p-2 rounded hover:bg-red-600"><Minus className="w-4 h-4" /></button><div className="flex-1 text-center bg-gray-100 py-2 rounded text-sm"><span className="font-medium">Gol Vigontina</span></div><button onClick={() => onUpdateScore("vigontina", 1)} className="bg-green-500 text-white p-2 rounded hover:bg-green-600"><Plus className="w-4 h-4" /></button></div>
+                  <div className="flex gap-2 items_center"><button onClick={() => onUpdateScore("opponent", -1)} className="bg-red-500 text-white p-2 rounded hover:bg-red-600"><Minus className="w-4 h-4" /></button><div className="flex-1 text-center bg-gray-100 py-2 rounded text-sm"><span className="font-medium">Gol {match.opponent}</span></div><button onClick={() => onUpdateScore("opponent", 1)} className="bg-green-500 text-white p-2 rounded hover:bg-green-600"><Plus className="w-4 h-4" /></button></div>
                   <p className="text-xs text-gray-500 text-center">Nota: le modifiche manuali aggiornano il punteggio del tempo ma non creano eventi Gol.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3"><button onClick={() => setShowGoalDialog(true)} className="bg-green-400 text-white py-2 px-3 rounded hover:bg-green-500 font-medium text-sm flex items-center justify-center gap-2">⚽ Gol Vigontina</button><button onClick={onAddOpponentGoal} className="bg-blue-400 text-white py-2 px-3 rounded hover:bg-blue-500 font-medium text-sm flex items-center justify-center gap-2">⚽ Gol {match.opponent}</button></div>
-                  <div className="grid grid-cols-2 gap-3"><button onClick={() => setShowOwnGoalDialog(true)} className="bg-red-400 text-white py-2 px-3 rounded hover:bg-red-500 font-medium text-sm flex items-center justify-center gap-2"><span className="bg-red-600 rounded-full w-4 h-4 flex items-center justify_center text-xs">⚽</span>Autogol</button><button onClick={() => setShowPenaltyDialog(true)} className="bg-purple-400 text-white py-2 px-3 rounded hover:bg-purple-500 font-medium text-sm flex items-center justify-center gap-2">🎯 Rigore</button></div>
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3"><p className="text-sm font-semibold text-yellow-800 text-center mb-3">Azioni Salienti</p><div className="grid grid-cols-2 gap-2"><button onClick={handleShotClick} className="bg-gray-500 text-white py-2 px-2 rounded hover:bg-gray-600 font-medium text-xs flex items-center justify-center gap-1">🎯 Tiro</button><button onClick={() => setShowSaveDialog(true)} className="bg-gray-500 text-white py-2 px-2 rounded hover:bg-gray-600 font-medium text-xs flex items-center justify-center gap-1">🧤 Parata</button><button onClick={() => setShowPostCrossbarDialog(true)} className="bg-gray-500 text-white py-2 px-2 rounded hover:bg-gray-600 font-medium text-xs flex items-center justify-center gap-1">🧱 Palo/Traversa</button><button onClick={() => setShowDeleteEventDialog(true)} className="bg-red-500 text-white py-2 px-2 rounded hover:bg-red-600 font-medium text-xs flex items-center justify-center gap-1" disabled={(period.goals || []).length === 0}>🗑️ Elimina Evento</button></div></div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button onClick={() => setShowGoalDialog(true)} className="bg-green-500 text-white py-2 px-3 rounded hover:bg-green-600 font-medium text-sm flex items-center justify-center gap-2">⚽ Gol Vigontina</button>
+                    <button onClick={onAddOpponentGoal} className="bg-blue-500 text-white py-2 px-3 rounded hover:bg-blue-600 font-medium text-sm flex items-center justify-center gap-2">⚽ Gol {match.opponent}</button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button onClick={() => setShowOwnGoalDialog(true)} className="bg-red-500 text-white py-2 px-3 rounded hover:bg-red-600 font-medium text-sm flex items-center justify-center gap-2"><span className="bg-red-700 rounded-full w-4 h-4 flex items-center justify-center text-xs">⚽</span>Autogol</button>
+                    <button onClick={() => setShowPenaltyDialog(true)} className="bg-purple-500 text-white py-2 px-3 rounded hover:bg-purple-600 font-medium text-sm flex items-center justify-center gap-2">🎯 Rigore</button>
+                  </div>
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <p className="text-sm font-semibold text-yellow-800 text-center mb-3">Azioni Salienti</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button onClick={handleShotClick} className="bg-gray-600 text-white py-2 px-2 rounded hover:bg-gray-700 font-medium text-xs flex items-center justify-center gap-1">🎯 Tiro</button>
+                      <button onClick={() => setShowSaveDialog(true)} className="bg_gray-600 text-white py-2 px-2 rounded hover:bg-gray-700 font-medium text-xs flex items-center justify-center gap-1">🧤 Parata</button>
+                      <button onClick={() => setShowPostCrossbarDialog(true)} className="bg-gray-600 text-white py-2 px-2 rounded hover:bg-gray-700 font-medium text-xs flex items_center justify-center gap-1">🧱 Palo/Traversa</button>
+                      <button onClick={() => setShowDeleteEventDialog(true)} className="bg-red-600 text-white py-2 px-2 rounded hover:bg-red-700 font-medium text-xs flex items-center justify-center gap-1" disabled={(period.goals || []).length === 0}>🗑️ Elimina Evento</button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
           )}
 
-          {/* Eventi per colonne senza intestazioni */}
+          {/* colonne eventi */}
           {!isProvaTecnica && (organizedEvents.vigontina.length > 0 || organizedEvents.opponent.length > 0) && (
             <div className="mb-6 grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -225,10 +240,19 @@ const PeriodPlay = ({
             </div>
           )}
 
-          <div>
-            {!isViewer && (<button onClick={onFinish} className="w_full bg-blue-400 text-white py-2 rounded hover:bg-blue-500 font-medium text-sm">{isEditing ? "Salva Modifiche" : `Termina ${periodTitle}`}</button>)}
-            {isViewer && (<div className="text-center text-sm text-gray-600">Modalità condivisa: sola lettura</div>)}
-          </div>
+          {/* CTA Termina Tempo: grande, unico, allineato e colore acceso */}
+          {!isViewer && (
+            <div className="mt-4">
+              <button
+                onClick={onFinish}
+                className="w-full py-4 rounded-lg font-semibold text-white text-base shadow-sm transition focus:outline-none focus:ring-4 focus:ring-blue-300 bg-blue-600 hover:bg-blue-700 flex items-center justify-center gap-2"
+                title={isEditing ? "Salva Modifiche" : `Termina ${periodTitle}`}
+              >
+                <Flag className="w-5 h-5" /> {isEditing ? "Salva Modifiche" : `Termina ${periodTitle}`}
+              </button>
+            </div>
+          )}
+          {isViewer && (<div className="text-center text-sm text-gray-600">Modalità condivisa: sola lettura</div>)}
         </div>
       </div>
     </div>
@@ -239,12 +263,9 @@ const TeamEventCard = ({ event, team, opponentName }) => {
   const isDeleted = event.deletionReason;
   const baseClasses = isDeleted ? "opacity-60" : "";
   const textClasses = isDeleted ? "line-through" : "";
-
-  // uniforma i colori: tiro fuori, tiro parato, parata, palo/traversa = grigi
   const grayCard = (children) => (
     <div className={`bg-gray-50 p-2 rounded border border-gray-200 text-xs ${baseClasses}`}>{children}</div>
   );
-
   if (event.type === "goal" || event.type === "penalty-goal") {
     return (
       <div className={`bg-green-50 p-2 rounded border border-green-200 text-xs ${baseClasses}`}>
