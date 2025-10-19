@@ -45,6 +45,8 @@ const PeriodPlay = ({
   const [showMissedShotDialog, setShowMissedShotDialog] = useState(false);
   const [showPostCrossbarDialog, setShowPostCrossbarDialog] = useState(false);
   const [showDeleteEventDialog, setShowDeleteEventDialog] = useState(false);
+  // NUOVO: Modal per selezione tiro
+  const [showShotSelectionDialog, setShowShotSelectionDialog] = useState(false);
 
   // Manual score mode
   const [manualScoreMode, setManualScoreMode] = useState(false);
@@ -107,6 +109,21 @@ const PeriodPlay = ({
   const handleSetLineup = (lineupNums) => {
     onSetLineup?.(periodIndex, lineupNums);
     setShowLineupDialog(false);
+  };
+
+  // NUOVO: Handler per apertura selezione tiro
+  const handleShotClick = () => {
+    setShowShotSelectionDialog(true);
+  };
+
+  // NUOVO: Handler per selezione esito tiro
+  const handleShotOutcome = (outcome) => {
+    setShowShotSelectionDialog(false);
+    if (outcome === 'fuori') {
+      setShowMissedShotDialog(true);
+    } else if (outcome === 'parato') {
+      setShowSaveDialog(true);
+    }
   };
 
   return (
@@ -183,6 +200,35 @@ const PeriodPlay = ({
             onConfirm={handleDeleteEvent}
             onCancel={() => setShowDeleteEventDialog(false)}
           />
+        )}
+
+        {/* NUOVO MODAL PER SELEZIONE ESITO TIRO */}
+        {!isViewer && showShotSelectionDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h3 className="text-lg font-semibold mb-4 text-center">Esito del Tiro</h3>
+              <div className="space-y-3">
+                <button
+                  onClick={() => handleShotOutcome('fuori')}
+                  className="w-full bg-gray-500 text-white p-3 rounded hover:bg-gray-600 font-medium"
+                >
+                  ❌ Fuori
+                </button>
+                <button
+                  onClick={() => handleShotOutcome('parato')}
+                  className="w-full bg-gray-500 text-white p-3 rounded hover:bg-gray-600 font-medium"
+                >
+                  🧤 Parato
+                </button>
+                <button
+                  onClick={() => setShowShotSelectionDialog(false)}
+                  className="w-full bg-gray-300 text-gray-700 p-3 rounded hover:bg-gray-400"
+                >
+                  Annulla
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         <button
@@ -276,7 +322,7 @@ const PeriodPlay = ({
             </div>
           </div>
 
-          {/* Action Buttons - COLORI PIÙ TENUI */}
+          {/* Action Buttons - COLORI UNIFORMATI */}
           {!isViewer && (
             <div className="space-y-4 mb-6">
               {isProvaTecnica ? (
@@ -314,7 +360,7 @@ const PeriodPlay = ({
                   <p className="text-xs text-gray-500 text-center">Nota: le modifiche manuali aggiornano il punteggio del tempo ma non creano eventi Gol.</p>
                 </div>
               ) : (
-                // COLORI PIÙ TENUI PER TUTTI I PULSANTI
+                // COLORI UNIFORMATI PER TUTTI I PULSANTI AZIONI SALIENTI
                 <div className="space-y-3">
                   {/* Riga 1: Gol Vigontina + Gol Avversario */}
                   <div className="grid grid-cols-2 gap-3">
@@ -351,25 +397,25 @@ const PeriodPlay = ({
                     </button>
                   </div>
 
-                  {/* AZIONI SALIENTI CON COLORI PIÙ TENUI */}
+                  {/* AZIONI SALIENTI CON COLORI UNIFORMATI GRIGIO */}
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                     <p className="text-sm font-semibold text-yellow-800 text-center mb-3">Azioni Salienti</p>
                     <div className="grid grid-cols-2 gap-2">
                       <button 
+                        onClick={handleShotClick}
+                        className="bg-gray-500 text-white py-2 px-2 rounded hover:bg-gray-600 font-medium text-xs flex items-center justify-center gap-1"
+                      >
+                        🎯 Tiro
+                      </button>
+                      <button 
                         onClick={() => setShowSaveDialog(true)} 
-                        className="bg-orange-400 text-white py-2 px-2 rounded hover:bg-orange-500 font-medium text-xs flex items-center justify-center gap-1"
+                        className="bg-gray-500 text-white py-2 px-2 rounded hover:bg-gray-600 font-medium text-xs flex items-center justify-center gap-1"
                       >
                         🧤 Parata
                       </button>
                       <button 
-                        onClick={() => setShowMissedShotDialog(true)} 
-                        className="bg-gray-400 text-white py-2 px-2 rounded hover:bg-gray-500 font-medium text-xs flex items-center justify-center gap-1"
-                      >
-                        🎯 Tiro Fuori
-                      </button>
-                      <button 
                         onClick={() => setShowPostCrossbarDialog(true)} 
-                        className="bg-yellow-500 text-white py-2 px-2 rounded hover:bg-yellow-600 font-medium text-xs flex items-center justify-center gap-1"
+                        className="bg-gray-500 text-white py-2 px-2 rounded hover:bg-gray-600 font-medium text-xs flex items-center justify-center gap-1"
                       >
                         🧱 Palo/Traversa
                       </button>
