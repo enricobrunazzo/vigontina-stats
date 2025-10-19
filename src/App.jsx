@@ -142,6 +142,14 @@ const VigontinaStats = () => {
     [match, timer]
   );
 
+  // NUOVO: Handler per tiri parati
+  const handleAddShotBlocked = useCallback(
+    (team, playerNum) => {
+      match.addShotBlocked(team, playerNum, timer.getCurrentMinute);
+    },
+    [match, timer]
+  );
+
   const handleAddPostCrossbar = useCallback(
     (type, team, playerNum) => {
       match.addPostCrossbar(type, team, playerNum, timer.getCurrentMinute);
@@ -211,6 +219,7 @@ const VigontinaStats = () => {
         onAddPenalty={handleAddPenalty}
         onAddSave={handleAddSave}            // NUOVO
         onAddMissedShot={handleAddMissedShot} // NUOVO
+        onAddShotBlocked={handleAddShotBlocked} // NUOVO
         onAddPostCrossbar={handleAddPostCrossbar} // NUOVO
         onDeleteEvent={handleDeleteEvent}    // NUOVO
         onUpdateScore={match.updateScore}
@@ -233,6 +242,7 @@ const VigontinaStats = () => {
         onAddPenalty={handleAddPenalty}
         onAddSave={handleAddSave}            // NUOVO
         onAddMissedShot={handleAddMissedShot} // NUOVO
+        onAddShotBlocked={handleAddShotBlocked} // NUOVO
         onAddPostCrossbar={handleAddPostCrossbar} // NUOVO
         onDeleteEvent={handleDeleteEvent}    // NUOVO
         onUpdateScore={match.updateScore}
