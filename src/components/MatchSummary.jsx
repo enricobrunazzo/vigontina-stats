@@ -4,6 +4,10 @@ import { ArrowLeft, Download, FileText } from "lucide-react";
 import { PLAYERS } from "../constants/players";
 import { calculateMatchStats, getMatchResult } from "../utils/matchUtils";
 
+const Badge = ({ children, color='indigo' }) => (
+  <span className={`ml-2 text-[10px] leading-3 px-1.5 py-0.5 rounded border font-semibold align-middle inline-block bg-${color}-50 border-${color}-200 text-${color}-700`}>{children}</span>
+);
+
 const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport }) => {
   const stats = useMemo(() => calculateMatchStats(match), [match]);
   const result = useMemo(() => getMatchResult(match), [match]);
@@ -45,7 +49,7 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
             <div className="text-center mb-4">
               <p className={`text-3xl font-black mb-2 ${result.resultColor}`}>{result.resultText}</p>
               <div className="flex items-center justify-center gap-8 mb-3">
-                <div className="text-center"><p className="text-sm text-gray-600 mb-1">Vigontina San Paolo</p><p className="text-5xl font-bold text-gray-900">{stats.vigontinaPoints}</p></div>
+                <div className="text-center"><p className="text-sm text_gray-600 mb-1">Vigontina San Paolo</p><p className="text-5xl font-bold text-gray-900">{stats.vigontinaPoints}</p></div>
                 <span className="text-3xl text-gray-400">-</span>
                 <div className="text-center"><p className="text-sm text-gray-600 mb-1">{match.opponent}</p><p className="text-5xl font-bold text-gray-900">{stats.opponentPoints}</p></div>
               </div>
@@ -66,40 +70,7 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
           </div>
 
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {Object.keys(stats.scorers).length > 0 && (
-                <div>
-                  <h3 className="font-semibold mb-2 text-sm">⚽ Marcatori</h3>
-                  <div className="space-y-1">
-                    {Object.entries(stats.scorers).sort((a,b)=>b[1]-a[1]).map(([num,count])=>{
-                      const player = PLAYERS.find((p)=>p.num===parseInt(num));
-                      return (<div key={num} className="bg-gray-50 p-2 rounded flex justify-between items-center text-sm"><span>{num} {player?.name}</span><span className="font-bold">{count}⚽</span></div>);
-                    })}
-                  </div>
-                </div>
-              )}
-              {Object.keys(stats.assisters).length > 0 && (
-                <div>
-                  <h3 className="font-semibold mb-2 text-sm">🎯 Assist</h3>
-                  <div className="space-y-1">
-                    {Object.entries(stats.assisters).sort((a,b)=>b[1]-a[1]).map(([num,count])=>{
-                      const player = PLAYERS.find((p)=>p.num===parseInt(num));
-                      return (<div key={num} className="bg-gray-50 p-2 rounded flex justify-between items-center text-sm"><span>{num} {player?.name}</span><span className="font-bold">{count}🎯</span></div>);
-                    })}
-                  </div>
-                </div>
-              )}
-              {(stats.ownGoalsCount>0 || stats.penaltiesScored>0 || stats.penaltiesMissed>0) && (
-                <div>
-                  <h3 className="font-semibold mb-2 text-sm">📄 Altri Eventi</h3>
-                  <div className="space-y-1">
-                    {stats.ownGoalsCount>0 && (<div className="bg-red-50 p-2 rounded flex justify-between items-center text-sm border border-red-200"><span className="text-red-800">Autogol</span><span className="font-bold text-red-800">{stats.ownGoalsCount}</span></div>)}
-                    {stats.penaltiesScored>0 && (<div className="bg-green-50 p-2 rounded flex justify-between items-center text-sm border border-green-200"><span className="text-green-800">Rigori segnati</span><span className="font-bold text-green-800">{stats.penaltiesScored}</span></div>)}
-                    {stats.penaltiesMissed>0 && (<div className="bg-orange-50 p-2 rounded flex justify-between items-center text-sm border border-orange-200"><span className="text-orange-800">Rigori falliti</span><span className="font-bold text-orange-800">{stats.penaltiesMissed}</span></div>)}
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* statistiche */}
 
             {organizedEventsByPeriod.length>0 && (
               <div>
@@ -115,14 +86,14 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
                       </div>
                       <div className="grid grid-cols-2 gap-4 p-4">
                         <div className="space-y-2">
-                          {p.vigontina.length>0 ? p.vigontina.map((event)=>(
+                          {p.vigontina.length>0 ? p.vigontina.map((event)=> (
                             <SummaryEventCard key={event.originalIndex} event={event} team="vigontina" opponentName={match.opponent} />
                           )) : (<div className="text-xs text-gray-400 text-center py-2 bg-gray-50 rounded">Nessun evento</div>)}
                         </div>
                         <div className="space-y-2">
-                          {p.opponent.length>0 ? p.opponent.map((event)=>(
+                          {p.opponent.length>0 ? p.opponent.map((event)=> (
                             <SummaryEventCard key={event.originalIndex} event={event} team="opponent" opponentName={match.opponent} />
-                          )) : (<div className="text-xs text-gray-400 text-center py-2 bg_gray-50 rounded">Nessun evento</div>)}
+                          )) : (<div className="text-xs text-gray-400 text-center py-2 bg-gray-50 rounded">Nessun evento</div>)}
                         </div>
                       </div>
                     </div>
@@ -155,18 +126,26 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
   );
 
   if (event.type === "goal" || event.type === "penalty-goal") {
+    const isRig = event.type === 'penalty-goal';
     return (
       <div className={`bg-green-50 border border-green-200 text-green-800 p-2 rounded border text-xs ${baseClasses}`}>
-        <p className={`font-medium ${textClasses}`}>⚽ {minute}' - {event.scorer} {event.scorerName}</p>
+        <p className={`font-medium ${textClasses}`}>
+          ⚽ {minute}' - {event.scorer} {event.scorerName}
+          {isRig && <Badge color="purple">RIG.</Badge>}
+        </p>
         {event.assist && (<p className={`text-xs ${textClasses}`}>Assist: {event.assist} {event.assistName}</p>)}
         {isDeleted && (<p className="text-xs text-red-600 italic mt-1">⚠️ {event.deletionReason}</p>)}
       </div>
     );
   }
   if (event.type === "opponent-goal" || event.type === "penalty-opponent-goal") {
+    const isRig = event.type === 'penalty-opponent-goal';
     return (
       <div className={`bg-blue-50 border border-blue-200 text-blue-800 p-2 rounded border text-xs ${baseClasses}`}>
-        <p className={`font-medium ${textClasses}`}>⚽ {minute}' - {event.type.includes('penalty')? 'Rigore' : 'Gol'} {opponentName}</p>
+        <p className={`font-medium ${textClasses}`}>
+          ⚽ {minute}' - {event.type.includes('penalty')? 'Rigore' : 'Gol'} {opponentName}
+          {isRig && <Badge color="purple">RIG.</Badge>}
+        </p>
         {isDeleted && (<p className="text-xs text-red-600 italic mt-1">⚠️ {event.deletionReason}</p>)}
       </div>
     );
@@ -177,7 +156,12 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
   }
   if (event.type.includes('penalty') && event.type.includes('missed')) {
     const who = event.type === 'penalty-missed' ? 'Vigontina' : opponentName;
-    return grayCard(<p className="font-medium">❌ {minute}' - Rigore fallito {who}</p>);
+    return grayCard(
+      <p className="font-medium">
+        ❌ {minute}' - Rigore fallito {who}
+        <Badge color="purple">RIG.</Badge>
+      </p>
+    );
   }
   if (event.type === "save" || event.type === "opponent-save") {
     const isVig = event.type === 'save';
