@@ -218,6 +218,33 @@ export const useMatch = () => {
     [currentMatch, currentPeriod, guardProvaTecnica]
   );
 
+  // NUOVO: Handler per tiri parati
+  const addShotBlocked = useCallback(
+    (team, playerNum, getCurrentMinute) => {
+      if (currentMatch === null || currentPeriod === null) return;
+      if (guardProvaTecnica("l'aggiunta del tiro parato")) return;
+
+      const shotBlocked = {
+        minute: getCurrentMinute(),
+        type: team === "vigontina" ? "shot-blocked" : "opponent-shot-blocked",
+        team: team,
+        player: playerNum,
+        playerName: playerNum ? PLAYERS.find((p) => p.num === playerNum)?.name : null,
+      };
+
+      setCurrentMatch((prev) => {
+        const updated = { ...prev };
+        updated.periods = [...prev.periods];
+        updated.periods[currentPeriod] = {
+          ...updated.periods[currentPeriod],
+          goals: [...updated.periods[currentPeriod].goals, shotBlocked],
+        };
+        return updated;
+      });
+    },
+    [currentMatch, currentPeriod, guardProvaTecnica]
+  );
+
   const addPostCrossbar = useCallback(
     (type, team, playerNum, getCurrentMinute) => {
       if (currentMatch === null || currentPeriod === null) return;
@@ -364,6 +391,7 @@ export const useMatch = () => {
     addPenalty,
     addSave,
     addMissedShot,
+    addShotBlocked, // NUOVO
     addPostCrossbar,
     deleteEvent,
     updateScore,
