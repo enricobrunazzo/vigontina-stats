@@ -7,12 +7,16 @@ const DeleteEventModal = ({ events, onConfirm, onCancel, opponentName }) => {
   const [reason, setReason] = useState("");
   const [showReasonInput, setShowReasonInput] = useState(false);
 
+  // Filtra solo gli eventi NON già eliminati
+  const availableEvents = events.filter(event => !event.deleted && !event.deletionReason);
+
   const handleEventSelect = (eventIndex) => {
     setSelectedEventIndex(eventIndex);
-    const event = events[eventIndex];
+    const actualIndex = parseInt(eventIndex);
+    const event = events[actualIndex];
     
     // Se è un gol, mostra il campo per la motivazione
-    const isGoalEvent = event?.type?.includes('goal') || event?.type?.includes('penalty');
+    const isGoalEvent = event?.type?.includes('goal') || (event?.type?.includes('penalty') && !event?.type?.includes('missed'));
     setShowReasonInput(isGoalEvent);
     
     if (!isGoalEvent) {
@@ -23,8 +27,9 @@ const DeleteEventModal = ({ events, onConfirm, onCancel, opponentName }) => {
   const handleConfirm = () => {
     if (selectedEventIndex === "") return;
     
-    const event = events[selectedEventIndex];
-    const isGoalEvent = event?.type?.includes('goal') || event?.type?.includes('penalty');
+    const actualIndex = parseInt(selectedEventIndex);
+    const event = events[actualIndex];
+    const isGoalEvent = event?.type?.includes('goal') || (event?.type?.includes('penalty') && !event?.type?.includes('missed'));
     
     // Per i gol, la motivazione è obbligatoria
     if (isGoalEvent && !reason.trim()) {
@@ -32,7 +37,7 @@ const DeleteEventModal = ({ events, onConfirm, onCancel, opponentName }) => {
       return;
     }
     
-    onConfirm(parseInt(selectedEventIndex), reason.trim() || null);
+    onConfirm(actualIndex, reason.trim() || null);
   };
 
   const getEventDisplay = (event, index) => {
@@ -92,8 +97,8 @@ const DeleteEventModal = ({ events, onConfirm, onCancel, opponentName }) => {
         </div>
 
         <div className="p-4 space-y-4">
-          {events.length === 0 ? (
-            <p className="text-gray-500 text-center py-4">Nessun evento da eliminare</p>
+          {availableEvents.length === 0 ? (
+            <p className="text-gray-500 text-center py-4">Nessun evento disponibile da eliminare</p>
           ) : (
             <>
               <div>
@@ -106,11 +111,16 @@ const DeleteEventModal = ({ events, onConfirm, onCancel, opponentName }) => {
                   className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">-- Seleziona un evento --</option>
-                  {events.map((event, index) => (
-                    <option key={index} value={index}>
-                      {getEventDisplay(event, index)}
-                    </option>
-                  ))}
+                  {events.map((event, index) => {
+                    // Mostra solo eventi non eliminati
+                    if (event.deleted || event.deletionReason) return null;
+                    
+                    return (
+                      <option key={index} value={index}>
+                        {getEventDisplay(event, index)}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
