@@ -129,15 +129,27 @@ const MatchCard = ({
       </button>
 
       <div className="pr-8">
+        {/* Titolo e bottoni export discreti inline */}
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold text-base">
             Vigontina vs {match.opponent}
           </h3>
-          <span
-            className={`text-xs font-bold px-2 py-1 rounded ${resultColor} bg-opacity-20`}
-          >
-            {resultText}
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onExportExcel}
+              className="text-[11px] px-2 py-1 rounded bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 flex items-center gap-1"
+              title="Esporta Excel"
+            >
+              <Download className="w-3 h-3" /> Excel
+            </button>
+            <button
+              onClick={onExportPDF}
+              className="text-[11px] px-2 py-1 rounded bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 flex items-center gap-1"
+              title="Esporta PDF"
+            >
+              <Download className="w-3 h-3" /> PDF
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center justify-between mb-3">
@@ -171,20 +183,19 @@ const MatchCard = ({
           <FileText className="w-3 h-3" />
           Dettagli
         </button>
+        {/* I bottoni Excel/PDF sono stati spostati in alto accanto al titolo e resi discreti */}
         <button
           onClick={onExportExcel}
-          className="bg-green-500 text-white py-2 rounded hover:bg-green-600 flex items-center justify-center gap-2 text-xs font-medium"
-        >
-          <Download className="w-3 h-3" />
-          Excel
-        </button>
+          className="hidden"
+          aria-hidden="true"
+          tabIndex={-1}
+        />
         <button
           onClick={onExportPDF}
-          className="bg-red-500 text-white py-2 rounded hover:bg-red-600 flex items-center justify-center gap-2 text-xs font-medium"
-        >
-          <Download className="w-3 h-3" />
-          PDF
-        </button>
+          className="hidden"
+          aria-hidden="true"
+          tabIndex={-1}
+        />
       </div>
     </div>
   );
