@@ -149,6 +149,14 @@ const VigontinaStats = () => {
     [match, timer]
   );
 
+  // NUOVO HANDLER per eliminazione eventi
+  const handleDeleteEvent = useCallback(
+    (periodIndex, eventIndex, reason) => {
+      match.deleteEvent(periodIndex, eventIndex, reason);
+    },
+    [match]
+  );
+
   // Render routes
   if (page === "home") {
     return (
@@ -204,6 +212,7 @@ const VigontinaStats = () => {
         onAddSave={handleAddSave}            // NUOVO
         onAddMissedShot={handleAddMissedShot} // NUOVO
         onAddPostCrossbar={handleAddPostCrossbar} // NUOVO
+        onDeleteEvent={handleDeleteEvent}    // NUOVO
         onUpdateScore={match.updateScore}
         onFinish={handleFinishPeriod}
         onSetLineup={match.setLineup}
@@ -225,6 +234,7 @@ const VigontinaStats = () => {
         onAddSave={handleAddSave}            // NUOVO
         onAddMissedShot={handleAddMissedShot} // NUOVO
         onAddPostCrossbar={handleAddPostCrossbar} // NUOVO
+        onDeleteEvent={handleDeleteEvent}    // NUOVO
         onUpdateScore={match.updateScore}
         onFinish={handleFinishPeriod}
         isEditing={true}
