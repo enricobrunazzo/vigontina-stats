@@ -31,17 +31,35 @@ const MatchOverview = ({
         </button>
 
         <div className="bg-white rounded-lg shadow-lg p-6">
+          {/* Header con titolo e bottoni export discreti */}
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-2xl font-bold">
               Vigontina vs {match.opponent}
             </h2>
-            {isTimerRunning && (
-              <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse flex items-center gap-1">
-                <span className="w-2 h-2 bg-white rounded-full"></span>
-                LIVE
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onExportExcel}
+                className="text-xs px-2 py-1 rounded bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 flex items-center gap-1"
+                title="Esporta Excel"
+              >
+                <Download className="w-3 h-3" /> Excel
+              </button>
+              <button
+                onClick={onExportPDF}
+                className="text-xs px-2 py-1 rounded bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 flex items-center gap-1"
+                title="Esporta PDF"
+              >
+                <Download className="w-3 h-3" /> PDF
+              </button>
+            </div>
           </div>
+
+          {isTimerRunning && (
+            <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse inline-flex items-center gap-1 mb-2">
+              <span className="w-2 h-2 bg-white rounded-full"></span>
+              LIVE
+            </span>
+          )}
           
           <p className="text-sm text-gray-600 mb-2">
             {match.isHome ? "🏠 Casa" : "✈️ Trasferta"}
@@ -118,17 +136,13 @@ const MatchOverview = ({
             ))}
           </div>
 
-          {/* Rapporto FIGC - sempre accessibile */}
+          {/* Rapporto FIGC */}
           <div className="mb-6 bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
               <ClipboardCheck className="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" />
               <div className="flex-1">
-                <h3 className="font-semibold text-blue-900 mb-1">
-                  Rapporto Gara FIGC
-                </h3>
-                <p className="text-xs text-blue-800 mb-3">
-                  Compila il rapporto gara ufficiale da inviare alla Delegazione Provinciale di Padova
-                </p>
+                <h3 className="font-semibold text-blue-900 mb-1">Rapporto Gara FIGC</h3>
+                <p className="text-xs text-blue-800 mb-3">Compila il rapporto gara ufficiale da inviare alla Delegazione Provinciale di Padova</p>
                 <button
                   onClick={onFIGCReport}
                   className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 text-sm font-medium"
@@ -140,30 +154,13 @@ const MatchOverview = ({
             </div>
           </div>
 
-          {/* Azioni */}
-          <div className="grid grid-cols-2 gap-2 mb-2">
-            <button
-              onClick={onSummary}
-              className="bg-purple-500 text-white py-2 rounded hover:bg-purple-600 flex items-center justify-center gap-2 text-sm"
-            >
-              <FileText className="w-4 h-4" />
-              Riepilogo
-            </button>
-            <button
-              onClick={onExportExcel}
-              className="bg-green-500 text-white py-2 rounded hover:bg-green-600 flex items-center justify-center gap-2 text-sm"
-            >
-              <Download className="w-4 h-4" />
-              Excel
-            </button>
-          </div>
-          
+          {/* Azione unica sotto Dettagli */}
           <button
-            onClick={onExportPDF}
-            className="w-full bg-red-500 text-white py-2 rounded hover:bg-red-600 flex items-center justify-center gap-2 text-sm"
+            onClick={onSummary}
+            className="w-full bg-purple-500 text-white py-2 rounded hover:bg-purple-600 flex items-center justify-center gap-2 text-sm"
           >
-            <Download className="w-4 h-4" />
-            PDF
+            <FileText className="w-4 h-4" />
+            Riepilogo
           </button>
 
           {!isViewer && (
