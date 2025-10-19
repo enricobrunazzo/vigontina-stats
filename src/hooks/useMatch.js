@@ -3,49 +3,39 @@ import { useState, useCallback } from "react";
 import { PLAYERS } from "../constants/players";
 import { createMatchStructure } from "../utils/matchUtils";
 
-/**
- * Hook personalizzato per gestire lo stato e le operazioni della partita corrente
- */
 export const useMatch = () => {
   const [currentMatch, setCurrentMatch] = useState(null);
   const [currentPeriod, setCurrentPeriod] = useState(null);
 
-  /** Crea una nuova partita */
   const createMatch = useCallback((matchData) => {
     const newMatch = createMatchStructure(matchData);
     setCurrentMatch(newMatch);
     return newMatch;
   }, []);
 
-  /** Resetta la partita corrente */
   const resetMatch = useCallback(() => {
     setCurrentMatch(null);
     setCurrentPeriod(null);
   }, []);
 
-  /** Imposta il periodo corrente */
   const setPeriod = useCallback((periodIndex) => {
     setCurrentPeriod(periodIndex);
   }, []);
 
-  /** Resetta il periodo corrente */
   const resetPeriod = useCallback(() => {
     setCurrentPeriod(null);
   }, []);
 
-  /** Ritorna i dati del periodo corrente */
   const getCurrentPeriodData = useCallback(() => {
     if (!currentMatch || currentPeriod === null) return null;
     return currentMatch.periods[currentPeriod];
   }, [currentMatch, currentPeriod]);
 
-  /** Verifica se il periodo corrente è la Prova Tecnica */
   const isProvaTecnica = useCallback(() => {
     const period = getCurrentPeriodData();
     return period?.name === "PROVA TECNICA";
   }, [getCurrentPeriodData]);
 
-  /** Helper: blocca azioni in Prova Tecnica, mostra avviso e restituisce true se interrompere */
   const guardProvaTecnica = useCallback(
     (actionLabel = "questa azione") => {
       if (isProvaTecnica()) {
@@ -63,7 +53,6 @@ export const useMatch = () => {
     [isProvaTecnica]
   );
 
-  /** Aggiunge un gol */
   const addGoal = useCallback(
     (scorerNum, assistNum, getCurrentMinute) => {
       if (currentMatch === null || currentPeriod === null) return;
@@ -92,7 +81,6 @@ export const useMatch = () => {
     [currentMatch, currentPeriod, guardProvaTecnica]
   );
 
-  /** Aggiunge un autogol - NUOVO: accetta parametro squadra */
   const addOwnGoal = useCallback(
     (team, getCurrentMinute) => {
       if (currentMatch === null || currentPeriod === null) return;
@@ -110,7 +98,6 @@ export const useMatch = () => {
         updated.periods[currentPeriod] = {
           ...updated.periods[currentPeriod],
           goals: [...updated.periods[currentPeriod].goals, ownGoal],
-          // Autogol: il gol va alla squadra avversaria
           vigontina: team === 'opponent' ? updated.periods[currentPeriod].vigontina + 1 : updated.periods[currentPeriod].vigontina,
           opponent: team === 'vigontina' ? updated.periods[currentPeriod].opponent + 1 : updated.periods[currentPeriod].opponent,
         };
@@ -120,7 +107,6 @@ export const useMatch = () => {
     [currentMatch, currentPeriod, guardProvaTecnica]
   );
 
-  /** Aggiunge un gol dell'avversario */
   const addOpponentGoal = useCallback(
     (getCurrentMinute) => {
       if (currentMatch === null || currentPeriod === null) return;
@@ -145,7 +131,6 @@ export const useMatch = () => {
     [currentMatch, currentPeriod, guardProvaTecnica]
   );
 
-  /** Aggiunge un rigore */
   const addPenalty = useCallback(
     (team, scored, scorerNum, getCurrentMinute) => {
       if (currentMatch === null || currentPeriod === null) return;
@@ -181,7 +166,6 @@ export const useMatch = () => {
     [currentMatch, currentPeriod, guardProvaTecnica]
   );
 
-  /** NUOVA FUNZIONE: Aggiunge una parata */
   const addSave = useCallback(
     (team, playerNum, getCurrentMinute) => {
       if (currentMatch === null || currentPeriod === null) return;
@@ -208,7 +192,6 @@ export const useMatch = () => {
     [currentMatch, currentPeriod, guardProvaTecnica]
   );
 
-  /** NUOVA FUNZIONE: Aggiunge un tiro fuori */
   const addMissedShot = useCallback(
     (team, playerNum, getCurrentMinute) => {
       if (currentMatch === null || currentPeriod === null) return;
@@ -235,7 +218,6 @@ export const useMatch = () => {
     [currentMatch, currentPeriod, guardProvaTecnica]
   );
 
-  /** NUOVA FUNZIONE: Aggiunge palo/traversa */
   const addPostCrossbar = useCallback(
     (type, team, playerNum, getCurrentMinute) => {
       if (currentMatch === null || currentPeriod === null) return;
@@ -243,8 +225,8 @@ export const useMatch = () => {
 
       const postCrossbar = {
         minute: getCurrentMinute(),
-        type: `${type}-${team}`, // "palo-vigontina", "palo-opponent", "traversa-vigontina", "traversa-opponent"
-        hitType: type, // "palo" o "traversa"
+        type: `${type}-${team}`,
+        hitType: type,
         team: team,
         player: playerNum,
         playerName: playerNum ? PLAYERS.find((p) => p.num === playerNum)?.name : null,
@@ -263,75 +245,64 @@ export const useMatch = () => {
     [currentMatch, currentPeriod, guardProvaTecnica]
   );
 
-  /** NUOVA FUNZIONE: Elimina un evento - AGGIORNATA per mantenere l'evento ma marcarlo come eliminato */
+  // Elimina evento: SOLO i gol annullati restano visibili con barratura; gli altri eventi vengono rimossi
   const deleteEvent = useCallback(
     (periodIndex, eventIndex, reason = null) => {
       if (currentMatch === null || periodIndex === null) return;
-      
       const period = currentMatch.periods[periodIndex];
       if (!period || !period.goals || eventIndex >= period.goals.length) return;
-      
       const event = period.goals[eventIndex];
       if (!event) return;
-      
-      // Verifica se l'evento influisce sul punteggio
-      const isGoalEvent = event.type?.includes('goal') || (event.type?.includes('penalty') && !event.type?.includes('missed'));
-      
+
+      const isScoringEvent = event.type === 'goal' || event.type === 'penalty-goal' || event.type === 'opponent-own-goal' || event.type === 'opponent-goal' || event.type === 'penalty-opponent-goal' || event.type === 'own-goal';
+      const isGoalForVigontina = event.type === 'goal' || event.type === 'penalty-goal' || event.type === 'opponent-own-goal';
+      const isGoalForOpponent = event.type === 'opponent-goal' || event.type === 'penalty-opponent-goal' || event.type === 'own-goal';
+
       setCurrentMatch((prev) => {
         const updated = { ...prev };
         updated.periods = [...prev.periods];
-        const updatedPeriod = { ...updated.periods[periodIndex] };
-        
-        // Marca l'evento come eliminato invece di rimuoverlo
-        updatedPeriod.goals = [...updatedPeriod.goals];
-        updatedPeriod.goals[eventIndex] = {
-          ...event,
-          deletionReason: reason || "Evento eliminato",
-          deleted: true
-        };
-        
-        // Aggiorna il punteggio se necessario (solo se non era già eliminato)
-        if (isGoalEvent && !event.deleted) {
-          // Determina quale squadra aveva segnato per decrementare il punteggio corretto
-          if (event.type === 'goal' || event.type === 'penalty-goal' || event.type === 'opponent-own-goal') {
-            // Era un gol per la Vigontina
-            updatedPeriod.vigontina = Math.max(0, updatedPeriod.vigontina - 1);
-          } else if (event.type === 'opponent-goal' || event.type === 'penalty-opponent-goal' || event.type === 'own-goal') {
-            // Era un gol per l'avversario
-            updatedPeriod.opponent = Math.max(0, updatedPeriod.opponent - 1);
-          }
+        const updPeriod = { ...updated.periods[periodIndex] };
+
+        if (isScoringEvent) {
+          // 1) Scala il punteggio
+          if (isGoalForVigontina) updPeriod.vigontina = Math.max(0, updPeriod.vigontina - 1);
+          if (isGoalForOpponent) updPeriod.opponent = Math.max(0, updPeriod.opponent - 1);
+
+          // 2) Mantieni l'evento ma segnalo annullato
+          updPeriod.goals = [...updPeriod.goals];
+          updPeriod.goals[eventIndex] = {
+            ...event,
+            deletionReason: reason || "Annullato",
+            deleted: true,
+          };
+        } else {
+          // Eventi non-di-rete: rimuovi dalla lista
+          updPeriod.goals = updPeriod.goals.filter((_, idx) => idx !== eventIndex);
         }
-        
-        updated.periods[periodIndex] = updatedPeriod;
+
+        updated.periods[periodIndex] = updPeriod;
         return updated;
       });
     },
     [currentMatch]
   );
 
-  /** Aggiorna manualmente il punteggio */
-const updateScore = useCallback(
-  (team, delta) => {
-    if (currentMatch === null || currentPeriod === null) return;
-    // ✅ RIMOSSO guardProvaTecnica - updateScore DEVE funzionare nella PT!
+  const updateScore = useCallback(
+    (team, delta) => {
+      if (currentMatch === null || currentPeriod === null) return;
+      setCurrentMatch((prev) => {
+        const updated = { ...prev };
+        updated.periods = [...prev.periods];
+        const period = { ...updated.periods[currentPeriod] };
+        if (team === "vigontina") period.vigontina = Math.max(0, period.vigontina + delta);
+        else period.opponent = Math.max(0, period.opponent + delta);
+        updated.periods[currentPeriod] = period;
+        return updated;
+      });
+    },
+    [currentMatch, currentPeriod]
+  );
 
-    setCurrentMatch((prev) => {
-      const updated = { ...prev };
-      updated.periods = [...prev.periods];
-      const period = { ...updated.periods[currentPeriod] };
-      if (team === "vigontina") {
-        period.vigontina = Math.max(0, period.vigontina + delta);
-      } else {
-        period.opponent = Math.max(0, period.opponent + delta);
-      }
-      updated.periods[currentPeriod] = period;
-      return updated;
-    });
-  },
-  [currentMatch, currentPeriod] // ✅ Rimosso guardProvaTecnica dalla dependency
-);
-
-  /** Imposta la formazione per un periodo */
   const setLineup = useCallback((periodIndex, lineupNums) => {
     setCurrentMatch((prev) => {
       const updated = { ...prev };
@@ -344,37 +315,28 @@ const updateScore = useCallback(
     });
   }, []);
 
-  /** Completa un periodo */
   const completePeriod = useCallback(() => {
     if (currentMatch === null || currentPeriod === null) return false;
-
     const period = currentMatch.periods[currentPeriod];
     const isPT = period.name === "PROVA TECNICA";
     const confirmMessage = isPT
       ? "Confermi di voler terminare la Prova Tecnica?"
       : "Confermi di voler terminare questo tempo? Il timer verrà azzerato.";
-
     if (!window.confirm(confirmMessage)) return false;
-
     setCurrentMatch((prev) => {
       const updated = { ...prev };
       updated.periods = [...prev.periods];
-      updated.periods[currentPeriod] = {
-        ...updated.periods[currentPeriod],
-        completed: true,
-      };
+      updated.periods[currentPeriod] = { ...updated.periods[currentPeriod], completed: true };
       return updated;
     });
     return true;
   }, [currentMatch, currentPeriod]);
 
-  /** Ottiene i giocatori disponibili (non convocati esclusi) */
   const getAvailablePlayers = useCallback(() => {
     if (!currentMatch) return PLAYERS;
     return PLAYERS.filter((p) => !currentMatch.notCalled?.includes(p.num));
   }, [currentMatch]);
 
-  /** Titolo del periodo corrente */
   const getCurrentPeriodTitle = useCallback(() => {
     const period = getCurrentPeriodData();
     if (!period) return "";
@@ -385,38 +347,27 @@ const updateScore = useCallback(
   }, [getCurrentPeriodData]);
 
   return {
-    // State
     currentMatch,
     currentPeriod,
-
-    // Match operations
     createMatch,
     resetMatch,
     setCurrentMatch,
-
-    // Period operations
     setPeriod,
     resetPeriod,
     completePeriod,
     getCurrentPeriodData,
     getCurrentPeriodTitle,
     isProvaTecnica,
-
-    // Event operations
     addGoal,
     addOwnGoal,
     addOpponentGoal,
     addPenalty,
-    addSave,        // NUOVO
-    addMissedShot,  // NUOVO
-    addPostCrossbar, // NUOVO
-    deleteEvent,    // AGGIORNATO
+    addSave,
+    addMissedShot,
+    addPostCrossbar,
+    deleteEvent,
     updateScore,
-
-    // Lineup operations
     setLineup,
-
-    // Helpers
     getAvailablePlayers,
   };
 };
