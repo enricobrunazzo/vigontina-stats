@@ -353,7 +353,7 @@ const PeriodPlay = ({
                         onClick={() => setShowPostCrossbarDialog(true)} 
                         className="bg-yellow-600 text-white py-2 px-2 rounded hover:bg-yellow-700 font-medium text-xs flex items-center justify-center gap-1"
                       >
-                        🎥 Palo/Traversa
+                        🧱 Palo/Traversa
                       </button>
                     </div>
                   </div>
@@ -473,7 +473,7 @@ const EventCard = ({ event, opponentName }) => {
   // NUOVI EVENTI: Palo/Traversa
   if (event.type?.includes('palo-') || event.type?.includes('traversa-')) {
     const isVigontina = event.team === 'vigontina';
-    const hitTypeDisplay = event.hitType === 'palo' ? '🎥 Palo' : '— Traversa';
+    const hitTypeDisplay = event.hitType === 'palo' ? '🧱 Palo' : '⎯ Traversa';
     return (
       <div className="bg-yellow-50 p-3 rounded border border-yellow-200">
         <p className="font-medium text-yellow-800">
