@@ -8,6 +8,76 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
   const stats = useMemo(() => calculateMatchStats(match), [match]);
   const result = useMemo(() => getMatchResult(match), [match]);
 
+  // NUOVO: Organizza eventi per squadra
+  const organizedEventsByPeriod = useMemo(() => {
+    if (!match.periods) return [];
+    
+    return match.periods.map((period, periodIdx) => {
+      const events = period.goals || [];
+      const vigontinaEvents = [];
+      const opponentEvents = [];
+
+      events.forEach((event, idx) => {
+        const eventWithIndex = { ...event, originalIndex: idx };
+        
+        // Determina a quale squadra appartiene l'evento
+        switch (event.type) {
+          // Eventi Vigontina
+          case 'goal':
+          case 'penalty-goal':
+          case 'penalty-missed':
+          case 'save':
+          case 'missed-shot':
+          case 'shot-blocked':
+            vigontinaEvents.push(eventWithIndex);
+            break;
+          case 'opponent-own-goal': // Autogol avversario = evento positivo per Vigontina
+            vigontinaEvents.push(eventWithIndex);
+            break;
+          case 'palo-vigontina':
+          case 'traversa-vigontina':
+            vigontinaEvents.push(eventWithIndex);
+            break;
+          
+          // Eventi Avversario
+          case 'opponent-goal':
+          case 'penalty-opponent-goal':
+          case 'penalty-opponent-missed':
+          case 'opponent-save':
+          case 'opponent-missed-shot':
+          case 'opponent-shot-blocked':
+            opponentEvents.push(eventWithIndex);
+            break;
+          case 'own-goal': // Autogol Vigontina = evento positivo per l'avversario
+            opponentEvents.push(eventWithIndex);
+            break;
+          case 'palo-opponent':
+          case 'traversa-opponent':
+            opponentEvents.push(eventWithIndex);
+            break;
+          
+          // Default case per eventi con formato hitType
+          default:
+            if (event.type?.includes('palo-') || event.type?.includes('traversa-')) {
+              if (event.team === 'vigontina') {
+                vigontinaEvents.push(eventWithIndex);
+              } else {
+                opponentEvents.push(eventWithIndex);
+              }
+            }
+            break;
+        }
+      });
+
+      return {
+        period,
+        periodIdx,
+        vigontina: vigontinaEvents.sort((a, b) => (a.minute || 0) - (b.minute || 0)),
+        opponent: opponentEvents.sort((a, b) => (a.minute || 0) - (b.minute || 0))
+      };
+    }).filter(p => p.vigontina.length > 0 || p.opponent.length > 0 || p.period.vigontina > 0 || p.period.opponent > 0);
+  }, [match.periods]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
       <div className="max-w-4xl mx-auto">
@@ -130,7 +200,7 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
                 stats.penaltiesScored > 0 ||
                 stats.penaltiesMissed > 0) && (
                 <div>
-                  <h3 className="font-semibold mb-2 text-sm">📊 Altri Eventi</h3>
+                  <h3 className="font-semibold mb-2 text-sm">📄 Altri Eventi</h3>
                   <div className="space-y-1">
                     {stats.ownGoalsCount > 0 && (
                       <div className="bg-red-50 p-2 rounded flex justify-between items-center text-sm border border-red-200">
@@ -161,30 +231,20 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
               )}
             </div>
 
-            {/* Match Timeline: INCLUDI TUTTI GLI EVENTI */}
-            {match.periods && match.periods.length > 0 && (
+            {/* AGGIORNATO: Match Timeline con eventi organizzati per squadra */}
+            {organizedEventsByPeriod.length > 0 && (
               <div>
                 <h3 className="font-semibold mb-4 text-lg">
-                  📋 Cronologia Partita (tutti gli eventi)
+                  📋 Cronologia Partita per Squadra
                 </h3>
                 <div className="space-y-6">
-                  {match.periods.map((period, periodIdx) => {
-                    const periodEvents = period.goals ?? [];
-                    if (
-                      periodEvents.length === 0 &&
-                      period.vigontina === 0 &&
-                      period.opponent === 0
-                    )
-                      return null;
-
-                    return (
-                      <FullPeriodTimeline
-                        key={periodIdx}
-                        period={period}
-                        opponentName={match.opponent}
-                      />
-                    );
-                  })}
+                  {organizedEventsByPeriod.map((periodData) => (
+                    <TeamOrganizedPeriodTimeline
+                      key={periodData.periodIdx}
+                      periodData={periodData}
+                      opponentName={match.opponent}
+                    />
+                  ))}
                 </div>
               </div>
             )}
@@ -254,9 +314,10 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
   );
 };
 
-// Full Period Timeline: include tutti i tipi di evento con stile coerente
-const FullPeriodTimeline = ({ period, opponentName }) => {
-  const events = period.goals || [];
+// NUOVO: Timeline organizzata per squadra
+const TeamOrganizedPeriodTimeline = ({ periodData, opponentName }) => {
+  const { period, vigontina, opponent } = periodData;
+  
   return (
     <div className="border rounded-lg overflow-hidden">
       <div className="bg-gradient-to-r from-slate-100 to-slate-50 p-3 border-b">
@@ -270,91 +331,156 @@ const FullPeriodTimeline = ({ period, opponentName }) => {
         </div>
       </div>
 
-      {events.length > 0 ? (
-        <div className="divide-y">
-          {events.map((event, idx) => (
-            <FullEventRow key={idx} event={event} opponentName={opponentName} />
-          ))}
+      <div className="grid grid-cols-2 gap-4 p-4">
+        {/* Colonna Vigontina */}
+        <div>
+          <h5 className="text-sm font-semibold text-green-700 mb-2 text-center bg-green-50 py-1 rounded">
+            Vigontina San Paolo
+          </h5>
+          <div className="space-y-2">
+            {vigontina.length > 0 ? (
+              vigontina.map((event) => (
+                <SummaryEventCard key={event.originalIndex} event={event} team="vigontina" opponentName={opponentName} />
+              ))
+            ) : (
+              <div className="text-xs text-gray-400 text-center py-2 bg-gray-50 rounded">Nessun evento</div>
+            )}
+          </div>
         </div>
-      ) : (
-        <div className="p-4 text-center text-sm text-gray-500">Nessun evento registrato</div>
-      )}
+        
+        {/* Colonna Avversario */}
+        <div>
+          <h5 className="text-sm font-semibold text-blue-700 mb-2 text-center bg-blue-50 py-1 rounded">
+            {opponentName}
+          </h5>
+          <div className="space-y-2">
+            {opponent.length > 0 ? (
+              opponent.map((event) => (
+                <SummaryEventCard key={event.originalIndex} event={event} team="opponent" opponentName={opponentName} />
+              ))
+            ) : (
+              <div className="text-xs text-gray-400 text-center py-2 bg-gray-50 rounded">Nessun evento</div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
 
-// Riga evento singolo con supporto barratura e motivi per gol annullati
-const FullEventRow = ({ event, opponentName }) => {
+// NUOVO: Event Card per il riepilogo
+const SummaryEventCard = ({ event, team, opponentName }) => {
   const isDeleted = !!event.deletionReason;
   const baseClasses = isDeleted ? "opacity-60" : "";
   const textClasses = isDeleted ? "line-through" : "";
   const minute = event.minute ?? "?";
 
-  // Helper label per eventi palo/traversa
-  const hitLabel = event.hitType === 'palo' ? '🧱 Palo' : event.hitType === 'traversa' ? '⎯ Traversa' : null;
-
+  // Colori base per le squadre
+  const teamColors = {
+    vigontina: "bg-green-50 border-green-200 text-green-800",
+    opponent: "bg-blue-50 border-blue-200 text-blue-800"
+  };
+  
+  const cardStyle = teamColors[team] || "bg-gray-50 border-gray-200 text-gray-800";
+  
   let content = null;
-  switch (event.type) {
-    case 'goal':
-      content = (
-        <>
-          <span className={`font-medium ${textClasses}`}>⚽ {minute}' - {event.scorer} {event.scorerName}</span>
-          {event.assist && (
-            <span className={`text-xs text-gray-600 ${textClasses}`}> • Assist: {event.assist} {event.assistName}</span>
-          )}
-        </>
-      );
-      break;
-    case 'opponent-goal':
-      content = <span className={`font-medium ${textClasses}`}>⚽ {minute}' - Gol {opponentName}</span>;
-      break;
-    case 'penalty-goal':
-      content = <span className={`font-medium ${textClasses}`}>🎯 {minute}' - Rigore {event.scorer} {event.scorerName}</span>;
-      break;
-    case 'penalty-opponent-goal':
-      content = <span className={`font-medium ${textClasses}`}>🎯 {minute}' - Rigore {opponentName}</span>;
-      break;
-    case 'penalty-missed':
-      content = <span className="font-medium">❌ {minute}' - Rigore fallito Vigontina</span>;
-      break;
-    case 'penalty-opponent-missed':
-      content = <span className="font-medium">❌ {minute}' - Rigore fallito {opponentName}</span>;
-      break;
-    case 'own-goal':
-      content = <span className={`font-medium ${textClasses}`}>⚽ {minute}' - Autogol Vigontina (gol a {opponentName})</span>;
-      break;
-    case 'opponent-own-goal':
-      content = <span className={`font-medium ${textClasses}`}>⚽ {minute}' - Autogol {opponentName} (gol a Vigontina)</span>;
-      break;
-    case 'save':
-      content = <span className="font-medium">🧤 {minute}' - Parata {event.player} {event.playerName}</span>;
-      break;
-    case 'opponent-save':
-      content = <span className="font-medium">🧤 {minute}' - Parata portiere {opponentName}</span>;
-      break;
-    case 'missed-shot':
-      content = <span className="font-medium">🎯 {minute}' - Tiro fuori {event.player} {event.playerName}</span>;
-      break;
-    case 'opponent-missed-shot':
-      content = <span className="font-medium">🎯 {minute}' - Tiro fuori {opponentName}</span>;
-      break;
-    default:
-      if (hitLabel) {
-        const who = event.team === 'vigontina' ? `${event.player} ${event.playerName}` : opponentName;
-        content = <span className="font-medium">{hitLabel} {minute}' - {who}</span>;
-      }
-  }
-
-  return (
-    <div className={`p-3 ${baseClasses}`}>
-      <div className="text-gray-900 text-sm flex flex-wrap items-center gap-1">
-        {content}
+  
+  if (event.type === "goal" || event.type === "penalty-goal") {
+    content = (
+      <div className={`${cardStyle} p-2 rounded border text-xs ${baseClasses}`}>
+        <p className={`font-medium ${textClasses}`}>
+          ⚽ {minute}' - {event.scorer} {event.scorerName}
+        </p>
+        {event.assist && (
+          <p className={`text-xs ${textClasses}`}>Assist: {event.assist} {event.assistName}</p>
+        )}
+        {isDeleted && (
+          <p className="text-xs text-red-600 italic mt-1">⚠️ {event.deletionReason}</p>
+        )}
       </div>
-      {isDeleted && (
-        <p className="text-xs text-red-600 italic mt-1">⚠️ Annullato: {event.deletionReason}</p>
-      )}
-    </div>
-  );
+    );
+  } else if (event.type === "opponent-goal" || event.type === "penalty-opponent-goal") {
+    content = (
+      <div className={`${cardStyle} p-2 rounded border text-xs ${baseClasses}`}>
+        <p className={`font-medium ${textClasses}`}>
+          ⚽ {minute}' - {event.type.includes('penalty') ? 'Rigore' : 'Gol'} {opponentName}
+        </p>
+        {isDeleted && (
+          <p className="text-xs text-red-600 italic mt-1">⚠️ {event.deletionReason}</p>
+        )}
+      </div>
+    );
+  } else if (event.type === "own-goal") {
+    content = (
+      <div className={`${cardStyle} p-2 rounded border text-xs ${baseClasses}`}>
+        <p className={`font-medium ${textClasses}`}>
+          ⚽ {minute}' - Autogol Vigontina
+        </p>
+        {isDeleted && (
+          <p className="text-xs text-red-600 italic mt-1">⚠️ {event.deletionReason}</p>
+        )}
+      </div>
+    );
+  } else if (event.type === "opponent-own-goal") {
+    content = (
+      <div className={`${cardStyle} p-2 rounded border text-xs ${baseClasses}`}>
+        <p className={`font-medium ${textClasses}`}>
+          ⚽ {minute}' - Autogol {opponentName}
+        </p>
+        {isDeleted && (
+          <p className="text-xs text-red-600 italic mt-1">⚠️ {event.deletionReason}</p>
+        )}
+      </div>
+    );
+  } else if (event.type.includes('penalty') && event.type.includes('missed')) {
+    const teamName = event.type === 'penalty-missed' ? 'Vigontina' : opponentName;
+    content = (
+      <div className="bg-red-50 border-red-200 text-red-800 p-2 rounded border text-xs">
+        <p className="font-medium">
+          ❌ {minute}' - Rigore fallito {teamName}
+        </p>
+      </div>
+    );
+  } else if (event.type === "save" || event.type === "opponent-save") {
+    const isVigontina = event.type === "save";
+    content = (
+      <div className="bg-orange-50 border-orange-200 text-orange-800 p-2 rounded border text-xs">
+        <p className="font-medium">
+          🧤 {minute}' - Parata {isVigontina ? `${event.player} ${event.playerName}` : `portiere ${opponentName}`}
+        </p>
+      </div>
+    );
+  } else if (event.type === "missed-shot" || event.type === "opponent-missed-shot") {
+    const isVigontina = event.type === "missed-shot";
+    content = (
+      <div className="bg-gray-50 border-gray-200 text-gray-800 p-2 rounded border text-xs">
+        <p className="font-medium">
+          🎯 {minute}' - Tiro fuori {isVigontina ? `${event.player} ${event.playerName}` : opponentName}
+        </p>
+      </div>
+    );
+  } else if (event.type === "shot-blocked" || event.type === "opponent-shot-blocked") {
+    const isVigontina = event.type === "shot-blocked";
+    content = (
+      <div className="bg-orange-100 border-orange-300 text-orange-900 p-2 rounded border text-xs">
+        <p className="font-medium">
+          🧤 {minute}' - {isVigontina ? `${event.player} ${event.playerName}` : opponentName} tiro parato
+        </p>
+      </div>
+    );
+  } else if (event.type?.includes('palo-') || event.type?.includes('traversa-')) {
+    const isVigontina = event.team === 'vigontina';
+    const hitTypeDisplay = event.hitType === 'palo' ? '🧱 Palo' : '⎯ Traversa';
+    content = (
+      <div className="bg-yellow-50 border-yellow-200 text-yellow-800 p-2 rounded border text-xs">
+        <p className="font-medium">
+          {hitTypeDisplay} {minute}' - {isVigontina ? `${event.player} ${event.playerName}` : opponentName}
+        </p>
+      </div>
+    );
+  }
+  
+  return content;
 };
 
 export default MatchSummary;
