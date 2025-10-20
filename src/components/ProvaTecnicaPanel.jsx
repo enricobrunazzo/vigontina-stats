@@ -12,7 +12,7 @@ const ScoreBox = ({ leftLabel, rightLabel, leftScore, rightScore }) => (
       </div>
       <div className="text-2xl font-bold text-gray-500">-</div>
       <div>
-        <p className="text-xs text-gray-600 mb-1">{rightLabel}</p>
+        <p className="text-xs text-gray-600 mb-1">[{rightLabel}]</p>
         <p className="text-4xl font-bold text-emerald-700">{rightScore}</p>
       </div>
     </div>
@@ -78,7 +78,7 @@ const ProvaTecnicaPanel = ({
         onPlus={onVigPlus}
       />
       <Row
-        label="Punti Avversario"
+        label={`Punti [${opponentName || "Avversario"}]`}
         minusDisabled={(oppScore || 0) <= 0}
         onMinus={onOppMinus}
         onPlus={onOppPlus}
