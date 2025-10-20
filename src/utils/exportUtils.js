@@ -5,6 +5,7 @@ import autoTable from "jspdf-autotable";
 import ExcelJS from "exceljs";
 import { PLAYERS } from "../constants/players";
 import { calculatePoints, calculateTotalGoals, calculateMatchStats, getMatchResult } from "./matchUtils";
+import { exportMatchHistoryToExcel } from "./excelExport";
 
 const isTechnicalTest = (p) => (p?.name || "").trim().toUpperCase() === "PROVA TECNICA";
 const nonTechnicalPeriods = (match) => Array.isArray(match?.periods) ? match.periods.filter((p) => !isTechnicalTest(p)) : [];
@@ -95,14 +96,19 @@ export const exportMatchToPDF = async (match, opts = {}) => {
   if (hasAssisters) { doc.setFont("helvetica","bold"); doc.text("ASSIST", margin, y); y+=6; const body = Object.entries(statsObj.assisters).sort((a,b)=>b[1]-a[1]).map(([num,count])=>{ const p=PLAYERS.find(pp=>pp.num===parseInt(num,10)); return [`${num} ${p?.name||'Sconosciuto'}`, count]; }); autoTable(doc,{ startY:y, head:[["Giocatore","Assist"]], body, theme:"grid", styles:{ fontSize:9, cellPadding:3 }, headStyles:{ fillColor:[54,96,146], textColor:255 }, margin:{ left:margin, right:margin } }); y = doc.lastAutoTable.finalY + 12; }
   if (hasOther) { doc.setFont("helvetica","bold"); doc.text("ALTRI EVENTI", margin, y); y+=14; doc.setFont("helvetica","normal"); if (statsObj.ownGoalsCount>0) { doc.text(`Autogol: ${statsObj.ownGoalsCount}`, margin, y); y+=14; } if (statsObj.penaltiesScored>0) { doc.text(`Rigori segnati: ${statsObj.penaltiesScored}`, margin, y); y+=14; } if (statsObj.penaltiesMissed>0) { doc.text(`Rigori sbagliati: ${statsObj.penaltiesMissed}`, margin, y); y+=14; } }
 
-  doc.setFont("helvetica","bold"); doc.text("CRONOLOGIA EVENTI", margin, y); y+=6; const rows=[]; nonTechnicalPeriods(match).forEach(p=>{ const ev = Array.isArray(p.goals)?p.goals:[]; if (ev.length===0 && p.vigontina===0 && p.opponent===0) return; if (ev.length===0) { rows.push([p.name, "- nessun evento registrato -"]); } else { ev.forEach((e,idx)=>{ rows.push([idx===0? p.name : "", eventLabel(e, opponentName)]); }); } }); if (rows.length>0) { autoTable(doc,{ startY:y, head:[["Periodo","Evento"]], body:rows, theme:"grid", styles:{ fontSize:9, cellPadding:3 }, headStyles:{ fillColor:[16,185,129], textColor:255 }, margin:{ left:margin, right:margin } }); y = doc.lastAutoTable.finalY + 14; }
-
   doc.setFont("helvetica","italic"); doc.setFontSize(9); doc.text("Nota: i PUNTI considerano solo i tempi giocati (Prova Tecnica esclusa).", margin, y+10);
 
   const fileName = `Vigontina_vs_${(opponentName||"").replace(/\s+/g,"_")}_${fmtDateIT(match.date)}.pdf`;
   doc.save(fileName);
 };
 
-export const exportMatchToExcel = async (match) => { /* left as-is earlier */ };
+// IMPLEMENTAZIONI AGGIUNTE
+export const exportMatchToExcel = async (match) => {
+  if (!match) return;
+  return exportMatchHistoryToExcel([match]);
+};
 
-export const exportHistoryToExcel = async (matches) => { /* left as-is earlier with workbook export */ };
+export const exportHistoryToExcel = async (matches) => {
+  if (!Array.isArray(matches) || matches.length === 0) return;
+  return exportMatchHistoryToExcel(matches);
+};
