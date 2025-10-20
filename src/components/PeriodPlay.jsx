@@ -1,6 +1,6 @@
-// components/PeriodPlay.jsx (DEFINITIVO: completo con tutti i controlli)
+// components/PeriodPlay.jsx (DEFINITIVO: tutti i controlli completi)
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { ArrowLeft, Play, Pause, Flag, Repeat } from "lucide-react";
+import { ArrowLeft, Play, Pause, Plus, Minus, Flag, Repeat } from "lucide-react";
 import { PLAYERS } from "../constants/players";
 import GoalModal from "./modals/GoalModal";
 import OwnGoalModal from "./modals/OwnGoalModal";
@@ -61,6 +61,7 @@ const PeriodPlay = ({
   const [showShotPlayerDialog, setShowShotPlayerDialog] = useState(false);
   const [showSubstitution, setShowSubstitution] = useState(false);
   const [lineupAlreadyAsked, setLineupAlreadyAsked] = useState(false);
+  const [manualScoreMode, setManualScoreMode] = useState(false);
 
   const availablePlayers = useMemo(
     () => PLAYERS.filter((p) => !(match.notCalled?.includes?.(p.num))),
@@ -141,7 +142,15 @@ const PeriodPlay = ({
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h2 className="text-2xl font-bold mb-4">Vigontina vs {match.opponent} - {periodTitle}</h2>
 
-          {/* PROVA TECNICA */}
+          {/* BARRA CONTROLLI SUPERIORE - solo tempi normali */}
+          {!isProvaTecnica && !isViewer && (
+            <div className="flex justify-end -mt-2 mb-4 gap-2">
+              <button onClick={() => setShowLineupDialog(true)} className="text-xs px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 border border-gray-200" title="Modifica i 9 in campo">👥 9 in campo</button>
+              <button onClick={() => setManualScoreMode((m) => !m)} className={`text-xs px-2 py-1 rounded border ${manualScoreMode? "bg-yellow-100 border-yellow-300 text-yellow-800" : "bg-gray-50 border-gray-200 text-gray-700"}`} title="Attiva/Disattiva modifica manuale punteggio">{manualScoreMode? "✅ Modifica punteggio attiva" : "✏️ Modifica punteggio"}</button>
+            </div>
+          )}
+
+          {/* PROVA TECNICA - pannello dedicato */}
           {isProvaTecnica ? (
             <ProvaTecnicaPanel
               opponentName={match.opponent}
@@ -155,19 +164,43 @@ const PeriodPlay = ({
             />
           ) : (
             <>
-              {/* PUNTEGGIO ATTUALE */}
+              {/* PUNTEGGIO ATTUALE con modifica manuale */}
               <div className="bg-slate-50 rounded-lg p-4 mb-4">
                 <div className="text-center">
                   <h3 className="text-sm font-medium text-gray-600 mb-2">Punteggio Attuale</h3>
                   <div className="flex items-center justify-center gap-4">
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500">Vigontina</p>
-                      <p className="text-3xl font-bold text-green-600">{period.vigontina || 0}</p>
+                    <div className="text-center flex items-center gap-2">
+                      {manualScoreMode && !isViewer && (
+                        <button onClick={() => onUpdateScore?.('vigontina', -1)} className="w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600" disabled={(period.vigontina || 0) <= 0}>
+                          <Minus className="w-3 h-3" />
+                        </button>
+                      )}
+                      <div>
+                        <p className="text-xs text-gray-500">Vigontina</p>
+                        <p className="text-3xl font-bold text-green-600">{period.vigontina || 0}</p>
+                      </div>
+                      {manualScoreMode && !isViewer && (
+                        <button onClick={() => onUpdateScore?.('vigontina', 1)} className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-green-600">
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
                     <span className="text-2xl font-bold text-gray-400">-</span>
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500">{match.opponent}</p>
-                      <p className="text-3xl font-bold text-blue-600">{period.opponent || 0}</p>
+                    <div className="text-center flex items-center gap-2">
+                      {manualScoreMode && !isViewer && (
+                        <button onClick={() => onUpdateScore?.('opponent', -1)} className="w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600" disabled={(period.opponent || 0) <= 0}>
+                          <Minus className="w-3 h-3" />
+                        </button>
+                      )}
+                      <div>
+                        <p className="text-xs text-gray-500">{match.opponent}</p>
+                        <p className="text-3xl font-bold text-blue-600">{period.opponent || 0}</p>
+                      </div>
+                      {manualScoreMode && !isViewer && (
+                        <button onClick={() => onUpdateScore?.('opponent', 1)} className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-blue-600">
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -227,9 +260,9 @@ const PeriodPlay = ({
                 </div>
               )}
 
-              {/* TERMINA TEMPO - solo per tempi normali */}
+              {/* TERMINA TEMPO - spostato in fondo */}
               {!isViewer && (
-                <div className="mt-4">
+                <div className="mt-8">
                   <button onClick={onFinish} className="w-full py-4 rounded-lg font-semibold text-white text-base shadow-sm transition focus:outline-none focus:ring-4 focus:ring-blue-300 bg-blue-600 hover:bg-blue-700 flex items-center justify-center gap-2" title={isEditing ? "Salva Modifiche" : `Termina ${periodTitle}`}>
                     <Flag className="w-5 h-5" /> {isEditing ? "Salva Modifiche" : `Termina ${periodTitle}`}
                   </button>
