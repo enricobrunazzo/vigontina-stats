@@ -1,4 +1,4 @@
-// utils/exportUtils.js (patch for labels)
+// utils/exportUtils.js (complete with PDF function restored)
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -26,7 +26,7 @@ function eventLabel(e, opponentName = "Avversari") {
   const assistName = e.assistName || e.assist || "";
   const isHit = e.type?.includes('palo-') || e.type?.includes('traversa-') || e.type?.includes('free-kick-') && (e.hitType==='palo' || e.hitType==='traversa');
   const hitLabel = e.hitType === 'palo' ? 'Palo' : e.hitType === 'traversa' ? 'Traversa' : null;
-  // Free-kick mapping
+  
   if (e.type?.startsWith('free-kick')) {
     const isOpp = e.type.includes('opponent');
     if (e.type.includes('missed')) return `${min} - Punizione fuori ${isOpp ? opponentName : (e.player ? `${e.player} ${e.playerName||''}`.trim() : '')}`.trim();
@@ -55,7 +55,109 @@ function eventLabel(e, opponentName = "Avversari") {
   }
 }
 
-export const exportMatchToPDF = async (match, opts = {}) => { /* unchanged above */ };
+export const exportMatchToPDF = async (match) => {
+  if (!match) {
+    console.warn("Nessuna partita da esportare");
+    return;
+  }
 
-export const exportMatchToExcel = async (match) => { if (!match) return; return exportMatchHistoryToExcel([match]); };
-export const exportHistoryToExcel = async (matches) => { if (!Array.isArray(matches) || matches.length === 0) return; return exportMatchHistoryToExcel(matches); };
+  try {
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(20);
+    doc.text('VIGONTINA SAN PAOLO', 105, 20, { align: 'center' });
+    doc.setFontSize(16);
+    doc.text('Report Partita', 105, 30, { align: 'center' });
+    
+    let yPos = 50;
+    
+    // Match info
+    doc.setFontSize(12);
+    doc.text(`Data: ${fmtDateIT(match.date)}`, 20, yPos);
+    yPos += 8;
+    doc.text(`Avversario: ${match.opponent}`, 20, yPos);
+    yPos += 8;
+    doc.text(`Competizione: ${match.competition}`, 20, yPos);
+    yPos += 8;
+    doc.text(`${match.isHome ? 'Casa' : 'Trasferta'}`, 20, yPos);
+    yPos += 15;
+    
+    // Final result
+    const result = getMatchResult(match);
+    doc.setFontSize(14);
+    doc.text('RISULTATO FINALE:', 20, yPos);
+    yPos += 10;
+    doc.text(`Vigontina ${calculatePoints(match, 'vigontina')} - ${calculatePoints(match, 'opponent')} ${match.opponent}`, 20, yPos);
+    yPos += 8;
+    doc.text(result.resultText, 20, yPos);
+    yPos += 20;
+    
+    // Periods table
+    const periodsData = [];
+    match.periods.forEach((period) => {
+      if (!isTechnicalTest(period)) {
+        const outcome = periodOutcome(period, match.opponent);
+        periodsData.push([
+          period.name,
+          `${safeNum(period.vigontina)} - ${safeNum(period.opponent)}`,
+          outcome.label
+        ]);
+      }
+    });
+    
+    if (periodsData.length > 0) {
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Periodo', 'Punteggio', 'Vincitore']],
+        body: periodsData,
+        theme: 'grid',
+        headStyles: { fillColor: [41, 128, 185] },
+        margin: { left: 20, right: 20 }
+      });
+      yPos = doc.lastAutoTable.finalY + 20;
+    }
+    
+    // Events
+    const stats = calculateMatchStats(match);
+    if (stats.allGoals.length > 0) {
+      doc.setFontSize(12);
+      doc.text('CRONOLOGIA EVENTI:', 20, yPos);
+      yPos += 10;
+      
+      const eventsData = stats.allGoals
+        .filter(e => !e.deletionReason)
+        .sort((a, b) => (a.minute || 0) - (b.minute || 0))
+        .map(e => [eventLabel(e, match.opponent)]);
+      
+      if (eventsData.length > 0) {
+        autoTable(doc, {
+          startY: yPos,
+          head: [['Evento']],
+          body: eventsData,
+          theme: 'striped',
+          headStyles: { fillColor: [52, 152, 219] },
+          margin: { left: 20, right: 20 }
+        });
+      }
+    }
+    
+    // Save PDF
+    const fileName = `Vigontina-vs-${match.opponent.replace(/[^a-zA-Z0-9]/g, '_')}-${fmtDateIT(match.date).replace(/\//g, '_')}.pdf`;
+    doc.save(fileName);
+    
+  } catch (error) {
+    console.error('Errore export PDF:', error);
+    alert('Errore durante l\'esportazione PDF');
+  }
+};
+
+export const exportMatchToExcel = async (match) => {
+  if (!match) return;
+  return exportMatchHistoryToExcel([match]);
+};
+
+export const exportHistoryToExcel = async (matches) => {
+  if (!Array.isArray(matches) || matches.length === 0) return;
+  return exportMatchHistoryToExcel(matches);
+};
