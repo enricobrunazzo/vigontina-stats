@@ -1,4 +1,4 @@
-// utils/exportUtils.js (complete with PDF function restored)
+// utils/exportUtils.js (PDF export with full chronology including substitutions and detailed free-kick labels)
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -20,38 +20,79 @@ function periodOutcome(period, opponentName = "Avversari") {
   return { label: opponentName, winner: "opponent" };
 }
 
+// Return a normalized, human-friendly label for events, covering substitutions and free-kicks explicitly
 function eventLabel(e, opponentName = "Avversari") {
   const min = e.minute != null ? `${e.minute}'` : "";
-  const scorer = e.scorerName || e.scorer || "";
-  const assistName = e.assistName || e.assist || "";
-  const isHit = e.type?.includes('palo-') || e.type?.includes('traversa-') || e.type?.includes('free-kick-') && (e.hitType==='palo' || e.hitType==='traversa');
-  const hitLabel = e.hitType === 'palo' ? 'Palo' : e.hitType === 'traversa' ? 'Traversa' : null;
-  
+  const who = (player, name) => (player ? `${player} ${name || ''}`.trim() : '').trim();
+
+  // Substitutions (ensure appear in chronology)
+  if (e.type === 'substitution') {
+    const outStr = e.out ? `${e.out.num} ${e.out.name}` : '';
+    const inStr = e.in ? `${e.in.num} ${e.in.name}` : '';
+    return `${min} - Sostituzione: ${outStr} → ${inStr}`.trim();
+  }
+
+  // Free-kicks (Punizione) with explicit outcomes
   if (e.type?.startsWith('free-kick')) {
     const isOpp = e.type.includes('opponent');
-    if (e.type.includes('missed')) return `${min} - Punizione fuori ${isOpp ? opponentName : (e.player ? `${e.player} ${e.playerName||''}`.trim() : '')}`.trim();
-    if (e.type.includes('saved')) return `${min} - Punizione parata ${isOpp ? opponentName : (e.player ? `${e.player} ${e.playerName||''}`.trim() : '')}`.trim();
-    if (e.type.includes('hit')) return `${min} - Punizione ${hitLabel || 'Legno'} ${isOpp ? opponentName : (e.player ? `${e.player} ${e.playerName||''}`.trim() : '')}`.trim();
+    const shooter = isOpp ? opponentName : who(e.player, e.playerName);
+    if (e.type.includes('goal')) return `${min} - Punizione gol ${shooter}`.trim();
+    if (e.type.includes('saved')) return `${min} - Punizione parata ${shooter}`.trim();
+    if (e.type.includes('missed')) return `${min} - Punizione fuori ${shooter}`.trim();
+    if (e.type.includes('hit')) {
+      const hl = e.hitType === 'traversa' ? 'traversa' : 'palo';
+      return `${min} - Punizione ${hl} ${shooter}`.trim();
+    }
+    // Fallback generic free-kick
+    return `${min} - Punizione ${shooter}`.trim();
   }
-  if (e.type === "substitution") {
-    return `${min} - Sostituzione: ${e.out?.num} ${e.out?.name} → ${e.in?.num} ${e.in?.name}`;
-  }
+
+  // General shots and outcomes
+  const scorer = e.scorerName || e.scorer || who(e.player, e.playerName);
+  const assistName = e.assistName || e.assist || "";
+
   switch (e.type) {
-    case "goal": { const base = `${min} - Gol ${scorer}`.trim(); return assistName ? `${base} (assist ${assistName})` : base; }
-    case "own-goal": return `${min} - Autogol Vigontina (gol a ${opponentName})`;
-    case "opponent-own-goal": return `${min} - Autogol ${opponentName} (gol a Vigontina)`;
-    case "opponent-goal": return `${min} - Gol ${opponentName}`;
-    case "penalty-goal": { const base = `${min} - Gol (Rig.) ${scorer}`.trim(); return assistName ? `${base} (assist ${assistName})` : base; }
-    case "penalty-missed": return `${min} - Rigore fallito Vigontina`;
-    case "penalty-opponent-goal": return `${min} - Gol (Rig.) ${opponentName}`;
-    case "penalty-opponent-missed": return `${min} - Rigore fallito ${opponentName}`;
-    case "save": return `${min} - Parata ${e.player ? `${e.player} ${e.playerName || ''}`.trim() : ''}`.trim();
-    case "opponent-save": return `${min} - Parata portiere ${opponentName}`;
-    case "missed-shot": return `${min} - Tiro fuori ${e.player ? `${e.player} ${e.playerName || ''}`.trim() : ''}`.trim();
-    case "opponent-missed-shot": return `${min} - Tiro fuori ${opponentName}`;
-    case "shot-blocked": return `${min} - Tiro parato ${e.player ? `${e.player} ${e.playerName || ''}`.trim() : ''}`.trim();
-    case "opponent-shot-blocked": return `${min} - Tiro parato ${opponentName}`;
-    default: if (isHit) { const who = e.team === 'vigontina' ? `${e.player || ''} ${e.playerName || ''}`.trim() : opponentName; return `${min} - ${hitLabel || 'Legno'} ${who}`.trim(); } return `${min} - Evento`;
+    case "goal": {
+      const base = `${min} - Gol ${scorer}`.trim();
+      return assistName ? `${base} (assist ${assistName})` : base;
+    }
+    case "own-goal":
+      return `${min} - Autogol Vigontina (gol a ${opponentName})`;
+    case "opponent-own-goal":
+      return `${min} - Autogol ${opponentName} (gol a Vigontina)`;
+    case "opponent-goal":
+      return `${min} - Gol ${opponentName}`;
+    case "penalty-goal": {
+      const base = `${min} - Gol (Rig.) ${scorer}`.trim();
+      return assistName ? `${base} (assist ${assistName})` : base;
+    }
+    case "penalty-missed":
+      return `${min} - Rigore fallito Vigontina`;
+    case "penalty-opponent-goal":
+      return `${min} - Gol (Rig.) ${opponentName}`;
+    case "penalty-opponent-missed":
+      return `${min} - Rigore fallito ${opponentName}`;
+    case "save":
+      return `${min} - Parata ${who(e.player, e.playerName)}`.trim();
+    case "opponent-save":
+      return `${min} - Parata portiere ${opponentName}`;
+    case "missed-shot":
+      return `${min} - Tiro fuori ${who(e.player, e.playerName)}`.trim();
+    case "opponent-missed-shot":
+      return `${min} - Tiro fuori ${opponentName}`;
+    case "shot-blocked":
+      return `${min} - Tiro parato ${who(e.player, e.playerName)}`.trim();
+    case "opponent-shot-blocked":
+      return `${min} - Tiro parato ${opponentName}`;
+    default: {
+      // hits outside free-kicks handled above
+      if (e.hitType === 'palo' || e.hitType === 'traversa') {
+        const whoStr = e.team === 'vigontina' ? who(e.player, e.playerName) : opponentName;
+        const hl = e.hitType === 'traversa' ? 'traversa' : 'palo';
+        return `${min} - ${hl} ${whoStr}`.trim();
+      }
+      return `${min} - Evento`;
+    }
   }
 }
 
@@ -148,9 +189,8 @@ export const exportMatchToPDF = async (match) => {
     if (captain) {
       doc.setFont("helvetica", "normal");
       doc.text(`Capitano: ${captain.number} ${captain.name.toUpperCase()}`, 20, yPos);
-      // Add crown symbol for captain
       doc.setFontSize(16);
-      doc.text('♚', 15, yPos); // Crown symbol
+      doc.text('♚', 15, yPos);
       doc.setFontSize(12);
       yPos += 8;
     }
@@ -165,12 +205,11 @@ export const exportMatchToPDF = async (match) => {
       yPos += 8;
     }
     
-    // Goals summary (excluding technical tests)
-    const nonTechPeriods = nonTechnicalPeriods(match);
-    const totalGoalsVigontina = nonTechPeriods.reduce((sum, p) => sum + safeNum(p.vigontina), 0);
-    const totalGoalsOpponent = nonTechPeriods.reduce((sum, p) => sum + safeNum(p.opponent), 0);
+    const nonTech = nonTechnicalPeriods(match);
+    const totalGoalsV = nonTech.reduce((sum, p) => sum + safeNum(p.vigontina), 0);
+    const totalGoalsO = nonTech.reduce((sum, p) => sum + safeNum(p.opponent), 0);
     
-    doc.text(`Gol (senza PT): ${totalGoalsVigontina} - ${totalGoalsOpponent}`, 20, yPos);
+    doc.text(`Gol (senza PT): ${totalGoalsV} - ${totalGoalsO}`, 20, yPos);
     yPos += 20;
     
     // === PERIODS DETAIL TABLE ===
@@ -180,7 +219,7 @@ export const exportMatchToPDF = async (match) => {
     yPos += 10;
     
     const periodsData = [];
-    nonTechPeriods.forEach((period) => {
+    nonTech.forEach((period) => {
       const outcome = periodOutcome(period, match.opponent);
       periodsData.push([
         period.name,
@@ -197,23 +236,10 @@ export const exportMatchToPDF = async (match) => {
         head: [['Periodo', 'Vigontina', match.opponent, 'Completato', 'Esito']],
         body: periodsData,
         theme: 'grid',
-        headStyles: { 
-          fillColor: [71, 85, 105],
-          textColor: [255, 255, 255],
-          fontStyle: 'bold',
-          fontSize: 11
-        },
-        bodyStyles: {
-          fontSize: 10
-        },
+        headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 11 },
+        bodyStyles: { fontSize: 10 },
         margin: { left: 20, right: 20 },
-        columnStyles: {
-          0: { cellWidth: 35 },
-          1: { cellWidth: 25, halign: 'center' },
-          2: { cellWidth: 25, halign: 'center' },
-          3: { cellWidth: 25, halign: 'center' },
-          4: { cellWidth: 35, halign: 'center' }
-        }
+        columnStyles: { 0: { cellWidth: 35 }, 1: { cellWidth: 25, halign: 'center' }, 2: { cellWidth: 25, halign: 'center' }, 3: { cellWidth: 25, halign: 'center' }, 4: { cellWidth: 35, halign: 'center' } }
       });
       yPos = doc.lastAutoTable.finalY + 15;
     }
@@ -225,80 +251,31 @@ export const exportMatchToPDF = async (match) => {
       doc.setFontSize(14);
       doc.text('PROVA TECNICA', 20, yPos);
       yPos += 10;
-      
       const techData = [];
       techPeriods.forEach((period) => {
         const outcome = periodOutcome(period, match.opponent);
-        techData.push([
-          period.name,
-          safeNum(period.vigontina).toString(),
-          safeNum(period.opponent).toString(),
-          outcome.label
-        ]);
+        techData.push([ period.name, safeNum(period.vigontina).toString(), safeNum(period.opponent).toString(), outcome.label ]);
       });
-      
-      autoTable(doc, {
-        startY: yPos,
-        head: [['Periodo', 'Vigontina', match.opponent, 'Esito']],
-        body: techData,
-        theme: 'grid',
-        headStyles: { 
-          fillColor: [71, 85, 105],
-          textColor: [255, 255, 255],
-          fontStyle: 'bold',
-          fontSize: 11
-        },
-        bodyStyles: {
-          fontSize: 10
-        },
-        margin: { left: 20, right: 20 }
-      });
+      autoTable(doc, { startY: yPos, head: [['Periodo', 'Vigontina', match.opponent, 'Esito']], body: techData, theme: 'grid', headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 11 }, bodyStyles: { fontSize: 10 }, margin: { left: 20, right: 20 } });
       yPos = doc.lastAutoTable.finalY + 15;
     }
     
     // === SCORERS SECTION ===
     const stats = calculateMatchStats(match);
     const scorers = {};
-    stats.allGoals
-      .filter(e => !e.deletionReason && (e.type === 'goal' || e.type === 'penalty-goal'))
-      .forEach(e => {
-        const name = e.scorerName || e.scorer || 'Sconosciuto';
-        scorers[name] = (scorers[name] || 0) + 1;
-      });
-    
+    stats.allGoals.filter(e => !e.deletionReason && (e.type === 'goal' || e.type === 'penalty-goal')).forEach(e => { const name = e.scorerName || e.scorer || 'Sconosciuto'; scorers[name] = (scorers[name] || 0) + 1; });
     if (Object.keys(scorers).length > 0) {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
       doc.text('MARCATORI', 20, yPos);
       yPos += 10;
-      
-      const scorersData = Object.entries(scorers).map(([name, goals]) => [
-        name,
-        goals.toString()
-      ]);
-      
-      autoTable(doc, {
-        startY: yPos,
-        head: [['Giocatore', 'Gol']],
-        body: scorersData,
-        theme: 'grid',
-        headStyles: { 
-          fillColor: [71, 85, 105],
-          textColor: [255, 255, 255],
-          fontStyle: 'bold',
-          fontSize: 11
-        },
-        bodyStyles: {
-          fontSize: 10
-        },
-        margin: { left: 20, right: 20 }
-      });
+      const scorersData = Object.entries(scorers).map(([name, goals]) => [ name, goals.toString() ]);
+      autoTable(doc, { startY: yPos, head: [['Giocatore', 'Gol']], body: scorersData, theme: 'grid', headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 11 }, bodyStyles: { fontSize: 10 }, margin: { left: 20, right: 20 } });
       yPos = doc.lastAutoTable.finalY + 15;
     }
     
     // === OTHER EVENTS SECTION ===
     const penaltyGoals = stats.allGoals.filter(e => !e.deletionReason && e.type === 'penalty-goal').length;
-    
     if (penaltyGoals > 0) {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
@@ -310,99 +287,67 @@ export const exportMatchToPDF = async (match) => {
       yPos += 15;
     }
     
-    // === CHRONOLOGY SECTION ===
-    if (stats.allGoals.length > 0) {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(14);
-      doc.text('CRONOLOGIA EVENTI', 20, yPos);
-      yPos += 10;
-      
-      const eventsData = [];
-      
-      // Group events by period
-      const eventsByPeriod = {};
-      stats.allGoals
-        .filter(e => !e.deletionReason)
-        .forEach(e => {
-          const periodName = e.periodName || 'N/A';
-          if (!eventsByPeriod[periodName]) {
-            eventsByPeriod[periodName] = [];
-          }
-          eventsByPeriod[periodName].push(e);
-        });
-      
-      // Add events in period order
-      Object.entries(eventsByPeriod)
-        .sort(([a], [b]) => {
-          const aOrder = a.includes('1°') ? 1 : a.includes('2°') ? 2 : a.includes('3°') ? 3 : a.includes('4°') ? 4 : 5;
-          const bOrder = b.includes('1°') ? 1 : b.includes('2°') ? 2 : b.includes('3°') ? 3 : b.includes('4°') ? 4 : 5;
-          return aOrder - bOrder;
-        })
-        .forEach(([periodName, events]) => {
-          events
-            .sort((a, b) => (a.minute || 0) - (b.minute || 0))
-            .forEach(e => {
-              eventsData.push([
-                periodName,
-                eventLabel(e, match.opponent)
-              ]);
-            });
-        });
-      
-      if (eventsData.length > 0) {
-        autoTable(doc, {
-          startY: yPos,
-          head: [['Periodo', 'Evento']],
-          body: eventsData,
-          theme: 'striped',
-          headStyles: { 
-            fillColor: [71, 85, 105],
-            textColor: [255, 255, 255],
-            fontStyle: 'bold',
-            fontSize: 11
-          },
-          bodyStyles: {
-            fontSize: 9
-          },
-          margin: { left: 20, right: 20 },
-          columnStyles: {
-            0: { cellWidth: 30 },
-            1: { cellWidth: 130 }
-          }
-        });
-        yPos = doc.lastAutoTable.finalY + 15;
-      }
+    // === CHRONOLOGY SECTION (include substitutions and free-kicks) ===
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text('CRONOLOGIA EVENTI', 20, yPos);
+    yPos += 10;
+
+    const allEvents = [];
+    // Collect goals and other events from periods if available
+    (match.periods || []).forEach(p => {
+      const events = (p.events || p.goals || []);
+      events.forEach(e => {
+        // enrich with period name for ordering
+        allEvents.push({ ...e, periodName: p.name });
+      });
+    });
+
+    // Fallback to stats if periods do not carry events
+    if (allEvents.length === 0) {
+      stats.allGoals.filter(e => !e.deletionReason).forEach(e => allEvents.push(e));
     }
-    
+
+    const eventsByPeriod = {};
+    allEvents.filter(e => !e.deletionReason).forEach(e => {
+      const periodName = e.periodName || 'N/A';
+      if (!eventsByPeriod[periodName]) eventsByPeriod[periodName] = [];
+      eventsByPeriod[periodName].push(e);
+    });
+
+    const eventsData = [];
+    Object.entries(eventsByPeriod)
+      .sort(([a],[b]) => {
+        const ord = (s) => s.includes('1°') ? 1 : s.includes('2°') ? 2 : s.includes('3°') ? 3 : s.includes('4°') ? 4 : 5;
+        return ord(a)-ord(b);
+      })
+      .forEach(([periodName, evs]) => {
+        evs.sort((a,b) => (a.minute||0) - (b.minute||0)).forEach(e => {
+          eventsData.push([ periodName, eventLabel(e, match.opponent) ]);
+        });
+      });
+
+    if (eventsData.length > 0) {
+      autoTable(doc, { startY: yPos, head: [['Periodo', 'Evento']], body: eventsData, theme: 'striped', headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 11 }, bodyStyles: { fontSize: 9 }, margin: { left: 20, right: 20 }, columnStyles: { 0: { cellWidth: 30 }, 1: { cellWidth: 130 } } });
+      yPos = doc.lastAutoTable.finalY + 15;
+    }
+
     // === PROFESSIONAL FOOTER ===
     const pageHeight = doc.internal.pageSize.height;
-    
-    // Footer background
     doc.setFillColor(248, 250, 252);
     doc.rect(0, pageHeight - 25, 210, 25, 'F');
-    
-    // Footer text
     doc.setFontSize(9);
     doc.setFont("helvetica", "italic");
     doc.setTextColor(100, 116, 139);
     doc.text('Nota: i PUNTI considerano solo i tempi giocati (Prova Tecnica esclusa).', 105, pageHeight - 10, { align: 'center' });
-    
-    // Save PDF with professional filename
+
     const fileName = `Vigontina_vs_${match.opponent.replace(/[^a-zA-Z0-9]/g, '_')}_${fmtDateIT(match.date).replace(/\//g, '_')}.pdf`;
     doc.save(fileName);
-    
   } catch (error) {
     console.error('Errore export PDF:', error);
     alert('Errore durante l\'esportazione PDF');
   }
 };
 
-export const exportMatchToExcel = async (match) => {
-  if (!match) return;
-  return exportMatchHistoryToExcel([match]);
-};
-
-export const exportHistoryToExcel = async (matches) => {
-  if (!Array.isArray(matches) || matches.length === 0) return;
-  return exportMatchHistoryToExcel(matches);
-};
+export const exportMatchToExcel = async (match) => { if (!match) return; return exportMatchHistoryToExcel([match]); };
+export const exportHistoryToExcel = async (matches) => { if (!Array.isArray(matches) || matches.length === 0) return; return exportMatchHistoryToExcel(matches); };
