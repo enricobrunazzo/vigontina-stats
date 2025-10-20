@@ -1,4 +1,4 @@
-// components/PeriodPlay.jsx (fix lineup modal logic + missing import)
+// components/PeriodPlay.jsx (fix lineup + beautiful prova tecnica)
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { ArrowLeft, Play, Pause, Plus, Minus, Flag, Repeat } from "lucide-react";
 import { PLAYERS } from "../constants/players";
@@ -63,26 +63,30 @@ const PeriodPlay = ({
   const [showShotPlayerDialog, setShowShotPlayerDialog] = useState(false);
   const [showSubstitution, setShowSubstitution] = useState(false);
   const [manualScoreMode, setManualScoreMode] = useState(false);
+  const [lineupAlreadyAsked, setLineupAlreadyAsked] = useState(false);
 
   const availablePlayers = useMemo(
     () => PLAYERS.filter((p) => !(match.notCalled?.includes?.(p.num))),
     [match.notCalled]
   );
 
-  // FIX: Logica corretta per mostrare il modal della formazione
+  // FIX: Gestione corretta della richiesta formazione una sola volta
   useEffect(() => {
     // Mostra il modal solo se:
-    // 1. Non è prova tecnica
+    // 1. Non è prova tecnica (non serve formazione)
     // 2. Non è viewer
     // 3. Non ha ancora una formazione valida (9 giocatori)
-    // 4. Non è già stato mostrato il prompt per questo periodo
+    // 4. Non abbiamo già chiesto in questa sessione
+    // 5. Non è già stato promesso per questo periodo
     if (!isProvaTecnica && 
         !isViewer && 
         (!period.lineup || period.lineup.length !== 9) &&
+        !lineupAlreadyAsked &&
         !period.lineupPrompted) {
       setShowLineupDialog(true);
+      setLineupAlreadyAsked(true);
     }
-  }, [period, isProvaTecnica, isViewer]);
+  }, [period.name, isProvaTecnica, isViewer, lineupAlreadyAsked, period.lineupPrompted, period.lineup]);
 
   const handleLineupConfirm = useCallback((lineup) => {
     onSetLineup?.(periodIndex, lineup);
@@ -90,12 +94,9 @@ const PeriodPlay = ({
   }, [onSetLineup, periodIndex]);
 
   const handleLineupCancel = useCallback(() => {
-    // Anche se cancella, marca come "già richiesta" per non ripetere
-    if (match.setLineupPrompted) {
-      match.setLineupPrompted(periodIndex, true);
-    }
+    // Marca come già chiesta anche se cancella
     setShowLineupDialog(false);
-  }, [match, periodIndex]);
+  }, []);
 
   const confirmShotForTeam = (team) => {
     setShowShotTeamDialog(false);
@@ -146,31 +147,44 @@ const PeriodPlay = ({
     return { vigontina: vigontinaEvents.sort(sortByMinute), opponent: opponentEvents.sort(sortByMinute) };
   }, [events]);
 
-  // FIX: Aggiungi pulsanti +/- per prova tecnica
+  // FIX: Interfaccia bella per prova tecnica con spiegazioni
   const renderProvaTecnicaControls = () => {
     if (!isProvaTecnica || isViewer) return null;
     
     return (
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-        <h3 className="text-lg font-semibold text-yellow-800 text-center mb-4">Sistema a Punti - Prova Tecnica</h3>
+      <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-300 rounded-xl p-6 mb-6 shadow-sm">
+        <div className="text-center mb-6">
+          <h3 className="text-2xl font-bold text-yellow-800 mb-2">🎯 Prova Tecnica</h3>
+          <p className="text-yellow-700 text-sm leading-relaxed">
+            Sistema a <strong>punti</strong> per valutare le abilità tecniche.<br/>
+            <span className="text-xs">Usa i pulsanti <strong>+</strong> e <strong>-</strong> per assegnare i punti durante gli esercizi.</span>
+          </p>
+        </div>
         
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-2 gap-8">
           {/* Vigontina */}
-          <div className="text-center">
-            <p className="text-sm font-medium text-gray-600 mb-2">Vigontina</p>
-            <div className="text-3xl font-bold text-green-600 mb-3">{period.vigontina || 0}</div>
-            <div className="flex gap-2 justify-center">
+          <div className="bg-white rounded-lg p-4 shadow-sm border border-yellow-200">
+            <div className="text-center mb-4">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <span className="text-green-600 font-bold text-lg">V</span>
+              </div>
+              <h4 className="font-semibold text-gray-700">Vigontina San Paolo</h4>
+              <div className="text-4xl font-bold text-green-600 my-3">{period.vigontina || 0}</div>
+              <p className="text-xs text-gray-500 mb-3">punti tecnica</p>
+            </div>
+            <div className="flex gap-3 justify-center">
               <button 
                 onClick={() => onUpdateScore?.('vigontina', 1)}
-                className="bg-green-500 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-green-600"
+                className="bg-green-500 hover:bg-green-600 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-sm transition-colors"
                 title="Aggiungi punto"
               >
                 <Plus className="w-5 h-5" />
               </button>
               <button 
                 onClick={() => onUpdateScore?.('vigontina', -1)}
-                className="bg-red-500 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-red-600"
+                className="bg-red-500 hover:bg-red-600 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-sm transition-colors"
                 title="Rimuovi punto"
+                disabled={(period.vigontina || 0) <= 0}
               >
                 <Minus className="w-5 h-5" />
               </button>
@@ -178,26 +192,41 @@ const PeriodPlay = ({
           </div>
           
           {/* Avversario */}
-          <div className="text-center">
-            <p className="text-sm font-medium text-gray-600 mb-2">{match.opponent}</p>
-            <div className="text-3xl font-bold text-blue-600 mb-3">{period.opponent || 0}</div>
-            <div className="flex gap-2 justify-center">
+          <div className="bg-white rounded-lg p-4 shadow-sm border border-yellow-200">
+            <div className="text-center mb-4">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <span className="text-blue-600 font-bold text-lg">{match.opponent?.charAt(0)?.toUpperCase() || "A"}</span>
+              </div>
+              <h4 className="font-semibold text-gray-700">{match.opponent}</h4>
+              <div className="text-4xl font-bold text-blue-600 my-3">{period.opponent || 0}</div>
+              <p className="text-xs text-gray-500 mb-3">punti tecnica</p>
+            </div>
+            <div className="flex gap-3 justify-center">
               <button 
                 onClick={() => onUpdateScore?.('opponent', 1)}
-                className="bg-blue-500 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-blue-600"
+                className="bg-blue-500 hover:bg-blue-600 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-sm transition-colors"
                 title="Aggiungi punto"
               >
                 <Plus className="w-5 h-5" />
               </button>
               <button 
                 onClick={() => onUpdateScore?.('opponent', -1)}
-                className="bg-red-500 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-red-600"
+                className="bg-red-500 hover:bg-red-600 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-sm transition-colors"
                 title="Rimuovi punto"
+                disabled={(period.opponent || 0) <= 0}
               >
                 <Minus className="w-5 h-5" />
               </button>
             </div>
           </div>
+        </div>
+        
+        {/* Istruzioni */}
+        <div className="mt-6 bg-yellow-100 rounded-lg p-3">
+          <p className="text-xs text-yellow-800 text-center">
+            💡 <strong>Come funziona:</strong> Assegna punti in base alle prestazioni negli esercizi tecnici. 
+            Non ci sono gol o rigori durante la prova tecnica.
+          </p>
         </div>
       </div>
     );
