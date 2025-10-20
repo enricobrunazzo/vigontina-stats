@@ -373,6 +373,48 @@ export const useMatch = () => {
     return `${periodNumber}° Tempo`;
   }, [getCurrentPeriodData]);
 
+  // NEW: substitution
+  const addSubstitution = useCallback((periodIndex, outNum, inNum, getCurrentMinute) => {
+    setCurrentMatch((prev) => {
+      const updated = { ...prev };
+      updated.periods = [...prev.periods];
+      const period = { ...updated.periods[periodIndex] };
+      const lineup = Array.isArray(period.lineup) ? [...period.lineup] : [];
+      const outIdx = lineup.indexOf(outNum);
+      if (outIdx >= 0) lineup[outIdx] = inNum; else lineup.push(inNum);
+      period.lineup = lineup;
+      const outP = PLAYERS.find(p=>p.num===outNum); const inP = PLAYERS.find(p=>p.num===inNum);
+      period.goals = [...(period.goals || []), { type:'substitution', team:'vigontina', out:{num: outNum, name: outP?.name}, in:{num: inNum, name: inP?.name}, minute: getCurrentMinute?.() ?? 0 }];
+      updated.periods[periodIndex] = period;
+      return updated;
+    });
+  }, []);
+
+  // NEW: free-kick generic events
+  const addFreeKick = useCallback((team, outcome, playerNum, getCurrentMinute, hitType) => {
+    if (currentMatch === null) return;
+    const pIdx = currentPeriod ?? 0;
+    setCurrentMatch((prev)=>{
+      const updated = { ...prev };
+      updated.periods = [...prev.periods];
+      const period = { ...updated.periods[pIdx] };
+      period.goals = [...(period.goals || [])];
+      const base = { minute: getCurrentMinute?.() ?? 0 };
+      if (team === 'vigontina') {
+        const player = PLAYERS.find(p=>p.num===playerNum);
+        if (outcome==='fuori') period.goals.push({ ...base, type:'free-kick-missed', player: playerNum, playerName: player?.name });
+        else if (outcome==='parato') period.goals.push({ ...base, type:'free-kick-saved', player: playerNum, playerName: player?.name });
+        else if (outcome==='palo' || outcome==='traversa') period.goals.push({ ...base, type:'free-kick-hit', hitType: outcome, player: playerNum, playerName: player?.name });
+      } else {
+        if (outcome==='fuori') period.goals.push({ ...base, type:'free-kick-opponent-missed' });
+        else if (outcome==='parato') period.goals.push({ ...base, type:'free-kick-opponent-saved' });
+        else if (outcome==='palo' || outcome==='traversa') period.goals.push({ ...base, type:'free-kick-opponent-hit', hitType: outcome });
+      }
+      updated.periods[pIdx] = period;
+      return updated;
+    });
+  }, [currentMatch, currentPeriod]);
+
   return {
     currentMatch,
     currentPeriod,
@@ -391,11 +433,13 @@ export const useMatch = () => {
     addPenalty,
     addSave,
     addMissedShot,
-    addShotBlocked, // NUOVO
+    addShotBlocked,
     addPostCrossbar,
     deleteEvent,
     updateScore,
     setLineup,
     getAvailablePlayers,
+    addSubstitution,
+    addFreeKick,
   };
 };
