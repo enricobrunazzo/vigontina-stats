@@ -1,5 +1,5 @@
-// components/PeriodPlay.jsx (fix lineup modal logic)
-import React, { useState, useEffect, useMemo } from "react";
+// components/PeriodPlay.jsx (fix lineup modal logic + missing import)
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { ArrowLeft, Play, Pause, Plus, Minus, Flag, Repeat } from "lucide-react";
 import { PLAYERS } from "../constants/players";
 import GoalModal from "./modals/GoalModal";
