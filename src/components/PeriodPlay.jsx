@@ -1,4 +1,4 @@
-// components/PeriodPlay.jsx (final full version with actions + prova tecnica)
+// components/PeriodPlay.jsx (DEFINITIVO: completo con tutti i controlli)
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { ArrowLeft, Play, Pause, Flag, Repeat } from "lucide-react";
 import { PLAYERS } from "../constants/players";
@@ -84,21 +84,65 @@ const PeriodPlay = ({
     setShowLineupDialog(false);
   }, []);
 
+  const confirmShotForTeam = (team) => {
+    setShowShotTeamDialog(false);
+    if (team === 'vigontina') {
+      setShowShotPlayerDialog(true);
+    } else {
+      if (pendingShotOutcome === 'fuori') onAddMissedShot('opponent', null);
+      else if (pendingShotOutcome === 'parato') onAddShotBlocked('opponent', null);
+      else if (pendingShotOutcome === 'palo' || pendingShotOutcome === 'traversa') onAddPostCrossbar(pendingShotOutcome, 'opponent', null);
+      setPendingShotOutcome(null);
+    }
+  };
+
+  const confirmShotForPlayer = (playerNum) => {
+    setShowShotPlayerDialog(false);
+    if (pendingShotOutcome === 'fuori') onAddMissedShot('vigontina', playerNum);
+    else if (pendingShotOutcome === 'parato') onAddShotBlocked('vigontina', playerNum);
+    else if (pendingShotOutcome === 'palo' || pendingShotOutcome === 'traversa') onAddPostCrossbar(pendingShotOutcome, 'vigontina', playerNum);
+    setPendingShotOutcome(null);
+  };
+
+  const startShotFlow = () => { setShowShotSelectionDialog(true); };
+  const pickShotOutcome = (outcome) => { setShowShotSelectionDialog(false); setPendingShotOutcome(outcome); setShowShotTeamDialog(true); };
+
   const periodNumberMatch = period.name.match(/(\d+)°/);
   const periodNumber = periodNumberMatch ? periodNumberMatch[1] : "";
   const periodTitle = isProvaTecnica ? "Prova Tecnica" : `${periodNumber}° Tempo`;
 
-  // Rendering
+  const events = Array.isArray(period.goals) ? period.goals : [];
+  const organizedEvents = useMemo(() => {
+    const vigontinaEvents = [];
+    const opponentEvents = [];
+    events.forEach((event, idx) => {
+      const e = { ...event, originalIndex: idx };
+      if (
+        ['goal','penalty-goal','penalty-missed','save','missed-shot','shot-blocked','substitution','free-kick-missed','free-kick-saved','free-kick-hit'].includes(event.type)
+        || event.type === 'opponent-own-goal'
+        || event.type === 'palo-vigontina'
+        || event.type === 'traversa-vigontina'
+        || ((event.type?.includes('palo-') || event.type?.includes('traversa-')) && event.team==='vigontina')
+      ) {
+        vigontinaEvents.push(e);
+      } else {
+        opponentEvents.push(e);
+      }
+    });
+    const sortByMinute = (a,b) => (a.minute||0)-(b.minute||0);
+    return { vigontina: vigontinaEvents.sort(sortByMinute), opponent: opponentEvents.sort(sortByMinute) };
+  }, [events]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
       <div className="max-w-2xl mx-auto space-y-4">
         <button onClick={onBack} className="text-white hover:text-gray-200 flex items-center gap-2"><ArrowLeft className="w-5 h-5" />Torna alla Panoramica</button>
 
         <div className="bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-2xl font-bold mb-2">Vigontina vs {match.opponent} - {periodTitle}</h2>
+          <h2 className="text-2xl font-bold mb-4">Vigontina vs {match.opponent} - {periodTitle}</h2>
 
-          {/* Prova Tecnica UI */}
-          {isProvaTecnica && (
+          {/* PROVA TECNICA */}
+          {isProvaTecnica ? (
             <ProvaTecnicaPanel
               opponentName={match.opponent}
               vigScore={period.vigontina || 0}
@@ -109,11 +153,27 @@ const PeriodPlay = ({
               onOppPlus={() => onUpdateScore?.('opponent', 1)}
               onFinish={onFinish}
             />
-          )}
-
-          {/* Timer e azioni per tempi normali */}
-          {!isProvaTecnica && (
+          ) : (
             <>
+              {/* PUNTEGGIO ATTUALE */}
+              <div className="bg-slate-50 rounded-lg p-4 mb-4">
+                <div className="text-center">
+                  <h3 className="text-sm font-medium text-gray-600 mb-2">Punteggio Attuale</h3>
+                  <div className="flex items-center justify-center gap-4">
+                    <div className="text-center">
+                      <p className="text-xs text-gray-500">Vigontina</p>
+                      <p className="text-3xl font-bold text-green-600">{period.vigontina || 0}</p>
+                    </div>
+                    <span className="text-2xl font-bold text-gray-400">-</span>
+                    <div className="text-center">
+                      <p className="text-xs text-gray-500">{match.opponent}</p>
+                      <p className="text-3xl font-bold text-blue-600">{period.opponent || 0}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* TIMER */}
               <div className="bg-gray-50 rounded-lg p-6 mb-6">
                 <div className="text-center mb-4">
                   <div className="text-5xl font-mono font-bold text-gray-800">{typeof timer?.formatTime === 'function' ? timer.formatTime(timer.timerSeconds) : "00:00"}</div>
@@ -128,6 +188,7 @@ const PeriodPlay = ({
                 )}
               </div>
 
+              {/* AZIONI PARTITA */}
               {!isViewer && (
                 <div className="space-y-3 mb-6">
                   <div className="grid grid-cols-2 gap-3">
@@ -135,22 +196,49 @@ const PeriodPlay = ({
                     <button onClick={() => onAddOpponentGoal(safeGetMinute)} className="bg-blue-500 text-white py-2 px-3 rounded hover:bg-blue-600 font-medium text-sm">⚽ Gol {match.opponent}</button>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => setShowOwnGoalDialog(true)} className="bg-red-500 text-white py-2 px-3 rounded hover:bg-red-600 font-medium text-sm">Autogol</button>
+                    <button onClick={() => setShowOwnGoalDialog(true)} className="bg-red-500 text-white py-2 px-3 rounded hover:bg-red-600 font-medium text-sm">⚽ Autogol</button>
                     <button onClick={() => setShowPenaltyDialog(true)} className="bg-purple-500 text-white py-2 px-3 rounded hover:bg-purple-600 font-medium text-sm">🎯 Rigore</button>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => setShowShotSelectionDialog(true)} className="bg-gray-600 text-white py-2 px-3 rounded hover:bg-gray-700 font-medium text-sm">🎯 Tiro</button>
-                    <button onClick={()=>setShowSubstitution(true)} className="bg-indigo-600 text-white py-2 px-3 rounded hover:bg-indigo-700 font-medium text-sm"><Repeat className="w-4 h-4 inline" /> Sostituzione</button>
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <p className="text-sm font-semibold text-yellow-800 text-center mb-3">Azioni Salienti</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button onClick={startShotFlow} className="bg-gray-600 text-white py-2 px-2 rounded hover:bg-gray-700 font-medium text-xs">🎯 Tiro</button>
+                      <button onClick={()=>setShowSubstitution(true)} className="bg-indigo-600 text-white py-2 px-2 rounded hover:bg-indigo-700 font-medium text-xs flex items-center justify-center gap-1"><Repeat className="w-3 h-3" /> Sostituzione</button>
+                      <button onClick={()=>{ setShowShotSelectionDialog(true); }} className="bg-orange-600 text-white py-2 px-2 rounded hover:bg-orange-700 font-medium text-xs">🟧 Punizione</button>
+                      <button onClick={() => setShowDeleteEventDialog(true)} className="bg-red-600 text-white py-2 px-2 rounded hover:bg-red-700 font-medium text-xs" disabled={events.length === 0}>🗑️ Elimina Evento</button>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-1 gap-3">
-                    <button onClick={() => setShowDeleteEventDialog(true)} className="bg-red-600 text-white py-2 px-3 rounded hover:bg-red-700 font-medium text-sm">🗑️ Elimina Evento</button>
+                </div>
+              )}
+
+              {/* EVENTI ORGANIZZATI */}
+              {(organizedEvents.vigontina.length > 0 || organizedEvents.opponent.length > 0) && (
+                <div className="mb-6 grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    {organizedEvents.vigontina.map((event) => (
+                      <TeamEventCard key={event.originalIndex} event={event} team="vigontina" opponentName={match.opponent} />
+                    ))}
                   </div>
+                  <div className="space-y-2">
+                    {organizedEvents.opponent.map((event) => (
+                      <TeamEventCard key={event.originalIndex} event={event} team="opponent" opponentName={match.opponent} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* TERMINA TEMPO - solo per tempi normali */}
+              {!isViewer && (
+                <div className="mt-4">
+                  <button onClick={onFinish} className="w-full py-4 rounded-lg font-semibold text-white text-base shadow-sm transition focus:outline-none focus:ring-4 focus:ring-blue-300 bg-blue-600 hover:bg-blue-700 flex items-center justify-center gap-2" title={isEditing ? "Salva Modifiche" : `Termina ${periodTitle}`}>
+                    <Flag className="w-5 h-5" /> {isEditing ? "Salva Modifiche" : `Termina ${periodTitle}`}
+                  </button>
                 </div>
               )}
             </>
           )}
 
-          {/* Modals */}
+          {/* MODALS - tutte le interazioni */}
           {!isViewer && showGoalDialog && (
             <GoalModal availablePlayers={availablePlayers} onConfirm={(sc,as)=>{ onAddGoal(sc,as); setShowGoalDialog(false);} } onCancel={()=>setShowGoalDialog(false)} />
           )}
@@ -164,24 +252,145 @@ const PeriodPlay = ({
             <LineupModal availablePlayers={availablePlayers} initialLineup={period.lineup || []} onConfirm={handleLineupConfirm} onCancel={handleLineupCancel} />
           )}
           {!isViewer && showDeleteEventDialog && (
-            <DeleteEventModal events={period.goals||[]} opponentName={match.opponent} onConfirm={(idx,reason)=>{ onDeleteEvent?.(periodIndex, idx, reason); setShowDeleteEventDialog(false);} } onCancel={()=>setShowDeleteEventDialog(false)} />
+            <DeleteEventModal events={events} opponentName={match.opponent} onConfirm={(idx,reason)=>{ onDeleteEvent?.(periodIndex, idx, reason); setShowDeleteEventDialog(false);} } onCancel={()=>setShowDeleteEventDialog(false)} />
           )}
           {!isViewer && showSubstitution && (
             <SubstitutionModal periodLineup={period.lineup||[]} notCalled={match.notCalled||[]} onConfirm={(outNum,inNum)=>{ onAddSubstitution?.(periodIndex, outNum, inNum, safeGetMinute); setShowSubstitution(false);} } onCancel={()=>setShowSubstitution(false)} />
           )}
-
-          {/* CTA Termina */}
-          {!isViewer && (
-            <div className="mt-4">
-              <button onClick={onFinish} className="w-full py-4 rounded-lg font-semibold text-white text-base shadow-sm transition focus:outline-none focus:ring-4 focus:ring-blue-300 bg-blue-600 hover:bg-blue-700 flex items-center justify-center gap-2" title={isEditing ? "Salva Modifiche" : `Termina ${periodTitle}`}>
-                <Flag className="w-5 h-5" /> {isEditing ? "Salva Modifiche" : `Termina ${periodTitle}`}
-              </button>
+          {!isViewer && showShotSelectionDialog && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                <h3 className="text-lg font-semibold mb-4 text-center">Esito del Tiro</h3>
+                <div className="space-y-3">
+                  <button onClick={() => pickShotOutcome('fuori')} className="w-full bg-gray-600 text-white p-3 rounded hover:bg-gray-700 font-medium">❌ Fuori</button>
+                  <button onClick={() => pickShotOutcome('parato')} className="w-full bg-gray-600 text-white p-3 rounded hover:bg-gray-700 font-medium">🧤 Parato</button>
+                  <button onClick={() => pickShotOutcome('palo')} className="w-full bg-gray-600 text-white p-3 rounded hover:bg-gray-700 font-medium">🧱 Palo</button>
+                  <button onClick={() => pickShotOutcome('traversa')} className="w-full bg-gray-600 text-white p-3 rounded hover:bg-gray-700 font-medium">⎯ Traversa</button>
+                  <button onClick={() => setShowShotSelectionDialog(false)} className="w-full bg-gray-300 text-gray-700 p-3 rounded hover:bg-gray-400">Annulla</button>
+                </div>
+              </div>
+            </div>
+          )}
+          {!isViewer && showShotTeamDialog && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                <h3 className="text-lg font-semibold mb-4 text-center">Chi ha effettuato il tiro?</h3>
+                <div className="space-y-3">
+                  <button onClick={() => { setShowShotTeamDialog(false); setShowShotPlayerDialog(true); }} className="w-full bg-emerald-600 text-white p-3 rounded hover:bg-emerald-700 font-medium">Vigontina</button>
+                  <button onClick={() => confirmShotForTeam('opponent')} className="w-full bg-blue-600 text-white p-3 rounded hover:bg-blue-700 font-medium">{match.opponent}</button>
+                  <button onClick={() => setShowShotTeamDialog(false)} className="w-full bg-gray-300 text-gray-700 p-3 rounded hover:bg-gray-400">Annulla</button>
+                </div>
+              </div>
+            </div>
+          )}
+          {!isViewer && showShotPlayerDialog && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                <h3 className="text-lg font-semibold mb-4 text-center">Seleziona giocatore</h3>
+                <div className="grid grid-cols-3 gap-2 max-h-80 overflow-auto">
+                  {availablePlayers.map((p)=>(
+                    <button key={p.num} onClick={()=>confirmShotForPlayer(p.num)} className="bg-gray-100 hover:bg-gray-200 rounded p-2 text-sm text-gray-800">{p.num} {p.name}</button>
+                  ))}
+                </div>
+                <button onClick={()=>setShowShotPlayerDialog(false)} className="w-full mt-3 bg-gray-300 text-gray-700 p-2 rounded hover:bg-gray-400">Annulla</button>
+              </div>
             </div>
           )}
         </div>
       </div>
     </div>
   );
+};
+
+const Badge = ({ children, color='indigo' }) => (
+  <span className={`ml-2 text-[10px] leading-3 px-1.5 py-0.5 rounded border font-semibold align-middle inline-block bg-${color}-50 border-${color}-200 text-${color}-700`}>{children}</span>
+);
+
+const TeamEventCard = ({ event, team, opponentName }) => {
+  const isDeleted = event.deletionReason;
+  const baseClasses = isDeleted ? "opacity-60" : "";
+  const textClasses = isDeleted ? "line-through" : "";
+  const grayCard = (children) => (
+    <div className={`bg-gray-50 p-2 rounded border border-gray-200 text-xs ${baseClasses}`}>{children}</div>
+  );
+  const greenCard = (children) => (
+    <div className={`bg-green-50 p-2 rounded border border-green-200 text-xs ${baseClasses}`}>{children}</div>
+  );
+  const blueCard = (children) => (
+    <div className={`bg-blue-50 p-2 rounded border border-blue-200 text-xs ${baseClasses}`}>{children}</div>
+  );
+  const redBall = <span className="text-red-600 font-bold" style={{color: '#dc2626'}}>⚽</span>;
+
+  if (event.type === "goal" || event.type === "penalty-goal") {
+    const isRig = event.type === 'penalty-goal';
+    return greenCard(
+      <p className={`font-medium text-green-800 ${textClasses}`}>
+        ⚽ {event.minute}' - {event.scorer} {event.scorerName}
+        {isRig && <Badge color="purple">RIG.</Badge>}
+      </p>
+    );
+  }
+  if (event.type === "opponent-goal" || event.type === "penalty-opponent-goal") {
+    const isRig = event.type === 'penalty-opponent-goal';
+    return blueCard(
+      <p className={`font-medium text-blue-800 ${textClasses}`}>
+        ⚽ {event.minute}' - {event.type.includes('penalty') ? 'Rigore' : 'Gol'} {opponentName}
+        {isRig && <Badge color="purple">RIG.</Badge>}
+      </p>
+    );
+  }
+  if (event.type === "opponent-own-goal") {
+    return greenCard(
+      <p className={`font-medium text-green-800 ${textClasses}`}>
+        {redBall} {event.minute}' - Autogol {opponentName}
+        <Badge color="red">AUTOGOL</Badge>
+      </p>
+    );
+  }
+  if (event.type === "own-goal") {
+    return blueCard(
+      <p className={`font-medium text-blue-800 ${textClasses}`}>
+        {redBall} {event.minute}' - Autogol Vigontina
+        <Badge color="red">AUTOGOL</Badge>
+      </p>
+    );
+  }
+  if (event.type.includes('penalty') && event.type.includes('missed')) {
+    const isVig = event.type === 'penalty-missed';
+    return grayCard(
+      <p className="font-medium text-gray-800">
+        ❌ {event.minute}' - Rigore fallito {isVig ? 'Vigontina' : opponentName}
+        <Badge color="purple">RIG.</Badge>
+      </p>
+    );
+  }
+  if (event.type === "missed-shot" || event.type === "opponent-missed-shot") {
+    const isVig = event.type === 'missed-shot';
+    return grayCard(<p className="font-medium text-gray-800">🎯 {event.minute}' - Tiro fuori {isVig ? `${event.player} ${event.playerName}` : opponentName}</p>);
+  }
+  if (event.type === "shot-blocked" || event.type === "opponent-shot-blocked") {
+    const isVig = event.type === 'shot-blocked';
+    return grayCard(<p className="font-medium text-gray-800">🧤 {event.minute}' - {isVig ? `${event.player} ${event.playerName}` : opponentName} tiro parato</p>);
+  }
+  if (event.type?.includes('palo-') || event.type?.includes('traversa-')) {
+    const isVig = event.team === 'vigontina';
+    const hitTypeDisplay = event.hitType === 'palo' ? '🧱 Palo' : '⎯ Traversa';
+    return grayCard(<p className="font-medium text-gray-800">{hitTypeDisplay} {event.minute}' - {isVig ? `${event.player} ${event.playerName}` : opponentName}</p>);
+  }
+  if (event.type?.startsWith('free-kick')) {
+    const isOpp = event.type.includes('opponent');
+    if (event.type.includes('missed')) return grayCard(<p className="font-medium text-gray-800">🟧 {event.minute}' - Punizione fuori {isOpp ? opponentName : `${event.player||''} ${event.playerName||''}`.trim()} <Badge color="purple">PUN.</Badge></p>);
+    if (event.type.includes('saved')) return grayCard(<p className="font-medium text-gray-800">🟧 {event.minute}' - Punizione parata {isOpp ? opponentName : `${event.player||''} ${event.playerName||''}`.trim()} <Badge color="purple">PUN.</Badge></p>);
+    if (event.type.includes('hit')) return grayCard(<p className="font-medium text-gray-800">🟧 {event.minute}' - Punizione {event.hitType==='palo'?'🧱 Palo':'⎯ Traversa'} {isOpp ? opponentName : `${event.player||''} ${event.playerName||''}`.trim()} <Badge color="purple">PUN.</Badge></p>);
+  }
+  if (event.type === 'substitution') {
+    return grayCard(
+      <p className="font-medium text-gray-800">
+        🔁 {event.minute}' - Sostituzione: {event.out?.num} {event.out?.name} → {event.in?.num} {event.in?.name}
+      </p>
+    );
+  }
+  return null;
 };
 
 export default PeriodPlay;
