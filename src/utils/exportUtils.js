@@ -55,6 +55,22 @@ function eventLabel(e, opponentName = "Avversari") {
   }
 }
 
+// Function to load logo image as base64
+const loadLogoAsBase64 = async () => {
+  try {
+    const response = await fetch('/logo-vigontina.png');
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.warn('Could not load logo:', error);
+    return null;
+  }
+};
+
 export const exportMatchToPDF = async (match) => {
   if (!match) {
     console.warn("Nessuna partita da esportare");
@@ -64,47 +80,81 @@ export const exportMatchToPDF = async (match) => {
   try {
     const doc = new jsPDF();
     
-    // === HEADER SECTION - Professional Layout ===
+    // Load and add logo
+    const logoBase64 = await loadLogoAsBase64();
+    
+    // === PROFESSIONAL HEADER WITH LOGO AND BRANDING ===
+    if (logoBase64) {
+      doc.addImage(logoBase64, 'PNG', 15, 10, 25, 25);
+    }
+    
+    // Header background rectangle
+    doc.setFillColor(30, 58, 138); // Dark blue background
+    doc.rect(0, 0, 210, 50, 'F');
+    
+    // Main title with white text on blue background
+    doc.setTextColor(255, 255, 255);
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
-    doc.text('VIGONTINA SAN PAOLO - REPORT PARTITA', 105, 20, { align: 'center' });
+    doc.text('VIGONTINA SAN PAOLO - REPORT PARTITA', 105, 25, { align: 'center' });
     
-    // Match result with larger font
+    // Match result with emphasis
     const result = getMatchResult(match);
     const vigontinaPoints = calculatePoints(match, 'vigontina');
     const opponentPoints = calculatePoints(match, 'opponent');
     
     doc.setFontSize(16);
-    doc.setFont("helvetica", "bold");
     const resultText = result.winner === 'vigontina' ? 'VITTORIA' : 
                       result.winner === 'opponent' ? 'SCONFITTA' : 'PAREGGIO';
-    doc.text(resultText, 105, 35, { align: 'center' });
     
-    // Points display
+    // Result background color based on outcome
+    let resultColor;
+    if (result.winner === 'vigontina') {
+      resultColor = [34, 197, 94]; // Green for victory
+    } else if (result.winner === 'opponent') {
+      resultColor = [239, 68, 68]; // Red for defeat
+    } else {
+      resultColor = [251, 191, 36]; // Yellow for draw
+    }
+    
+    doc.setFillColor(...resultColor);
+    doc.rect(60, 35, 90, 12, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.text(resultText, 105, 43, { align: 'center' });
+    
+    // Points display with white text
     doc.setFontSize(14);
-    doc.text(`Punti: Vigontina ${vigontinaPoints} - ${opponentPoints} ${match.opponent}`, 105, 45, { align: 'center' });
+    doc.setTextColor(255, 255, 255);
+    doc.text(`Punti: Vigontina ${vigontinaPoints} - ${opponentPoints} ${match.opponent}`, 105, 38, { align: 'center' });
     
-    let yPos = 60;
+    // Reset text color to black for body content
+    doc.setTextColor(0, 0, 0);
+    
+    let yPos = 65;
     
     // === MATCH INFO SECTION ===
     doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
+    doc.setFont("helvetica", "bold");
     doc.text(`${match.teamName || 'Vigontina San Paolo'} vs ${match.opponent}`, 20, yPos);
     yPos += 8;
-    doc.text(`${match.competition || 'Campionato'}`, 20, yPos);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${match.competition || 'Torneo Provinciale Autunnale'}`, 20, yPos);
     yPos += 8;
     doc.text(`${match.isHome ? 'Casa' : 'Trasferta'} - ${fmtDateIT(match.date)}`, 20, yPos);
     yPos += 15;
     
-    // === TEAM INFO SECTION ===
-    // Captain info
+    // === TEAM STAFF INFO ===
     const captain = match.captain;
     if (captain) {
+      doc.setFont("helvetica", "normal");
       doc.text(`Capitano: ${captain.number} ${captain.name.toUpperCase()}`, 20, yPos);
+      // Add crown symbol for captain
+      doc.setFontSize(16);
+      doc.text('♚', 15, yPos); // Crown symbol
+      doc.setFontSize(12);
       yPos += 8;
     }
     
-    // Coach and manager
     if (match.coach) {
       doc.text(`Allenatore: ${match.coach}`, 20, yPos);
       yPos += 8;
@@ -125,6 +175,7 @@ export const exportMatchToPDF = async (match) => {
     
     // === PERIODS DETAIL TABLE ===
     doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
     doc.text('DETTAGLIO PERIODI', 20, yPos);
     yPos += 10;
     
@@ -135,7 +186,7 @@ export const exportMatchToPDF = async (match) => {
         period.name,
         safeNum(period.vigontina).toString(),
         safeNum(period.opponent).toString(),
-        'Si', // Completato
+        'Si',
         outcome.label
       ]);
     });
@@ -147,12 +198,22 @@ export const exportMatchToPDF = async (match) => {
         body: periodsData,
         theme: 'grid',
         headStyles: { 
-          fillColor: [220, 220, 220],
-          textColor: [0, 0, 0],
-          fontStyle: 'bold'
+          fillColor: [71, 85, 105],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 11
+        },
+        bodyStyles: {
+          fontSize: 10
         },
         margin: { left: 20, right: 20 },
-        styles: { fontSize: 10 }
+        columnStyles: {
+          0: { cellWidth: 35 },
+          1: { cellWidth: 25, halign: 'center' },
+          2: { cellWidth: 25, halign: 'center' },
+          3: { cellWidth: 25, halign: 'center' },
+          4: { cellWidth: 35, halign: 'center' }
+        }
       });
       yPos = doc.lastAutoTable.finalY + 15;
     }
@@ -161,6 +222,7 @@ export const exportMatchToPDF = async (match) => {
     const techPeriods = technicalTestPeriods(match);
     if (techPeriods.length > 0) {
       doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
       doc.text('PROVA TECNICA', 20, yPos);
       yPos += 10;
       
@@ -181,12 +243,15 @@ export const exportMatchToPDF = async (match) => {
         body: techData,
         theme: 'grid',
         headStyles: { 
-          fillColor: [220, 220, 220],
-          textColor: [0, 0, 0],
-          fontStyle: 'bold'
+          fillColor: [71, 85, 105],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 11
         },
-        margin: { left: 20, right: 20 },
-        styles: { fontSize: 10 }
+        bodyStyles: {
+          fontSize: 10
+        },
+        margin: { left: 20, right: 20 }
       });
       yPos = doc.lastAutoTable.finalY + 15;
     }
@@ -203,6 +268,7 @@ export const exportMatchToPDF = async (match) => {
     
     if (Object.keys(scorers).length > 0) {
       doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
       doc.text('MARCATORI', 20, yPos);
       yPos += 10;
       
@@ -217,12 +283,15 @@ export const exportMatchToPDF = async (match) => {
         body: scorersData,
         theme: 'grid',
         headStyles: { 
-          fillColor: [220, 220, 220],
-          textColor: [0, 0, 0],
-          fontStyle: 'bold'
+          fillColor: [71, 85, 105],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 11
         },
-        margin: { left: 20, right: 20 },
-        styles: { fontSize: 10 }
+        bodyStyles: {
+          fontSize: 10
+        },
+        margin: { left: 20, right: 20 }
       });
       yPos = doc.lastAutoTable.finalY + 15;
     }
@@ -232,9 +301,11 @@ export const exportMatchToPDF = async (match) => {
     
     if (penaltyGoals > 0) {
       doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
       doc.text('ALTRI EVENTI', 20, yPos);
       yPos += 8;
       doc.setFont("helvetica", "normal");
+      doc.setFontSize(12);
       doc.text(`Rigori segnati: ${penaltyGoals}`, 20, yPos);
       yPos += 15;
     }
@@ -242,6 +313,7 @@ export const exportMatchToPDF = async (match) => {
     // === CHRONOLOGY SECTION ===
     if (stats.allGoals.length > 0) {
       doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
       doc.text('CRONOLOGIA EVENTI', 20, yPos);
       yPos += 10;
       
@@ -284,24 +356,38 @@ export const exportMatchToPDF = async (match) => {
           body: eventsData,
           theme: 'striped',
           headStyles: { 
-            fillColor: [220, 220, 220],
-            textColor: [0, 0, 0],
-            fontStyle: 'bold'
+            fillColor: [71, 85, 105],
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            fontSize: 11
+          },
+          bodyStyles: {
+            fontSize: 9
           },
           margin: { left: 20, right: 20 },
-          styles: { fontSize: 9 }
+          columnStyles: {
+            0: { cellWidth: 30 },
+            1: { cellWidth: 130 }
+          }
         });
         yPos = doc.lastAutoTable.finalY + 15;
       }
     }
     
-    // === FOOTER NOTE ===
+    // === PROFESSIONAL FOOTER ===
     const pageHeight = doc.internal.pageSize.height;
+    
+    // Footer background
+    doc.setFillColor(248, 250, 252);
+    doc.rect(0, pageHeight - 25, 210, 25, 'F');
+    
+    // Footer text
     doc.setFontSize(9);
     doc.setFont("helvetica", "italic");
-    doc.text('Nota: i PUNTI considerano solo i tempi giocati (Prova Tecnica esclusa).', 20, pageHeight - 20);
+    doc.setTextColor(100, 116, 139);
+    doc.text('Nota: i PUNTI considerano solo i tempi giocati (Prova Tecnica esclusa).', 105, pageHeight - 10, { align: 'center' });
     
-    // Save PDF
+    // Save PDF with professional filename
     const fileName = `Vigontina_vs_${match.opponent.replace(/[^a-zA-Z0-9]/g, '_')}_${fmtDateIT(match.date).replace(/\//g, '_')}.pdf`;
     doc.save(fileName);
     
