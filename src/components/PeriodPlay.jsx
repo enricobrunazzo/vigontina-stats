@@ -1,4 +1,4 @@
-// components/PeriodPlay.jsx (stability fixes: guards, safe minute, remove unused modals)
+// components/PeriodPlay.jsx (fix lineup modal logic)
 import React, { useState, useEffect, useMemo } from "react";
 import { ArrowLeft, Play, Pause, Plus, Minus, Flag, Repeat } from "lucide-react";
 import { PLAYERS } from "../constants/players";
@@ -69,11 +69,33 @@ const PeriodPlay = ({
     [match.notCalled]
   );
 
+  // FIX: Logica corretta per mostrare il modal della formazione
   useEffect(() => {
-    if (!isProvaTecnica && !isViewer && (!period.lineup || period.lineup.length !== 9)) {
+    // Mostra il modal solo se:
+    // 1. Non è prova tecnica
+    // 2. Non è viewer
+    // 3. Non ha ancora una formazione valida (9 giocatori)
+    // 4. Non è già stato mostrato il prompt per questo periodo
+    if (!isProvaTecnica && 
+        !isViewer && 
+        (!period.lineup || period.lineup.length !== 9) &&
+        !period.lineupPrompted) {
       setShowLineupDialog(true);
     }
   }, [period, isProvaTecnica, isViewer]);
+
+  const handleLineupConfirm = useCallback((lineup) => {
+    onSetLineup?.(periodIndex, lineup);
+    setShowLineupDialog(false);
+  }, [onSetLineup, periodIndex]);
+
+  const handleLineupCancel = useCallback(() => {
+    // Anche se cancella, marca come "già richiesta" per non ripetere
+    if (match.setLineupPrompted) {
+      match.setLineupPrompted(periodIndex, true);
+    }
+    setShowLineupDialog(false);
+  }, [match, periodIndex]);
 
   const confirmShotForTeam = (team) => {
     setShowShotTeamDialog(false);
@@ -124,24 +146,104 @@ const PeriodPlay = ({
     return { vigontina: vigontinaEvents.sort(sortByMinute), opponent: opponentEvents.sort(sortByMinute) };
   }, [events]);
 
+  // FIX: Aggiungi pulsanti +/- per prova tecnica
+  const renderProvaTecnicaControls = () => {
+    if (!isProvaTecnica || isViewer) return null;
+    
+    return (
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+        <h3 className="text-lg font-semibold text-yellow-800 text-center mb-4">Sistema a Punti - Prova Tecnica</h3>
+        
+        <div className="grid grid-cols-2 gap-6">
+          {/* Vigontina */}
+          <div className="text-center">
+            <p className="text-sm font-medium text-gray-600 mb-2">Vigontina</p>
+            <div className="text-3xl font-bold text-green-600 mb-3">{period.vigontina || 0}</div>
+            <div className="flex gap-2 justify-center">
+              <button 
+                onClick={() => onUpdateScore?.('vigontina', 1)}
+                className="bg-green-500 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-green-600"
+                title="Aggiungi punto"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+              <button 
+                onClick={() => onUpdateScore?.('vigontina', -1)}
+                className="bg-red-500 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-red-600"
+                title="Rimuovi punto"
+              >
+                <Minus className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+          
+          {/* Avversario */}
+          <div className="text-center">
+            <p className="text-sm font-medium text-gray-600 mb-2">{match.opponent}</p>
+            <div className="text-3xl font-bold text-blue-600 mb-3">{period.opponent || 0}</div>
+            <div className="flex gap-2 justify-center">
+              <button 
+                onClick={() => onUpdateScore?.('opponent', 1)}
+                className="bg-blue-500 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-blue-600"
+                title="Aggiungi punto"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+              <button 
+                onClick={() => onUpdateScore?.('opponent', -1)}
+                className="bg-red-500 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-red-600"
+                title="Rimuovi punto"
+              >
+                <Minus className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
       <div className="max-w-2xl mx-auto space-y-4">
         {/* Modals attivi */}
         {!isViewer && showGoalDialog && (
-          <GoalModal availablePlayers={availablePlayers} onConfirm={(sc,as)=>{ onAddGoal(sc,as); setShowGoalDialog(false);} } onCancel={()=>setShowGoalDialog(false)} />
+          <GoalModal 
+            availablePlayers={availablePlayers} 
+            onConfirm={(sc,as)=>{ onAddGoal(sc,as); setShowGoalDialog(false);} } 
+            onCancel={()=>setShowGoalDialog(false)} 
+          />
         )}
         {!isViewer && showOwnGoalDialog && (
-          <OwnGoalModal opponentName={match.opponent} onConfirm={(team)=>{ onAddOwnGoal(team); setShowOwnGoalDialog(false);} } onCancel={()=>setShowOwnGoalDialog(false)} />
+          <OwnGoalModal 
+            opponentName={match.opponent} 
+            onConfirm={(team)=>{ onAddOwnGoal(team); setShowOwnGoalDialog(false);} } 
+            onCancel={()=>setShowOwnGoalDialog(false)} 
+          />
         )}
         {!isViewer && showPenaltyDialog && (
-          <PenaltyAdvancedModal availablePlayers={availablePlayers} opponentName={match.opponent} onConfirm={(...args)=>{ onAddPenalty(...args); setShowPenaltyDialog(false);} } onCancel={()=>setShowPenaltyDialog(false)} />
+          <PenaltyAdvancedModal 
+            availablePlayers={availablePlayers} 
+            opponentName={match.opponent} 
+            onConfirm={(...args)=>{ onAddPenalty(...args); setShowPenaltyDialog(false);} } 
+            onCancel={()=>setShowPenaltyDialog(false)} 
+          />
         )}
         {!isViewer && showLineupDialog && (
-          <LineupModal availablePlayers={availablePlayers} initialLineup={period.lineup || []} onConfirm={(ln)=>{ onSetLineup?.(periodIndex, ln); setShowLineupDialog(false); }} onCancel={()=>setShowLineupDialog(false)} />
+          <LineupModal 
+            availablePlayers={availablePlayers} 
+            initialLineup={period.lineup || []} 
+            onConfirm={handleLineupConfirm}
+            onCancel={handleLineupCancel}
+          />
         )}
         {!isViewer && showDeleteEventDialog && (
-          <DeleteEventModal events={events} opponentName={match.opponent} onConfirm={(idx,reason)=>{ onDeleteEvent?.(periodIndex, idx, reason); setShowDeleteEventDialog(false);} } onCancel={()=>setShowDeleteEventDialog(false)} />
+          <DeleteEventModal 
+            events={events} 
+            opponentName={match.opponent} 
+            onConfirm={(idx,reason)=>{ onDeleteEvent?.(periodIndex, idx, reason); setShowDeleteEventDialog(false);} } 
+            onCancel={()=>setShowDeleteEventDialog(false)} 
+          />
         )}
         {!isViewer && showShotSelectionDialog && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -183,7 +285,12 @@ const PeriodPlay = ({
           </div>
         )}
         {!isViewer && showSubstitution && (
-          <SubstitutionModal periodLineup={period.lineup||[]} notCalled={match.notCalled||[]} onConfirm={(outNum,inNum)=>{ onAddSubstitution?.(periodIndex, outNum, inNum, safeGetMinute); setShowSubstitution(false);} } onCancel={()=>setShowSubstitution(false)} />
+          <SubstitutionModal 
+            periodLineup={period.lineup||[]} 
+            notCalled={match.notCalled||[]} 
+            onConfirm={(outNum,inNum)=>{ onAddSubstitution?.(periodIndex, outNum, inNum, safeGetMinute); setShowSubstitution(false);} } 
+            onCancel={()=>setShowSubstitution(false)} 
+          />
         )}
 
         <button onClick={onBack} className="text-white hover:text-gray-200 flex items-center gap-2"><ArrowLeft className="w-5 h-5" />Torna alla Panoramica</button>
@@ -198,6 +305,10 @@ const PeriodPlay = ({
             </div>
           )}
 
+          {/* Controlli per Prova Tecnica */}
+          {renderProvaTecnicaControls()}
+
+          {/* Timer solo per periodi normali */}
           {!isProvaTecnica && (
             <div className="bg-gray-50 rounded-lg p-6 mb-6">
               <div className="text-center mb-4">
@@ -214,7 +325,8 @@ const PeriodPlay = ({
             </div>
           )}
 
-          {!isViewer && (
+          {/* Controlli azioni solo per periodi normali */}
+          {!isProvaTecnica && !isViewer && (
             <div className="space-y-3 mb-6">
               <div className="grid grid-cols-2 gap-3">
                 <button onClick={() => setShowGoalDialog(true)} className="bg-green-500 text-white py-2 px-3 rounded hover:bg-green-600 font-medium text-sm">⚽ Gol Vigontina</button>
@@ -252,6 +364,7 @@ const PeriodPlay = ({
             </div>
           )}
 
+          {/* Pulsante termina tempo */}
           {!isViewer && (
             <div className="mt-4">
               <button
