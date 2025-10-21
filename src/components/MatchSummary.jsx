@@ -65,6 +65,8 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
                 {" • "}
                 {new Date(match.date).toLocaleDateString("it-IT")}
                 {match.coach && (<> {" • "}<span><strong>Allenatore:</strong> {match.coach}</span></>)}
+                {match.assistantReferee && (<> {" • "}<span><strong>Assistente Arbitro:</strong> {match.assistantReferee}</span></>)}
+                {match.manager && (<> {" • "}<span><strong>Dirigente Accompagnatore:</strong> {match.manager}</span></>)}
               </p>
             </div>
           </div>
