@@ -1,10 +1,7 @@
-// utils/exportUtils.js (PDF export with full chronology including substitutions and detailed free-kick labels)
-import * as XLSX from "xlsx";
+// utils/exportUtils.js — Professional minimal PDF styling per user preferences
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import ExcelJS from "exceljs";
-import { PLAYERS } from "../constants/players";
-import { calculatePoints, calculateTotalGoals, calculateMatchStats, getMatchResult } from "./matchUtils";
+import { calculatePoints, calculateMatchStats, getMatchResult } from "./matchUtils";
 import { exportMatchHistoryToExcel } from "./excelExport";
 
 const isTechnicalTest = (p) => (p?.name || "").trim().toUpperCase() === "PROVA TECNICA";
@@ -13,446 +10,218 @@ const technicalTestPeriods = (match) => Array.isArray(match?.periods) ? match.pe
 const safeNum = (v) => (Number.isFinite(v) ? v : 0);
 const fmtDateIT = (d) => { const date = new Date(d); return Number.isFinite(date.getTime()) ? date.toLocaleDateString("it-IT") : ""; };
 
-function periodOutcome(period, opponentName = "Avversari") {
-  const v = safeNum(period.vigontina); const o = safeNum(period.opponent);
-  if (v === o) return { label: "Pareggio", winner: "draw" };
-  if (v > o) return { label: "Vigontina", winner: "vigontina" };
-  return { label: opponentName, winner: "opponent" };
-}
-
-// Return a normalized, human-friendly label for events, covering substitutions and free-kicks explicitly
-function eventLabel(e, opponentName = "Avversari") {
-  const min = e.minute != null ? `${e.minute}'` : "";
-  const who = (player, name) => (player ? `${player} ${name || ''}`.trim() : '').trim();
-
-  // Substitutions (ensure appear in chronology)
-  if (e.type === 'substitution') {
-    const outStr = e.out ? `${e.out.num || e.out.number || ''} ${e.out.name || ''}`.trim() : 'N/A';
-    const inStr = e.in ? `${e.in.num || e.in.number || ''} ${e.in.name || ''}`.trim() : 'N/A';
-    return `${min} - Sostituzione: ${outStr} → ${inStr}`.trim();
-  }
-
-  // Free-kicks (Punizione) with explicit outcomes - FIXED to appear in events
-  if (e.type?.startsWith('free-kick') || e.type === 'foul' || e.type === 'punizione') {
-    const isOpp = e.type.includes('opponent') || e.team === 'opponent';
-    const shooter = isOpp ? opponentName : who(e.player, e.playerName);
-    
-    if (e.type.includes('goal')) return `${min} - Punizione gol ${shooter}`.trim();
-    if (e.type.includes('saved')) return `${min} - Punizione parata ${shooter}`.trim();
-    if (e.type.includes('missed')) return `${min} - Punizione fuori ${shooter}`.trim();
-    if (e.type.includes('hit')) {
-      const hl = e.hitType === 'traversa' ? 'traversa' : 'palo';
-      return `${min} - Punizione ${hl} ${shooter}`.trim();
-    }
-    // Generic free-kick/foul
-    return `${min} - Punizione ${shooter}`.trim();
-  }
-
-  // Fouls/Cards - ADDED to ensure they appear in summary
-  if (e.type === 'yellow-card' || e.type === 'cartellino-giallo') {
-    const player = who(e.player, e.playerName) || (e.team === 'opponent' ? opponentName : 'Giocatore');
-    return `${min} - Ammonizione ${player}`.trim();
-  }
-  
-  if (e.type === 'red-card' || e.type === 'cartellino-rosso') {
-    const player = who(e.player, e.playerName) || (e.team === 'opponent' ? opponentName : 'Giocatore');
-    return `${min} - Espulsione ${player}`.trim();
-  }
-
-  // General shots and outcomes
-  const scorer = e.scorerName || e.scorer || who(e.player, e.playerName);
-  const assistName = e.assistName || e.assist || "";
-
-  switch (e.type) {
-    case "goal": {
-      const base = `${min} - Gol ${scorer}`.trim();
-      return assistName ? `${base} (assist ${assistName})` : base;
-    }
-    case "own-goal":
-      return `${min} - Autogol Vigontina (gol a ${opponentName})`;
-    case "opponent-own-goal":
-      return `${min} - Autogol ${opponentName} (gol a Vigontina)`;
-    case "opponent-goal":
-      return `${min} - Gol ${opponentName}`;
-    case "penalty-goal": {
-      const base = `${min} - Gol (Rig.) ${scorer}`.trim();
-      return assistName ? `${base} (assist ${assistName})` : base;
-    }
-    case "penalty-missed":
-      return `${min} - Rigore fallito Vigontina`;
-    case "penalty-opponent-goal":
-      return `${min} - Gol (Rig.) ${opponentName}`;
-    case "penalty-opponent-missed":
-      return `${min} - Rigore fallito ${opponentName}`;
-    case "save":
-      return `${min} - Parata ${who(e.player, e.playerName)}`.trim();
-    case "opponent-save":
-      return `${min} - Parata portiere ${opponentName}`;
-    case "missed-shot":
-      return `${min} - Tiro fuori ${who(e.player, e.playerName)}`.trim();
-    case "opponent-missed-shot":
-      return `${min} - Tiro fuori ${opponentName}`;
-    case "shot-blocked":
-      return `${min} - Tiro parato ${who(e.player, e.playerName)}`.trim();
-    case "opponent-shot-blocked":
-      return `${min} - Tiro parato ${opponentName}`;
-    default: {
-      // hits outside free-kicks handled above
-      if (e.hitType === 'palo' || e.hitType === 'traversa') {
-        const whoStr = e.team === 'vigontina' ? who(e.player, e.playerName) : opponentName;
-        const hl = e.hitType === 'traversa' ? 'traversa' : 'palo';
-        return `${min} - ${hl} ${whoStr}`.trim();
-      }
-      // Fallback for any unhandled event types
-      return `${min} - ${e.type || 'Evento'}`.trim();
-    }
-  }
-}
-
-// Function to load logo image as base64 - FIXED error handling
-const loadLogoAsBase64 = async () => {
-  try {
-    // Try multiple potential logo paths
-    const logoPaths = [
-      '/logo-vigontina.png',
-      '/public/logo-vigontina.png', 
-      '/assets/logo-vigontina.png',
-      './logo-vigontina.png'
-    ];
-    
-    for (const path of logoPaths) {
-      try {
-        const response = await fetch(path);
-        if (response.ok) {
-          const blob = await response.blob();
-          return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = () => reject(new Error('FileReader error'));
-            reader.readAsDataURL(blob);
-          });
-        }
-      } catch (err) {
-        // Continue to next path
-        continue;
-      }
-    }
-    
-    console.warn('Logo not found in any expected location');
-    return null;
-  } catch (error) {
-    console.warn('Could not load logo:', error);
-    return null;
-  }
+const BADGE_COLORS = {
+  vigontina: [160, 212, 180], // soft green
+  opponent: [242, 180, 180],  // soft red
+  draw: [245, 225, 160]       // soft yellow
 };
+
+const loadLogoAsBase64 = async () => {
+  const paths = ['/logo-vigontina.png','/public/logo-vigontina.png','/assets/logo-vigontina.png','./logo-vigontina.png'];
+  for (const p of paths) {
+    try { const r = await fetch(p); if (r.ok) { const b = await r.blob(); const rd = new FileReader();
+      return await new Promise((res, rej)=>{ rd.onload=()=>res(rd.result); rd.onerror=()=>rej(); rd.readAsDataURL(b); }); } } catch {}
+  }
+  return null;
+};
+
+function drawHeader(doc, match, logoBase64) {
+  const marginL = 20; let y = 18;
+  if (logoBase64) {
+    try { doc.addImage(logoBase64, 'PNG', marginL, 12, 22, 22); } catch {}
+  }
+  doc.setTextColor(33,33,33);
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(14);
+  const titleX = logoBase64 ? marginL + 28 : marginL;
+  doc.text("VIGONTINA SAN PAOLO", titleX, y);
+  y += 6;
+  doc.setFont("helvetica","normal");
+  doc.setFontSize(11);
+  doc.setTextColor(90,90,90);
+  const sub = `${match.teamName || 'Vigontina San Paolo'} vs ${match.opponent} · ${match.competition || ''} · ${match.isHome ? 'Casa' : 'Trasferta'} · ${fmtDateIT(match.date)}`;
+  doc.text(sub.trim().replace(/\s·\s·/g,' · '), titleX, y);
+  // hairline separator
+  doc.setDrawColor(200,200,200); doc.setLineWidth(0.2); doc.line(marginL, y+6, 190, y+6);
+  return y + 12;
+}
+
+function drawOutcomeLine(doc, match, startY) {
+  const res = getMatchResult(match);
+  const vp = calculatePoints(match,'vigontina');
+  const op = calculatePoints(match,'opponent');
+  doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(33,33,33);
+  const text = `Risultato: Vigontina ${vp} – ${op} ${match.opponent}`;
+  doc.text(text, 20, startY);
+  // badge
+  const badge = res.winner === 'vigontina' ? 'VITTORIA' : res.winner === 'opponent' ? 'SCONFITTA' : 'PAREGGIO';
+  const color = res.winner === 'vigontina' ? BADGE_COLORS.vigontina : res.winner === 'opponent' ? BADGE_COLORS.opponent : BADGE_COLORS.draw;
+  const badgeX = 190 - 40; const badgeY = startY - 6; const bw = 30; const bh = 8;
+  doc.setFillColor(...color); doc.rect(badgeX, badgeY, bw, bh, 'F');
+  doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(60,60,60);
+  doc.text(badge, badgeX + bw/2, badgeY + 5.6, {align:'center'});
+  // subtle spacer line
+  doc.setDrawColor(220,220,220); doc.setLineWidth(0.2); doc.line(20, startY+4, 190, startY+4);
+  return startY + 10;
+}
+
+function drawPeriodsTable(doc, match, startY) {
+  const nonTech = nonTechnicalPeriods(match);
+  if (nonTech.length === 0) return startY;
+  doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(33,33,33);
+  doc.text('Dettaglio periodi', 20, startY);
+  autoTable(doc, {
+    startY: startY + 4,
+    theme: 'plain',
+    head: [["Periodo","Vigontina", match.opponent, "Esito"]],
+    body: nonTech.map(p=>[p.name, safeNum(p.vigontina), safeNum(p.opponent), safeNum(p.vigontina)===safeNum(p.opponent)?"Pareggio":(safeNum(p.vigontina)>safeNum(p.opponent)?"Vigontina":match.opponent)]),
+    styles: { font: 'helvetica', fontSize: 10, textColor: [33,33,33], cellPadding: {top:3,bottom:3,left:2,right:2} },
+    headStyles: { fontStyle:'bold', halign:'left', textColor:[33,33,33] },
+    columnStyles: { 0:{cellWidth:36}, 1:{halign:'center', cellWidth:24}, 2:{halign:'center', cellWidth:24}, 3:{halign:'center', cellWidth:36} },
+    didDrawPage: (data)=>{ // underline header
+      const {table} = data; const y = table.head[0].sectionHeight + table.head[0].y;
+      doc.setDrawColor(210,210,210); doc.setLineWidth(0.2); doc.line(20, y, 190, y);
+    },
+    margin: { left: 20, right: 20 }
+  });
+  return doc.lastAutoTable.finalY + 6;
+}
+
+function drawTechTestTable(doc, match, startY) {
+  const tech = technicalTestPeriods(match);
+  if (tech.length === 0) return startY;
+  doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(33,33,33);
+  doc.text('Prova tecnica', 20, startY);
+  autoTable(doc, {
+    startY: startY + 4,
+    theme: 'plain',
+    head: [["Periodo","Vigontina", match.opponent, "Esito"]],
+    body: tech.map(p=>[p.name, safeNum(p.vigontina), safeNum(p.opponent), safeNum(p.vigontina)===safeNum(p.opponent)?"Pareggio":(safeNum(p.vigontina)>safeNum(p.opponent)?"Vigontina":match.opponent)]),
+    styles: { font: 'helvetica', fontSize: 10, textColor: [33,33,33], cellPadding: {top:3,bottom:3,left:2,right:2} },
+    headStyles: { fontStyle:'bold', halign:'left', textColor:[33,33,33] },
+    columnStyles: { 0:{cellWidth:36}, 1:{halign:'center', cellWidth:24}, 2:{halign:'center', cellWidth:24}, 3:{halign:'center', cellWidth:36} },
+    didDrawPage: (data)=>{ const {table} = data; const y = table.head[0].sectionHeight + table.head[0].y; doc.setDrawColor(210,210,210); doc.setLineWidth(0.2); doc.line(20, y, 190, y); },
+    margin: { left: 20, right: 20 }
+  });
+  return doc.lastAutoTable.finalY + 6;
+}
+
+function collectEvents(match) {
+  const evs = [];
+  (match.periods || []).forEach(p => {
+    const arrays = [p.events||[], p.goals||[], p.substitutions||[], p.fouls||[], p.cards||[], p.allEvents||[]];
+    arrays.forEach(a=>Array.isArray(a) && a.forEach(e=> e && evs.push({ ...e, periodName: p.name })));
+  });
+  if (Array.isArray(match.events)) match.events.forEach(e=> e && evs.push({ ...e, periodName: e.periodName || 'Match' }));
+  return evs.filter(e=>!e.deletionReason);
+}
+
+function labelEvent(e, opponentName) {
+  const min = e.minute!=null?`${e.minute}'`:''; const who=(pl,n)=> (pl?`${pl} ${n||''}`.trim():'').trim();
+  if (e.type==='substitution') { const outStr = e.out?`${e.out.num||e.out.number||''} ${e.out.name||''}`.trim():'N/A'; const inStr = e.in?`${e.in.num||e.in.number||''} ${e.in.name||''}`.trim():'N/A'; return `${min} Sostituzione: ${outStr} → ${inStr}`; }
+  if (e.type?.startsWith('free-kick') || e.type==='foul' || e.type==='punizione') {
+    const isOpp = e.type.includes('opponent') || e.team==='opponent'; const shooter = isOpp ? opponentName : who(e.player, e.playerName);
+    if (e.type.includes('goal')) return `${min} Punizione gol ${shooter}`;
+    if (e.type.includes('saved')) return `${min} Punizione parata ${shooter}`;
+    if (e.type.includes('missed')) return `${min} Punizione fuori ${shooter}`;
+    if (e.type.includes('hit')) { const hl = e.hitType==='traversa'?'traversa':'palo'; return `${min} Punizione ${hl} ${shooter}`; }
+    return `${min} Punizione ${shooter}`;
+  }
+  if (e.type==='yellow-card' || e.type==='cartellino-giallo') { const pl = who(e.player, e.playerName) || (e.team==='opponent'?opponentName:'Giocatore'); return `${min} Ammonizione ${pl}`; }
+  if (e.type==='red-card' || e.type==='cartellino-rosso') { const pl = who(e.player, e.playerName) || (e.team==='opponent'?opponentName:'Giocatore'); return `${min} Espulsione ${pl}`; }
+  const scorer = e.scorerName || e.scorer || who(e.player, e.playerName); const assist = e.assistName || e.assist || '';
+  switch(e.type){
+    case 'goal': { const base = `${min} Gol ${scorer}`; return assist?`${base} (assist ${assist})`:base; }
+    case 'own-goal': return `${min} Autogol Vigontina (gol a ${opponentName})`;
+    case 'opponent-own-goal': return `${min} Autogol ${opponentName} (gol a Vigontina)`;
+    case 'opponent-goal': return `${min} Gol ${opponentName}`;
+    case 'penalty-goal': { const base = `${min} Gol (Rig.) ${scorer}`; return assist?`${base} (assist ${assist})`:base; }
+    case 'penalty-missed': return `${min} Rigore fallito Vigontina`;
+    case 'penalty-opponent-goal': return `${min} Gol (Rig.) ${opponentName}`;
+    case 'penalty-opponent-missed': return `${min} Rigore fallito ${opponentName}`;
+    case 'save': return `${min} Parata ${who(e.player, e.playerName)}`;
+    case 'opponent-save': return `${min} Parata portiere ${opponentName}`;
+    case 'missed-shot': return `${min} Tiro fuori ${who(e.player, e.playerName)}`;
+    case 'opponent-missed-shot': return `${min} Tiro fuori ${opponentName}`;
+    case 'shot-blocked': return `${min} Tiro parato ${who(e.player, e.playerName)}`;
+    case 'opponent-shot-blocked': return `${min} Tiro parato ${opponentName}`;
+    default: { if (e.hitType==='palo' || e.hitType==='traversa'){ const whoStr = e.team==='vigontina'?who(e.player, e.playerName):opponentName; const hl = e.hitType==='traversa'?'traversa':'palo'; return `${min} ${hl} ${whoStr}`; } return `${min} ${e.type||'Evento'}`; }
+  }
+}
+
+function drawScorers(doc, match, startY) {
+  const stats = calculateMatchStats(match);
+  const map = {};
+  stats.allGoals.filter(e=>!e.deletionReason && (e.type==='goal' || e.type==='penalty-goal')).forEach(e=>{ const name = e.scorerName || e.scorer || 'Sconosciuto'; map[name]=(map[name]||0)+1; });
+  doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(33,33,33);
+  doc.text('Marcatori', 20, startY);
+  const rows = Object.keys(map).length? Object.entries(map).map(([n,g])=>[n,String(g)]) : [["Nessun marcatore","-"]];
+  autoTable(doc, {
+    startY: startY + 4,
+    theme: 'plain',
+    head: [["Giocatore","Gol"]],
+    body: rows,
+    styles: { font: 'helvetica', fontSize: 10, textColor: [33,33,33], cellPadding: {top:3,bottom:3,left:2,right:2} },
+    headStyles: { fontStyle:'bold', halign:'left', textColor:[33,33,33] },
+    columnStyles: { 0:{cellWidth:70}, 1:{halign:'center', cellWidth:18} },
+    didDrawPage: (data)=>{ const {table} = data; const y = table.head[0].sectionHeight + table.head[0].y; doc.setDrawColor(210,210,210); doc.setLineWidth(0.2); doc.line(20, y, 190, y); },
+    margin: { left: 20, right: 20 }
+  });
+  return doc.lastAutoTable.finalY + 6;
+}
+
+function drawChronologyTable(doc, match, startY) {
+  const all = collectEvents(match);
+  // group by period
+  const byPeriod = {};
+  all.forEach(e=>{ const k = e.periodName || e.period || 'N/A'; (byPeriod[k]||(byPeriod[k]=[])).push(e); });
+  const order = (s)=> s.includes('1°')?1: s.includes('2°')?2: s.includes('3°')?3: s.includes('4°')?4: 5;
+  const rows = [];
+  Object.entries(byPeriod).sort(([a],[b])=>order(a)-order(b)).forEach(([p,evs])=>{
+    evs.sort((a,b)=>(a.minute||0)-(b.minute||0)).forEach(e=> rows.push([p, labelEvent(e, match.opponent)]));
+  });
+  doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(33,33,33);
+  doc.text('Cronologia eventi', 20, startY);
+  if (rows.length===0) {
+    doc.setFont("helvetica","italic"); doc.setFontSize(10); doc.setTextColor(90,90,90); doc.text('Nessun evento registrato durante la partita.', 20, startY+6); return startY+12;
+  }
+  autoTable(doc, {
+    startY: startY + 4,
+    theme: 'plain',
+    head: [["Periodo","Evento"]],
+    body: rows,
+    styles: { font: 'helvetica', fontSize: 9, textColor: [33,33,33], cellPadding: {top:2.5,bottom:2.5,left:2,right:2} },
+    headStyles: { fontStyle:'bold', halign:'left', textColor:[33,33,33] },
+    columnStyles: { 0:{cellWidth:30}, 1:{cellWidth:130} },
+    didDrawPage: (data)=>{ const {table} = data; const y = table.head[0].sectionHeight + table.head[0].y; doc.setDrawColor(210,210,210); doc.setLineWidth(0.2); doc.line(20, y, 190, y); },
+    margin: { left: 20, right: 20 }
+  });
+  return doc.lastAutoTable.finalY + 6;
+}
 
 export const exportMatchToPDF = async (match) => {
-  if (!match) {
-    console.warn("Nessuna partita da esportare");
-    alert("Nessuna partita selezionata per l'esportazione");
-    return;
-  }
-
+  if (!match) { alert("Nessuna partita selezionata per l'esportazione"); return; }
   try {
-    console.log('Starting PDF export for match:', match.opponent);
-    
     const doc = new jsPDF();
-    
-    // Load logo with better error handling
-    let logoBase64 = null;
-    try {
-      logoBase64 = await loadLogoAsBase64();
-    } catch (logoError) {
-      console.warn('Logo loading failed, continuing without logo:', logoError);
-    }
-    
-    // === PROFESSIONAL HEADER WITH LOGO AND BRANDING ===
-    
-    // Header background rectangle
-    doc.setFillColor(30, 58, 138); // Dark blue background
-    doc.rect(0, 0, 210, 50, 'F');
-    
-    // Add logo if available
-    if (logoBase64) {
-      try {
-        doc.addImage(logoBase64, 'PNG', 15, 10, 25, 25);
-      } catch (imgError) {
-        console.warn('Error adding logo to PDF:', imgError);
-      }
-    }
-    
-    // Main title with white text on blue background
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(18);
-    doc.setFont("helvetica", "bold");
-    doc.text('VIGONTINA SAN PAOLO - REPORT PARTITA', 105, 25, { align: 'center' });
-    
-    // Match result with emphasis
-    const result = getMatchResult(match);
-    const vigontinaPoints = calculatePoints(match, 'vigontina');
-    const opponentPoints = calculatePoints(match, 'opponent');
-    
-    doc.setFontSize(16);
-    const resultText = result.winner === 'vigontina' ? 'VITTORIA' : 
-                      result.winner === 'opponent' ? 'SCONFITTA' : 'PAREGGIO';
-    
-    // Result background color based on outcome
-    let resultColor;
-    if (result.winner === 'vigontina') {
-      resultColor = [34, 197, 94]; // Green for victory
-    } else if (result.winner === 'opponent') {
-      resultColor = [239, 68, 68]; // Red for defeat
-    } else {
-      resultColor = [251, 191, 36]; // Yellow for draw
-    }
-    
-    doc.setFillColor(...resultColor);
-    doc.rect(60, 35, 90, 12, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.text(resultText, 105, 43, { align: 'center' });
-    
-    // Points display with white text
-    doc.setFontSize(14);
-    doc.setTextColor(255, 255, 255);
-    doc.text(`Punti: Vigontina ${vigontinaPoints} - ${opponentPoints} ${match.opponent}`, 105, 38, { align: 'center' });
-    
-    // Reset text color to black for body content
-    doc.setTextColor(0, 0, 0);
-    
-    let yPos = 65;
-    
-    // === MATCH INFO SECTION ===
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text(`${match.teamName || 'Vigontina San Paolo'} vs ${match.opponent}`, 20, yPos);
-    yPos += 8;
-    doc.setFont("helvetica", "normal");
-    doc.text(`${match.competition || 'Torneo Provinciale Autunnale'}`, 20, yPos);
-    yPos += 8;
-    doc.text(`${match.isHome ? 'Casa' : 'Trasferta'} - ${fmtDateIT(match.date)}`, 20, yPos);
-    yPos += 15;
-    
-    // === TEAM STAFF INFO ===
-    const captain = match.captain;
-    if (captain) {
-      doc.setFont("helvetica", "normal");
-      doc.text(`Capitano: ${captain.number || captain.num || ''} ${(captain.name || '').toUpperCase()}`, 20, yPos);
-      doc.setFontSize(16);
-      doc.text('♚', 15, yPos);
-      doc.setFontSize(12);
-      yPos += 8;
-    }
-    
-    if (match.coach) {
-      doc.text(`Allenatore: ${match.coach}`, 20, yPos);
-      yPos += 8;
-    }
-    
-    if (match.manager) {
-      doc.text(`Dirigente Accompagnatore: ${match.manager}`, 20, yPos);
-      yPos += 8;
-    }
-    
-    const nonTech = nonTechnicalPeriods(match);
-    const totalGoalsV = nonTech.reduce((sum, p) => sum + safeNum(p.vigontina), 0);
-    const totalGoalsO = nonTech.reduce((sum, p) => sum + safeNum(p.opponent), 0);
-    
-    doc.text(`Gol (senza PT): ${totalGoalsV} - ${totalGoalsO}`, 20, yPos);
-    yPos += 20;
-    
-    // === PERIODS DETAIL TABLE ===
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text('DETTAGLIO PERIODI', 20, yPos);
-    yPos += 10;
-    
-    const periodsData = [];
-    nonTech.forEach((period) => {
-      const outcome = periodOutcome(period, match.opponent);
-      periodsData.push([
-        period.name,
-        safeNum(period.vigontina).toString(),
-        safeNum(period.opponent).toString(),
-        'Si',
-        outcome.label
-      ]);
-    });
-    
-    if (periodsData.length > 0) {
-      autoTable(doc, {
-        startY: yPos,
-        head: [['Periodo', 'Vigontina', match.opponent, 'Completato', 'Esito']],
-        body: periodsData,
-        theme: 'grid',
-        headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 11 },
-        bodyStyles: { fontSize: 10 },
-        margin: { left: 20, right: 20 },
-        columnStyles: { 0: { cellWidth: 35 }, 1: { cellWidth: 25, halign: 'center' }, 2: { cellWidth: 25, halign: 'center' }, 3: { cellWidth: 25, halign: 'center' }, 4: { cellWidth: 35, halign: 'center' } }
-      });
-      yPos = doc.lastAutoTable.finalY + 15;
-    }
-    
-    // === TECHNICAL TEST SECTION ===
-    const techPeriods = technicalTestPeriods(match);
-    if (techPeriods.length > 0) {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(14);
-      doc.text('PROVA TECNICA', 20, yPos);
-      yPos += 10;
-      const techData = [];
-      techPeriods.forEach((period) => {
-        const outcome = periodOutcome(period, match.opponent);
-        techData.push([ period.name, safeNum(period.vigontina).toString(), safeNum(period.opponent).toString(), outcome.label ]);
-      });
-      autoTable(doc, { startY: yPos, head: [['Periodo', 'Vigontina', match.opponent, 'Esito']], body: techData, theme: 'grid', headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 11 }, bodyStyles: { fontSize: 10 }, margin: { left: 20, right: 20 } });
-      yPos = doc.lastAutoTable.finalY + 15;
-    }
-    
-    // === SCORERS SECTION ===
-    const stats = calculateMatchStats(match);
-    const scorers = {};
-    stats.allGoals.filter(e => !e.deletionReason && (e.type === 'goal' || e.type === 'penalty-goal')).forEach(e => { const name = e.scorerName || e.scorer || 'Sconosciuto'; scorers[name] = (scorers[name] || 0) + 1; });
-    if (Object.keys(scorers).length > 0) {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(14);
-      doc.text('MARCATORI', 20, yPos);
-      yPos += 10;
-      const scorersData = Object.entries(scorers).map(([name, goals]) => [ name, goals.toString() ]);
-      autoTable(doc, { startY: yPos, head: [['Giocatore', 'Gol']], body: scorersData, theme: 'grid', headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 11 }, bodyStyles: { fontSize: 10 }, margin: { left: 20, right: 20 } });
-      yPos = doc.lastAutoTable.finalY + 15;
-    }
-    
-    // === OTHER EVENTS SECTION ===
-    const penaltyGoals = stats.allGoals.filter(e => !e.deletionReason && e.type === 'penalty-goal').length;
-    if (penaltyGoals > 0) {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(14);
-      doc.text('ALTRI EVENTI', 20, yPos);
-      yPos += 8;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(12);
-      doc.text(`Rigori segnati: ${penaltyGoals}`, 20, yPos);
-      yPos += 15;
-    }
-    
-    // === ENHANCED CHRONOLOGY SECTION (FIXED to include substitutions and fouls) ===
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text('CRONOLOGIA EVENTI', 20, yPos);
-    yPos += 10;
-
-    const allEvents = [];
-    
-    // Collect ALL types of events from periods, including substitutions and fouls
-    (match.periods || []).forEach(p => {
-      // Check multiple possible event arrays
-      const eventArrays = [
-        p.events || [],
-        p.goals || [],
-        p.substitutions || [],
-        p.fouls || [],
-        p.cards || [],
-        p.allEvents || []
-      ];
-      
-      eventArrays.forEach(eventArray => {
-        if (Array.isArray(eventArray)) {
-          eventArray.forEach(e => {
-            if (e && typeof e === 'object') {
-              // Enrich with period name for ordering
-              allEvents.push({ ...e, periodName: p.name });
-            }
-          });
-        }
-      });
-    });
-
-    // Also collect from match-level events if they exist
-    if (match.events && Array.isArray(match.events)) {
-      match.events.forEach(e => {
-        if (e && typeof e === 'object') {
-          allEvents.push({ ...e, periodName: e.periodName || 'Match' });
-        }
-      });
-    }
-
-    // Fallback to stats if no events collected from periods
-    if (allEvents.length === 0) {
-      stats.allGoals.filter(e => !e.deletionReason).forEach(e => allEvents.push(e));
-    }
-
-    // Group events by period
-    const eventsByPeriod = {};
-    allEvents.filter(e => e && !e.deletionReason).forEach(e => {
-      const periodName = e.periodName || e.period || 'N/A';
-      if (!eventsByPeriod[periodName]) eventsByPeriod[periodName] = [];
-      eventsByPeriod[periodName].push(e);
-    });
-
-    const eventsData = [];
-    Object.entries(eventsByPeriod)
-      .sort(([a],[b]) => {
-        const ord = (s) => s.includes('1°') ? 1 : s.includes('2°') ? 2 : s.includes('3°') ? 3 : s.includes('4°') ? 4 : 5;
-        return ord(a)-ord(b);
-      })
-      .forEach(([periodName, evs]) => {
-        evs.sort((a,b) => (a.minute||0) - (b.minute||0)).forEach(e => {
-          eventsData.push([ periodName, eventLabel(e, match.opponent) ]);
-        });
-      });
-
-    if (eventsData.length > 0) {
-      autoTable(doc, { 
-        startY: yPos, 
-        head: [['Periodo', 'Evento']], 
-        body: eventsData, 
-        theme: 'striped', 
-        headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 11 }, 
-        bodyStyles: { fontSize: 9 }, 
-        margin: { left: 20, right: 20 }, 
-        columnStyles: { 0: { cellWidth: 30 }, 1: { cellWidth: 130 } } 
-      });
-      yPos = doc.lastAutoTable.finalY + 15;
-    } else {
-      // Show message if no events found
-      doc.setFont("helvetica", "italic");
-      doc.setFontSize(10);
-      doc.text('Nessun evento registrato durante la partita.', 20, yPos);
-      yPos += 15;
-    }
-
-    // === PROFESSIONAL FOOTER ===
-    const pageHeight = doc.internal.pageSize.height;
-    doc.setFillColor(248, 250, 252);
-    doc.rect(0, pageHeight - 25, 210, 25, 'F');
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "italic");
-    doc.setTextColor(100, 116, 139);
-    doc.text('Nota: i PUNTI considerano solo i tempi giocati (Prova Tecnica esclusa).', 105, pageHeight - 10, { align: 'center' });
-
-    const fileName = `Vigontina_vs_${(match.opponent || 'Avversario').replace(/[^a-zA-Z0-9]/g, '_')}_${fmtDateIT(match.date).replace(/\//g, '_')}.pdf`;
-    
-    console.log('PDF export completed successfully');
+    const logo = await loadLogoAsBase64();
+    let y = drawHeader(doc, match, logo);
+    y = drawOutcomeLine(doc, match, y);
+    y = drawPeriodsTable(doc, match, y);
+    y = drawTechTestTable(doc, match, y);
+    y = drawScorers(doc, match, y);
+    y = drawChronologyTable(doc, match, y);
+    // footer
+    const ph = doc.internal.pageSize.height; doc.setFont("helvetica","italic"); doc.setFontSize(9); doc.setTextColor(110,110,110);
+    doc.text('Nota: i punti escludono la Prova Tecnica.', 20, ph-10);
+    // page number
+    const pageCount = doc.getNumberOfPages();
+    for (let i=1;i<=pageCount;i++){ doc.setPage(i); doc.text(`Pag. ${i}/${pageCount}`, 190, ph-10, {align:'right'}); }
+    const fileName = `Vigontina_vs_${(match.opponent||'Avversario').replace(/[^a-zA-Z0-9]/g,'_')}_${fmtDateIT(match.date).replace(/\//g,'_')}.pdf`;
     doc.save(fileName);
-    
-  } catch (error) {
-    console.error('Errore export PDF:', error);
-    alert(`Errore durante l'esportazione PDF: ${error.message || 'Errore sconosciuto'}`);
+  } catch (e) {
+    console.error('Errore export PDF:', e); alert(`Errore durante l'esportazione PDF: ${e?.message||'Errore sconosciuto'}`);
   }
 };
 
-export const exportMatchToExcel = async (match) => { 
-  if (!match) {
-    alert("Nessuna partita selezionata per l'esportazione Excel");
-    return; 
-  }
-  return exportMatchHistoryToExcel([match]); 
-};
-
-export const exportHistoryToExcel = async (matches) => { 
-  if (!Array.isArray(matches) || matches.length === 0) {
-    alert("Nessuna partita disponibile per l'esportazione storico");
-    return; 
-  }
-  return exportMatchHistoryToExcel(matches); 
-};
+export const exportMatchToExcel = async (match) => { if (!match) { alert("Nessuna partita selezionata per l'esportazione Excel"); return; } return exportMatchHistoryToExcel([match]); };
+export const exportHistoryToExcel = async (matches) => { if (!Array.isArray(matches) || matches.length===0) { alert("Nessuna partita disponibile per l'esportazione storico"); return; } return exportMatchHistoryToExcel(matches); };
