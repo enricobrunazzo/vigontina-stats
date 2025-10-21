@@ -1,4 +1,4 @@
-// components/NewMatchForm.jsx (fix: aggiungi campo password)
+// components/NewMatchForm.jsx (fix: campo manager mappato correttamente)
 import React, { useState, useMemo } from "react";
 import { ArrowLeft, Users, X, Lock } from "lucide-react";
 import { PLAYERS } from "../constants/players";
@@ -54,7 +54,7 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
       return;
     }
     
-    // Passa tutti i dati inclusa la password
+    // Passa tutti i dati inclusa la password; mappa teamManager -> manager per uniformità con export
     onSubmit({
       competition,
       matchDay: competition.includes("Torneo") ? matchDay : null,
@@ -62,7 +62,7 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
       opponent,
       date,
       assistantReferee,
-      teamManager,
+      manager: teamManager, // <-- Mappa teamManager -> manager per uniformità
       coach,
       notCalled,
       captain,
