@@ -11,6 +11,68 @@ import {
 import { db } from "../config/firebase";
 import { calculatePoints, calculateTotalGoals } from "../utils/matchUtils";
 
+// Sanitize helpers for Firestore-compatible payloads
+const cleanString = (s = "") => String(s).normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim();
+const cleanNumber = (n) => (Number.isFinite(n) ? n : 0);
+const cleanBool = (b) => !!b;
+
+const sanitizeEvent = (e = {}) => {
+  const out = e?.out ? { num: cleanNumber(e.out.num), name: cleanString(e.out.name) } : undefined;
+  const inn = e?.in ? { num: cleanNumber(e.in.num), name: cleanString(e.in.name) } : undefined;
+  const evt = {
+    minute: cleanNumber(e.minute),
+    type: cleanString(e.type),
+    team: e.team ? cleanString(e.team) : undefined,
+    player: Number.isFinite(e.player) ? e.player : undefined,
+    playerName: e.playerName ? cleanString(e.playerName) : undefined,
+    scorer: Number.isFinite(e.scorer) ? e.scorer : undefined,
+    scorerName: e.scorerName ? cleanString(e.scorerName) : undefined,
+    assist: Number.isFinite(e.assist) ? e.assist : undefined,
+    assistName: e.assistName ? cleanString(e.assistName) : undefined,
+    hitType: e.hitType ? cleanString(e.hitType) : undefined,
+    deletionReason: e.deletionReason ? cleanString(e.deletionReason) : undefined,
+    deletedAt: Number.isFinite(e.deletedAt) ? e.deletedAt : undefined,
+    timestamp: Number.isFinite(e.timestamp) ? e.timestamp : Date.now(),
+    out,
+    in: inn,
+  };
+  // Remove undefined fields
+  Object.keys(evt).forEach((k) => evt[k] === undefined && delete evt[k]);
+  return evt;
+};
+
+const sanitizeMatch = (match = {}) => {
+  const base = {
+    teamName: cleanString(match.teamName || "Vigontina San Paolo"),
+    opponent: cleanString(match.opponent || "Avversario"),
+    date: match.date || new Date().toISOString(),
+    isHome: cleanBool(match.isHome),
+    competition: match.competition ? cleanString(match.competition) : undefined,
+    matchDay: Number.isFinite(match.matchDay) ? match.matchDay : undefined,
+    captain: match.captain ? { num: cleanNumber(match.captain.num || match.captain.number), name: cleanString(match.captain.name) } : undefined,
+    coach: match.coach ? cleanString(match.coach) : undefined,
+    assistantReferee: match.assistantReferee ? cleanString(match.assistantReferee) : undefined,
+    manager: match.manager ? cleanString(match.manager) : undefined,
+  };
+  Object.keys(base).forEach((k) => base[k] === undefined && delete base[k]);
+
+  const periods = Array.isArray(match.periods)
+    ? match.periods.map((p) => {
+        const goals = Array.isArray(p.goals) ? p.goals.map(sanitizeEvent) : [];
+        return {
+          name: cleanString(p.name || ""),
+          completed: cleanBool(p.completed),
+          vigontina: cleanNumber(p.vigontina),
+          opponent: cleanNumber(p.opponent),
+          lineup: Array.isArray(p.lineup) ? p.lineup.filter((n) => Number.isFinite(n)).map((n) => Number(n)) : [],
+          goals,
+        };
+      })
+    : [];
+
+  return { ...base, periods, timestamp: Date.now() };
+};
+
 export const useMatchHistory = () => {
   const [matchHistory, setMatchHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -50,13 +112,14 @@ export const useMatchHistory = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const vigontinaPoints = calculatePoints(match, "vigontina");
-        const opponentPoints = calculatePoints(match, "opponent");
-        const vigontinaGoals = calculateTotalGoals(match, "vigontina");
-        const opponentGoals = calculateTotalGoals(match, "opponent");
+        const sanitized = sanitizeMatch(match);
+        const vigontinaPoints = calculatePoints(sanitized, "vigontina");
+        const opponentPoints = calculatePoints(sanitized, "opponent");
+        const vigontinaGoals = calculateTotalGoals(sanitized, "vigontina");
+        const opponentGoals = calculateTotalGoals(sanitized, "opponent");
         
         await addDoc(collection(db, "matches"), {
-          ...match,
+          ...sanitized,
           finalPoints: {
             vigontina: vigontinaPoints,
             opponent: opponentPoints,
