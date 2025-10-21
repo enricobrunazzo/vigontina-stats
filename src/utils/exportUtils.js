@@ -1,4 +1,4 @@
-// utils/exportUtils.js — Reduce row height (cell padding and font size)
+// utils/exportUtils.js — Add Assistant Referee and Manager fields
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { calculateMatchStats } from "./matchUtils";
@@ -21,7 +21,18 @@ const outcomeFromGoals = (match) => { let v=0,o=0; (match.periods||[]).filter(p=
 
 function bannerOutcome(doc, match, startY) { const pageW = doc.internal.pageSize.width; const kind = outcomeFromGoals(match); const scheme = kind==='win'?PALETTE.banner.win: kind==='lose'?PALETTE.banner.lose: PALETTE.banner.draw; const x = MARGINS.left, w = pageW - MARGINS.left - MARGINS.right, h = 11, y = startY; doc.setDrawColor(...scheme.border); doc.setLineWidth(0.12); if (doc.roundedRect) { try { doc.setFillColor(...scheme.fill); doc.roundedRect(x, y, w, h, 3, 3, 'FD'); } catch { doc.setFillColor(...scheme.fill); doc.rect(x, y, w, h, 'F'); } } else { doc.setFillColor(...scheme.fill); doc.rect(x, y, w, h, 'F'); } const title = kind==='win'?'VITTORIA':kind==='lose'?'SCONFITTA':'PAREGGIO'; doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(...scheme.title); doc.text(title, x + 6, y + 7.5); let v=0,o=0; (match.periods||[]).filter(p=>!isTechnicalTest(p)).forEach(p=>{ v+=safeNum(p.vigontina); o+=safeNum(p.opponent); }); doc.setFont('helvetica','normal'); doc.setTextColor(50,50,50); doc.text(`Punti: Vigontina ${v} - ${o} ${match.opponent}`, x + w - 6, y + 7.5, { align: 'right' }); return y + h + 8; }
 
-function infoBlock(doc, match, startY) { let y = startY; doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(0,0,0); doc.text(`${match.teamName || 'Vigontina San Paolo'} vs ${match.opponent}`, MARGINS.left, y); y += 6; if (match.competition) { doc.text(`${match.competition}`, MARGINS.left, y); y += 6; } doc.text(`${match.isHome ? 'Casa' : 'Trasferta'} - ${fmtDateIT(match.date)}`, MARGINS.left, y); y += 6; if (match.captain) { const c = match.captain; doc.text(`Capitano: ${c.number||c.num||''} ${(c.name||'').toUpperCase()}`, MARGINS.left, y); y += 6; } if (match.coach) { doc.text(`Allenatore: ${match.coach}`, MARGINS.left, y); y += 8; } return y; }
+function infoBlock(doc, match, startY) {
+  let y = startY;
+  doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(0,0,0);
+  doc.text(`${match.teamName || 'Vigontina San Paolo'} vs ${match.opponent}`, MARGINS.left, y); y += 6;
+  if (match.competition) { doc.text(`${match.competition}`, MARGINS.left, y); y += 6; }
+  doc.text(`${match.isHome ? 'Casa' : 'Trasferta'} - ${fmtDateIT(match.date)}`, MARGINS.left, y); y += 6;
+  if (match.captain) { const c = match.captain; doc.text(`Capitano: ${c.number||c.num||''} ${(c.name||'').toUpperCase()}`, MARGINS.left, y); y += 6; }
+  if (match.coach) { doc.text(`Allenatore: ${match.coach}`, MARGINS.left, y); y += 6; }
+  if (match.assistantReferee) { doc.text(`Assistente Arbitro: ${match.assistantReferee}`, MARGINS.left, y); y += 6; }
+  if (match.manager) { doc.text(`Dirigente Accompagnatore: ${match.manager}`, MARGINS.left, y); y += 8; }
+  return y;
+}
 
 function gridTable(doc, { title, head, body, startY, widths, headColor }) { if (!Array.isArray(body) || body.length===0) return startY; doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(0,0,0); doc.text(title, MARGINS.left, startY); const columnStyles = {}; if (Array.isArray(widths)) widths.forEach((w, i)=>{ columnStyles[i] = { cellWidth: w, halign: i>0 ? 'center' : 'left' }; }); autoTable(doc, { startY: startY + 4, theme: 'grid', head: [head], body, styles: { font: 'helvetica', fontSize: 9.5, lineColor: PALETTE.grid, lineWidth: 0.1, cellPadding: {top:2,bottom:2,left:2,right:2}, textColor: [0,0,0] }, headStyles: { fillColor: headColor, textColor: [255,255,255], fontStyle:'bold', halign:'left', lineWidth: 0.1, lineColor: PALETTE.grid, fontSize: 10 }, columnStyles, margin: { left: MARGINS.left, right: MARGINS.right }, }); return (doc.lastAutoTable?.finalY || (startY+12)) + 6; }
 
