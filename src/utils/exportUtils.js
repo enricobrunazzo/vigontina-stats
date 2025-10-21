@@ -1,4 +1,4 @@
-// utils/exportUtils.js — Layout refinements per latest feedback
+// utils/exportUtils.js — Tuning: thinner lines, reduced margins, vivid colors, correct banner text/color, tinted border, full-bleed within margins
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { calculatePoints, calculateMatchStats, getMatchResult } from "./matchUtils";
@@ -10,19 +10,21 @@ const technicalTestPeriods = (match) => Array.isArray(match?.periods) ? match.pe
 const safeNum = (v) => (Number.isFinite(v) ? v : 0);
 const fmtDateIT = (d) => { const date = new Date(d); return Number.isFinite(date.getTime()) ? date.toLocaleDateString("it-IT") : ""; };
 
-// Softer palette
-const COLORS = {
-  blueHeader: [58, 99, 138],       // lighter blue
-  blueHeaderLight: [58, 99, 138],  // alias for clarity
-  grayHeader: [120, 120, 120],
-  greenHeader: [22, 133, 106],
-  gridBorder: [200, 205, 210],
-  outcome: {
-    win: [192, 228, 205],     // soft green
-    draw: [245, 234, 178],    // soft yellow
-    lose: [242, 200, 200],    // soft red
+// More elegant, vivid palette
+const PALETTE = {
+  blue: [40, 92, 140],         // section headers (periodi, marcatori)
+  blueLight: [60, 130, 190],   // accent, text over banner when needed
+  gray: [110, 115, 120],       // prova tecnica header
+  green: [16, 128, 98],        // cronologia header
+  grid: [210, 215, 220],       // grid line color (lighter)
+  banner: {
+    win: { fill: [184, 228, 199], border: [134, 198, 160], title: [22, 122, 86] },   // refined soft green
+    draw:{ fill: [252, 236, 178], border: [238, 206, 120], title: [177, 134, 16] },  // elegant yellow
+    lose:{ fill: [246, 205, 205], border: [225, 150, 150], title: [156, 30, 30] }    // soft red
   }
 };
+
+const MARGINS = { left: 14, right: 14 }; // reduced margins
 
 const loadLogoAsBase64 = async () => {
   const p = '/logo-vigontina.png';
@@ -30,94 +32,78 @@ const loadLogoAsBase64 = async () => {
 };
 
 function drawHeader(doc, match) {
-  const pageW = doc.internal.pageSize.width; const marginL = 20;
-  const logo = match.__logoBase64; if (logo) { try { doc.addImage(logo, 'PNG', marginL, 12, 22, 22); } catch {} }
+  const pageW = doc.internal.pageSize.width; const logo = match.__logoBase64;
+  if (logo) { try { doc.addImage(logo, 'PNG', MARGINS.left, 10, 22, 22); } catch {} }
   doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(0,0,0);
-  doc.text('VIGONTINA SAN PAOLO - REPORT PARTITA', pageW/2, 20, { align: 'center' });
-  return 36; // push content lower to avoid overlap with logo
+  doc.text('VIGONTINA SAN PAOLO - REPORT PARTITA', pageW/2, 18, { align: 'center' });
+  return 34; // room for logo
 }
 
-function bannerOutcome(doc, match, startY, pageW) {
+function bannerOutcome(doc, match, startY) {
+  const pageW = doc.internal.pageSize.width;
   const res = getMatchResult(match);
-  const vp = calculatePoints(match,'vigontina');
-  const op = calculatePoints(match,'opponent');
-  const color = res.winner === 'vigontina' ? COLORS.outcome.win : res.winner === 'opponent' ? COLORS.outcome.lose : COLORS.outcome.draw;
-  const marginL = 20, marginR = 20, h = 11; const x = marginL; const w = pageW - marginL - marginR; const y = startY;
-  // rounded rect with border
-  doc.setDrawColor(190,195,200); doc.setLineWidth(0.3);
-  if (doc.roundedRect) { try { doc.setFillColor(...color); doc.roundedRect(x, y, w, h, 2, 2, 'FD'); } catch { doc.setFillColor(...color); doc.rect(x, y, w, h, 'F'); } }
-  else { doc.setFillColor(...color); doc.rect(x, y, w, h, 'F'); }
-  // texts
-  const outcomeText = res.winner === 'vigontina' ? 'PAREGGIO' && 'VITTORIA' : res.winner === 'opponent' ? 'SCONFITTA' : 'PAREGGIO';
-  doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(40,40,40);
+  const vp = calculatePoints(match,'vigontina'); const op = calculatePoints(match,'opponent');
+  const scheme = res.winner === 'vigontina' ? PALETTE.banner.win : res.winner === 'opponent' ? PALETTE.banner.lose : PALETTE.banner.draw;
+  const x = MARGINS.left, w = pageW - MARGINS.left - MARGINS.right, h = 11, y = startY;
+  // rounded rect filled + tinted border
+  doc.setDrawColor(...scheme.border); doc.setLineWidth(0.25);
+  if (doc.roundedRect) { try { doc.setFillColor(...scheme.fill); doc.roundedRect(x, y, w, h, 3, 3, 'FD'); } catch { doc.setFillColor(...scheme.fill); doc.rect(x, y, w, h, 'F'); } }
+  else { doc.setFillColor(...scheme.fill); doc.rect(x, y, w, h, 'F'); }
+  // outcome text left, points right; title tinted stronger
+  const outcomeText = res.winner === 'vigontina' ? 'VITTORIA' : res.winner === 'opponent' ? 'SCONFITTA' : 'PAREGGIO';
+  doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(...scheme.title);
   doc.text(outcomeText, x + 6, y + 7.5);
-  doc.setFont('helvetica','normal'); doc.setTextColor(60,60,60);
-  const pointsText = `Punti: Vigontina ${vp} - ${op} ${match.opponent}`;
-  doc.text(pointsText, x + w - 6, y + 7.5, { align: 'right' });
+  doc.setFont('helvetica','normal'); doc.setTextColor(50,50,50);
+  doc.text(`Punti: Vigontina ${vp} - ${op} ${match.opponent}`, x + w - 6, y + 7.5, { align: 'right' });
   return y + h + 8;
 }
 
-function drawInfo(doc, match, startY) {
-  let y = startY;
-  doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(0,0,0);
-  doc.text(`${match.teamName || 'Vigontina San Paolo'} vs ${match.opponent}`, 20, y); y += 6;
-  if (match.competition) { doc.text(`${match.competition}`, 20, y); y += 6; }
-  doc.text(`${match.isHome ? 'Casa' : 'Trasferta'} - ${fmtDateIT(match.date)}`, 20, y); y += 6;
-  if (match.captain) { const c = match.captain; doc.text(`Capitano: ${c.number||c.num||''} ${(c.name||'').toUpperCase()}`, 20, y); y += 6; }
-  if (match.coach) { doc.text(`Allenatore: ${match.coach}`, 20, y); y += 8; }
+function infoBlock(doc, match, startY) {
+  let y = startY; doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(0,0,0);
+  doc.text(`${match.teamName || 'Vigontina San Paolo'} vs ${match.opponent}`, MARGINS.left, y); y += 6;
+  if (match.competition) { doc.text(`${match.competition}`, MARGINS.left, y); y += 6; }
+  doc.text(`${match.isHome ? 'Casa' : 'Trasferta'} - ${fmtDateIT(match.date)}`, MARGINS.left, y); y += 6;
+  if (match.captain) { const c = match.captain; doc.text(`Capitano: ${c.number||c.num||''} ${(c.name||'').toUpperCase()}`, MARGINS.left, y); y += 6; }
+  if (match.coach) { doc.text(`Allenatore: ${match.coach}`, MARGINS.left, y); y += 8; }
   return y;
 }
 
 function gridTable(doc, { title, head, body, startY, widths, headColor }) {
   if (!Array.isArray(body) || body.length===0) return startY;
   doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(0,0,0);
-  doc.text(title, 20, startY);
+  doc.text(title, MARGINS.left, startY);
   const columnStyles = {}; if (Array.isArray(widths)) widths.forEach((w, i)=>{ columnStyles[i] = { cellWidth: w, halign: i>0 ? 'center' : 'left' }; });
   autoTable(doc, {
     startY: startY + 4,
     theme: 'grid',
     head: [head],
     body,
-    styles: { font: 'helvetica', fontSize: 10, lineColor: COLORS.gridBorder, lineWidth: 0.2, textColor: [0,0,0], cellPadding: {top:3,bottom:3,left:2,right:2} },
+    styles: { font: 'helvetica', fontSize: 10, lineColor: PALETTE.grid, lineWidth: 0.15, textColor: [0,0,0], cellPadding: {top:3,bottom:3,left:2,right:2} },
     headStyles: { fillColor: headColor, textColor: [255,255,255], fontStyle:'bold', halign:'left' },
     columnStyles,
-    margin: { left: 20, right: 20 },
+    margin: { left: MARGINS.left, right: MARGINS.right },
   });
   return (doc.lastAutoTable?.finalY || (startY+12)) + 8;
 }
 
-function buildPeriodsRows(match) {
-  return nonTechnicalPeriods(match).map(p=>[
-    p.name,
-    String(safeNum(p.vigontina)),
-    String(safeNum(p.opponent)),
-    'Si',
-    safeNum(p.vigontina)===safeNum(p.opponent)?'Pareggio':(safeNum(p.vigontina)>safeNum(p.opponent)?'Vigontina':match.opponent)
-  ]);
-}
-
-function buildTechRows(match) {
-  return technicalTestPeriods(match).map(p=>[
-    p.name,
-    String(safeNum(p.vigontina)),
-    String(safeNum(p.opponent)),
-    safeNum(p.vigontina)===safeNum(p.opponent)?'Pareggio':(safeNum(p.vigontina)>safeNum(p.opponent)?'Vigontina':match.opponent)
-  ]);
-}
+const buildPeriodsRows = (match) => nonTechnicalPeriods(match).map(p=>[
+  p.name, String(safeNum(p.vigontina)), String(safeNum(p.opponent)), 'Si', safeNum(p.vigontina)===safeNum(p.opponent)?'Pareggio':(safeNum(p.vigontina)>safeNum(p.opponent)?'Vigontina':match.opponent)
+]);
+const buildTechRows = (match) => technicalTestPeriods(match).map(p=>[
+  p.name, String(safeNum(p.vigontina)), String(safeNum(p.opponent)), safeNum(p.vigontina)===safeNum(p.opponent)?'Pareggio':(safeNum(p.vigontina)>safeNum(p.opponent)?'Vigontina':match.opponent)
+]);
 
 function drawScorers(doc, match, startY) {
   const stats = calculateMatchStats(match); const map = {};
   stats.allGoals.filter(e=>!e.deletionReason && (e.type==='goal'||e.type==='penalty-goal')).forEach(e=>{ const n = e.scorerName||e.scorer||'Sconosciuto'; map[n]=(map[n]||0)+1; });
   const body = Object.keys(map).length? Object.entries(map).map(([n,g])=>[n,String(g)]) : [["Nessun marcatore","-"]];
-  return gridTable(doc, { title:'MARCATORI', head:['Giocatore','Gol'], body, startY, widths:[120,30], headColor: COLORS.blueHeader });
+  const pageW = doc.internal.pageSize.width; const totalW = pageW - MARGINS.left - MARGINS.right; // full width
+  return gridTable(doc, { title:'MARCATORI', head:['Giocatore','Gol'], body, startY, widths:[totalW-28,28], headColor: PALETTE.blue });
 }
 
 function collectEvents(match) {
-  const acc = [];
-  (match.periods||[]).forEach(p=>{
-    [p.events||[], p.goals||[], p.substitutions||[], p.fouls||[], p.cards||[], p.allEvents||[]]
-      .forEach(arr => Array.isArray(arr) && arr.forEach(e => e && acc.push({ ...e, periodName: p.name })));
-  });
+  const acc = []; (match.periods||[]).forEach(p=>{ [p.events||[], p.goals||[], p.substitutions||[], p.fouls||[], p.cards||[], p.allEvents||[]]
+    .forEach(arr => Array.isArray(arr) && arr.forEach(e => e && acc.push({ ...e, periodName: p.name }))); });
   if (Array.isArray(match.events)) match.events.forEach(e=> e && acc.push({ ...e, periodName: e.periodName || 'Match' }));
   return acc.filter(e=>!e.deletionReason);
 }
@@ -138,27 +124,29 @@ export const exportMatchToPDF = async (match) => {
     const doc = new jsPDF();
     match.__logoBase64 = await loadLogoAsBase64();
     let y = drawHeader(doc, match);
-    y = bannerOutcome(doc, match, y, doc.internal.pageSize.width);
-    y = drawInfo(doc, match, y);
-    // full-width tables with consistent sums (margins 20/20)
-    y = gridTable(doc, { title:'DETTAGLIO PERIODI', head:['Periodo','Vigontina', match.opponent, 'Completato','Esito'], body: buildPeriodsRows(match), startY: y, widths:[46,30,30,32,42], headColor: COLORS.blueHeader });
-    y = gridTable(doc, { title:'PROVA TECNICA', head:['Periodo','Vigontina', match.opponent, 'Esito'], body: buildTechRows(match), startY: y, widths:[60,40,40,40], headColor: COLORS.grayHeader });
+    y = bannerOutcome(doc, match, y);
+    y = infoBlock(doc, match, y);
+
+    const pageW = doc.internal.pageSize.width; const fullW = pageW - MARGINS.left - MARGINS.right;
+    // Full-width tables with thinner lines
+    y = gridTable(doc, { title:'DETTAGLIO PERIODI', head:['Periodo','Vigontina', match.opponent, 'Completato','Esito'], body: buildPeriodsRows(match), startY: y, widths:[fullW*0.27, fullW*0.14, fullW*0.14, fullW*0.18, fullW*0.27], headColor: PALETTE.blue });
+    y = gridTable(doc, { title:'PROVA TECNICA', head:['Periodo','Vigontina', match.opponent, 'Esito'], body: buildTechRows(match), startY: y, widths:[fullW*0.33, fullW*0.22, fullW*0.22, fullW*0.23], headColor: PALETTE.gray });
     y = drawScorers(doc, match, y);
 
     const stats = calculateMatchStats(match);
     const penaltyGoals = stats.allGoals.filter(e=>!e.deletionReason && e.type==='penalty-goal').length;
     if (penaltyGoals > 0) {
-      y = gridTable(doc, { title:'ALTRI EVENTI', head:['Voce','Valore'], body:[["Rigori segnati", String(penaltyGoals)]], startY: y, widths:[90,40], headColor: COLORS.blueHeader });
+      y = gridTable(doc, { title:'ALTRI EVENTI', head:['Voce','Valore'], body:[["Rigori segnati", String(penaltyGoals)]], startY: y, widths:[fullW*0.7, fullW*0.3], headColor: PALETTE.blue });
     }
 
     const all = collectEvents(match);
     const byPeriod = {}; all.forEach(e=>{ const k=e.periodName||e.period||'N/A'; (byPeriod[k]||(byPeriod[k]=[])).push(e); });
     const ord=(s)=> s?.includes?.('1°')?1: s?.includes?.('2°')?2: s?.includes?.('3°')?3: s?.includes?.('4°')?4: 5;
     const rows=[]; Object.entries(byPeriod).sort(([a],[b])=>ord(a)-ord(b)).forEach(([p,evs])=>{ evs.sort((a,b)=>(a.minute||0)-(b.minute||0)).forEach(e=> rows.push([p, labelEvent(e, match.opponent)])); });
-    y = gridTable(doc, { title:'CRONOLOGIA EVENTI', head:['Periodo','Evento'], body: rows, startY: y, widths:[60,120], headColor: COLORS.greenHeader });
+    y = gridTable(doc, { title:'CRONOLOGIA EVENTI', head:['Periodo','Evento'], body: rows, startY: y, widths:[fullW*0.26, fullW*0.74], headColor: PALETTE.green });
 
     const ph = doc.internal.pageSize.height; doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(0,0,0);
-    doc.text('Nota: i PUNTI considerano solo i tempi giocati (Prova Tecnica esclusa).', 105, ph-10, { align: 'center' });
+    doc.text('Nota: i PUNTI considerano solo i tempi giocati (Prova Tecnica esclusa).', pageW/2, ph-10, { align: 'center' });
 
     const fileName = `Vigontina_vs_${(match.opponent||'Avversario').replace(/[^a-zA-Z0-9]/g,'_')}_${fmtDateIT(match.date).replace(/\//g,'_')}.pdf`;
     doc.save(fileName);
