@@ -3,20 +3,19 @@ import React, { useState } from "react";
 import { X } from "lucide-react";
 
 const FreeKickModal = ({ onConfirm, onCancel, opponentName, availablePlayers }) => {
-  const [selectedOutcome, setSelectedOutcome] = useState(null);
   const [selectedTeam, setSelectedTeam] = useState(null);
-  const [selectedPlayer, setSelectedPlayer] = useState(null);
+  const [selectedOutcome, setSelectedOutcome] = useState(null);
   const [hitType, setHitType] = useState(null); // per palo/traversa
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
 
   const handleConfirm = () => {
     if (!selectedOutcome || !selectedTeam) return;
     if (selectedTeam === 'vigontina' && !selectedPlayer) return;
     if (selectedOutcome === 'hit' && !hitType) return;
-    
     onConfirm(selectedOutcome, selectedTeam, selectedPlayer, hitType);
   };
 
-  const canConfirm = selectedOutcome && selectedTeam && 
+  const canConfirm = selectedOutcome && selectedTeam &&
     (selectedTeam !== 'vigontina' || selectedPlayer) &&
     (selectedOutcome !== 'hit' || hitType);
 
@@ -30,44 +29,44 @@ const FreeKickModal = ({ onConfirm, onCancel, opponentName, availablePlayers }) 
           </button>
         </div>
 
-        {/* Step 1: Esito della punizione */}
+        {/* Step 1: Seleziona squadra */}
         <div className="mb-4">
-          <p className="text-sm font-medium text-gray-700 mb-2">Esito della punizione:</p>
+          <p className="text-sm font-medium text-gray-700 mb-2">Chi ha calciato la punizione?</p>
           <div className="space-y-2">
-            <button onClick={() => setSelectedOutcome('missed')} className={`w-full p-3 rounded-lg border-2 text-left ${selectedOutcome === 'missed' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
-              <p className="font-medium text-gray-800">🎯 Fuori</p>
+            <button onClick={() => setSelectedTeam('vigontina')} className={`w-full p-3 rounded-lg border-2 text-left ${selectedTeam === 'vigontina' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
+              <p className="font-medium text-gray-800">Vigontina</p>
             </button>
-            <button onClick={() => setSelectedOutcome('saved')} className={`w-full p-3 rounded-lg border-2 text-left ${selectedOutcome === 'saved' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
-              <p className="font-medium text-gray-800">🧤 Parata</p>
-            </button>
-            <button onClick={() => setSelectedOutcome('hit')} className={`w-full p-3 rounded-lg border-2 text-left ${selectedOutcome === 'hit' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
-              <p className="font-medium text-gray-800">🧱 Palo/Traversa</p>
+            <button onClick={() => setSelectedTeam('opponent')} className={`w-full p-3 rounded-lg border-2 text-left ${selectedTeam === 'opponent' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
+              <p className="font-medium text-gray-800">{opponentName}</p>
             </button>
           </div>
         </div>
 
-        {/* Step 2: Se palo/traversa, scegli quale */}
-        {selectedOutcome === 'hit' && (
+        {/* Step 2: Esito della punizione */}
+        {selectedTeam && (
+          <div className="mb-4">
+            <p className="text-sm font-medium text-gray-700 mb-2">Esito della punizione:</p>
+            <div className="space-y-2">
+              <button onClick={() => { setSelectedOutcome('missed'); setHitType(null); }} className={`w-full p-3 rounded-lg border-2 text-left ${selectedOutcome === 'missed' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
+                <p className="font-medium text-gray-800">🎯 Fuori</p>
+              </button>
+              <button onClick={() => { setSelectedOutcome('saved'); setHitType(null); }} className={`w-full p-3 rounded-lg border-2 text-left ${selectedOutcome === 'saved' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
+                <p className="font-medium text-gray-800">🧤 Parata</p>
+              </button>
+              <button onClick={() => setSelectedOutcome('hit')} className={`w-full p-3 rounded-lg border-2 text-left ${selectedOutcome === 'hit' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
+                <p className="font-medium text-gray-800">🧱 Palo/Traversa</p>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Se palo/traversa, scegli quale */}
+        {selectedTeam && selectedOutcome === 'hit' && (
           <div className="mb-4">
             <p className="text-sm font-medium text-gray-700 mb-2">Tipo di impatto:</p>
             <div className="flex gap-2">
               <button onClick={() => setHitType('palo')} className={`flex-1 p-2 rounded-lg border-2 ${hitType === 'palo' ? 'border-orange-500 bg-orange-50 text-orange-800' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>🧱 Palo</button>
               <button onClick={() => setHitType('traversa')} className={`flex-1 p-2 rounded-lg border-2 ${hitType === 'traversa' ? 'border-orange-500 bg-orange-50 text-orange-800' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>⎯ Traversa</button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Seleziona squadra */}
-        {selectedOutcome && (selectedOutcome !== 'hit' || hitType) && (
-          <div className="mb-4">
-            <p className="text-sm font-medium text-gray-700 mb-2">Chi ha calciato la punizione?</p>
-            <div className="space-y-2">
-              <button onClick={() => setSelectedTeam('vigontina')} className={`w-full p-3 rounded-lg border-2 text-left ${selectedTeam === 'vigontina' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
-                <p className="font-medium text-gray-800">Vigontina</p>
-              </button>
-              <button onClick={() => setSelectedTeam('opponent')} className={`w-full p-3 rounded-lg border-2 text-left ${selectedTeam === 'opponent' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
-                <p className="font-medium text-gray-800">{opponentName}</p>
-              </button>
             </div>
           </div>
         )}
