@@ -344,11 +344,18 @@ export const useMatch = () => {
     const outPlayer = PLAYERS.find((p) => p.num === outPlayerNum);
     const inPlayer = PLAYERS.find((p) => p.num === inPlayerNum);
     
+    // FIXED: Create plain objects with only primitive values for Firebase compatibility
     const substitution = {
       minute,
       type: 'substitution',
-      out: { num: outPlayerNum, name: outPlayer?.name },
-      in: { num: inPlayerNum, name: inPlayer?.name },
+      out: { 
+        num: outPlayerNum, 
+        name: outPlayer?.name || "" 
+      },
+      in: { 
+        num: inPlayerNum, 
+        name: inPlayer?.name || "" 
+      },
       timestamp: Date.now()
     };
 
