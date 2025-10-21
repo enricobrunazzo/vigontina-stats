@@ -36,7 +36,68 @@ function infoBlock(doc, match, startY) {
 
 function gridTable(doc, { title, head, body, startY, widths, headColor }) { if (!Array.isArray(body) || body.length===0) return startY; doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(0,0,0); doc.text(title, MARGINS.left, startY); const columnStyles = {}; if (Array.isArray(widths)) widths.forEach((w, i)=>{ columnStyles[i] = { cellWidth: w, halign: i>0 ? 'center' : 'left' }; }); autoTable(doc, { startY: startY + 4, theme: 'grid', head: [head], body, styles: { font: 'helvetica', fontSize: 9.5, lineColor: PALETTE.grid, lineWidth: 0.1, cellPadding: {top:2,bottom:2,left:2,right:2}, textColor: [0,0,0] }, headStyles: { fillColor: headColor, textColor: [255,255,255], fontStyle:'bold', halign:'left', lineWidth: 0.1, lineColor: PALETTE.grid, fontSize: 10 }, columnStyles, margin: { left: MARGINS.left, right: MARGINS.right }, }); return (doc.lastAutoTable?.finalY || (startY+12)) + 6; }
 
-export const exportMatchToPDF = async (match) => { if (!match) { alert("Nessuna partita selezionata per l'esportazione"); return; } try { const doc = new jsPDF(); match.__logoBase64 = await loadLogoAsBase64(); let y = drawHeader(doc, match); y = bannerOutcome(doc, match, y); y = infoBlock(doc, match, y); const pageW = doc.internal.pageSize.width; const fullW = pageW - MARGINS.left - MARGINS.right; const periodsRows = nonTechnicalPeriods(match).map(p=>[p.name,String(safeNum(p.vigontina)),String(safeNum(p.opponent)),'Si',safeNum(p.vigontina)===safeNum(p.opponent)?'Pareggio':(safeNum(p.vigontina)>safeNum(p.opponent)?'Vigontina':match.opponent)]); y = gridTable(doc, { title:'DETTAGLIO PERIODI', head:['Periodo','Vigontina', match.opponent, 'Completato','Esito'], body: periodsRows, startY: y, widths:[fullW*0.27, fullW*0.14, fullW*0.14, fullW*0.18, fullW*0.27], headColor: PALETTE.blue }); const techRows = technicalTestPeriods(match).map(p=>[p.name,String(safeNum(p.vigontina)),String(safeNum(p.opponent)),safeNum(p.vigontina)===safeNum(p.opponent)?'Pareggio':(safeNum(p.vigontina)>safeNum(p.opponent)?'Vigontina':match.opponent)]); y = gridTable(doc, { title:'PROVA TECNICA', head:['Periodo','Vigontina', match.opponent, 'Esito'], body: techRows, startY: y, widths:[fullW*0.33, fullW*0.22, fullW*0.22, fullW*0.23], headColor: PALETTE.gray }); const stats = calculateMatchStats(match); const map = {}; stats.allGoals.filter(e=>!e.deletionReason && (e.type==='goal'||e.type==='penalty-goal')).forEach(e=>{ const n = e.scorerName||e.scorer||'Sconosciuto'; map[n]=(map[n]||0)+1; }); const scorersBody = Object.keys(map).length? Object.entries(map).map(([n,g])=>[n,String(g)]) : [["Nessun marcatore","-"]]; y = gridTable(doc, { title:'MARCATORI', head:['Giocatore','Gol'], body: scorersBody, startY: y, widths:[fullW*0.8, fullW*0.2], headColor: PALETTE.blue }); const penaltyGoals = stats.allGoals.filter(e=>!e.deletionReason && e.type==='penalty-goal').length; if (penaltyGoals > 0) { y = gridTable(doc, { title:'ALTRI EVENTI', head:['Voce','Valore'], body:[["Rigori segnati", String(penaltyGoals)]], startY: y, widths:[fullW*0.7, fullW*0.3], headColor: PALETTE.blue }); } const all=[]; (match.periods||[]).forEach(p=>{ [p.events||[], p.goals||[], p.substitutions||[], p.fouls||[], p.cards||[], p.allEvents||[]].forEach(arr => Array.isArray(arr) && arr.forEach(e => e && all.push({ ...e, periodName: p.name }))); }); if (Array.isArray(match.events)) match.events.forEach(e=> e && all.push({ ...e, periodName: e.periodName || 'Match' })); const byPeriod={}; all.forEach(e=>{ const k=e.periodName||e.period||'N/A'; (byPeriod[k]||(byPeriod[k]=[])).push(e); }); const ord=(s)=> s?.includes?.('1°')?1: s?.includes?.('2°')?2: s?.includes?.('3°')?3: s?.includes?.('4°')?4: 5; const rows=[]; Object.entries(byPeriod).sort(([a],[b])=>ord(a)-ord(b)).forEach(([p,evs])=>{ evs.sort((a,b)=>(a.minute||0)-(b.minute||0)).forEach(e=> rows.push([p, (e.minute!=null?`${e.minute}' - `:'') + (e.label || e.type || 'Evento')])); }); y = gridTable(doc, { title:'CRONOLOGIA EVENTI', head:['Periodo','Evento'], body: rows, startY: y, widths:[fullW*0.26, fullW*0.74], headColor: PALETTE.green }); const ph = doc.internal.pageSize.height; doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(0,0,0); doc.text('Nota: i PUNTI considerano solo i tempi giocati (Prova Tecnica esclusa).', pageW/2, ph-10, { align: 'center' }); const fileName = `Vigontina_vs_${(match.opponent||'Avversario').replace(/[^a-zA-Z0-9]/g,'_')}_${fmtDateIT(match.date).replace(/\//g,'_')}.pdf`; doc.save(fileName); } catch (e) { console.error('Errore export PDF:', e); alert(`Errore durante l'esportazione PDF: ${e?.message||'Errore sconosciuto'}`); } };
+// NEW: format events to human-readable lines like UI
+function formatEventLine(e, opponentName) {
+  const min = Number.isFinite(e.minute) ? `${e.minute}' - ` : '';
+  const t = e.type || '';
+  const pn = (e.playerName || '').trim();
+  const ps = e.player ? `${e.player} ${pn}`.trim() : pn;
+  const opp = opponentName || 'Avversario';
+  // Goals
+  if (t === 'goal' || t === 'penalty-goal') {
+    const rig = t === 'penalty-goal' ? 'Rigore ' : '';
+    return `${min}${rig}${e.scorer||''} ${(e.scorerName||'').trim()}`.trim();
+  }
+  if (t === 'opponent-goal' || t === 'penalty-opponent-goal') {
+    const rig = t === 'penalty-opponent-goal' ? 'Rigore ' : 'Gol ';
+    return `${min}${rig}${opp}`;
+  }
+  // Own goals
+  if (t === 'own-goal') return `${min}Autogol Vigontina`;
+  if (t === 'opponent-own-goal') return `${min}Autogol ${opp}`;
+  // Penalties missed
+  if (t.includes('penalty') && t.includes('missed')) {
+    const who = t === 'penalty-missed' ? 'Vigontina' : opp;
+    return `${min}Rigore fallito ${who}`;
+  }
+  // Shots
+  if (t === 'missed-shot' || t === 'opponent-missed-shot') {
+    const isVig = t === 'missed-shot';
+    return `${min}Tiro fuori ${isVig ? (ps||'Vigontina') : opp}`;
+  }
+  if (t === 'shot-blocked' || t === 'opponent-shot-blocked') {
+    const isVig = t === 'shot-blocked';
+    return `${min}${isVig ? (ps||'Vigontina') : opp} tiro parato`;
+  }
+  if (t === 'save' || t === 'opponent-save') {
+    const isVig = t === 'save';
+    return `${min}Parata ${isVig ? (ps||'Vigontina') : `portiere ${opp}`}`;
+  }
+  // Woodwork
+  if (t?.includes('palo-') || t?.includes('traversa-')) {
+    const isVig = e.team === 'vigontina';
+    const hit = e.hitType === 'palo' ? 'Palo' : 'Traversa';
+    return `${min}${hit} ${isVig ? (ps||'Vigontina') : opp}`;
+  }
+  // Free kicks
+  if (t?.startsWith('free-kick')) {
+    const isOpp = t.includes('opponent');
+    if (t.includes('missed')) return `${min}Punizione fuori ${isOpp ? opp : (ps||'')}`.trim();
+    if (t.includes('saved')) return `${min}Punizione parata ${isOpp ? opp : (ps||'')}`.trim();
+    if (t.includes('hit')) return `${min}Punizione ${e.hitType==='palo'?'Palo':'Traversa'} ${isOpp ? opp : (ps||'')}`.trim();
+  }
+  // Substitution
+  if (t === 'substitution') {
+    const out = e.out ? `${e.out?.num||''} ${e.out?.name||''}`.trim() : '';
+    const inn = e.in ? `${e.in?.num||''} ${e.in?.name||''}`.trim() : '';
+    return `${min}Sostituzione: ${out} → ${inn}`.trim();
+  }
+  // Fallback
+  return `${min}${e.label || t || 'Evento'}`;
+}
+
+export const exportMatchToPDF = async (match) => { if (!match) { alert("Nessuna partita selezionata per l'esportazione"); return; } try { const doc = new jsPDF(); match.__logoBase64 = await loadLogoAsBase64(); let y = drawHeader(doc, match); y = bannerOutcome(doc, match, y); y = infoBlock(doc, match, y); const pageW = doc.internal.pageSize.width; const fullW = pageW - MARGINS.left - MARGINS.right; const periodsRows = nonTechnicalPeriods(match).map(p=>[p.name,String(safeNum(p.vigontina)),String(safeNum(p.opponent)),'Si',safeNum(p.vigontina)===safeNum(p.opponent)?'Pareggio':(safeNum(p.vigontina)>safeNum(p.opponent)?'Vigontina':match.opponent)]); y = gridTable(doc, { title:'DETTAGLIO PERIODI', head:['Periodo','Vigontina', match.opponent, 'Completato','Esito'], body: periodsRows, startY: y, widths:[fullW*0.27, fullW*0.14, fullW*0.14, fullW*0.18, fullW*0.27], headColor: PALETTE.blue }); const techRows = technicalTestPeriods(match).map(p=>[p.name,String(safeNum(p.vigontina)),String(safeNum(p.opponent)),safeNum(p.vigontina)===safeNum(p.opponent)?'Pareggio':(safeNum(p.vigontina)>safeNum(p.opponent)?'Vigontina':match.opponent)]); y = gridTable(doc, { title:'PROVA TECNICA', head:['Periodo','Vigontina', match.opponent, 'Esito'], body: techRows, startY: y, widths:[fullW*0.33, fullW*0.22, fullW*0.22, fullW*0.23], headColor: PALETTE.gray }); const stats = calculateMatchStats(match); const map = {}; stats.allGoals.filter(e=>!e.deletionReason && (e.type==='goal'||e.type==='penalty-goal')).forEach(e=>{ const n = e.scorerName||e.scorer||'Sconosciuto'; map[n]=(map[n]||0)+1; }); const scorersBody = Object.keys(map).length? Object.entries(map).map(([n,g])=>[n,String(g)]) : [["Nessun marcatore","-"]]; y = gridTable(doc, { title:'MARCATORI', head:['Giocatore','Gol'], body: scorersBody, startY: y, widths:[fullW*0.8, fullW*0.2], headColor: PALETTE.blue }); const penaltyGoals = stats.allGoals.filter(e=>!e.deletionReason && e.type==='penalty-goal').length; if (penaltyGoals > 0) { y = gridTable(doc, { title:'ALTRI EVENTI', head:['Voce','Valore'], body:[["Rigori segnati", String(penaltyGoals)]], startY: y, widths:[fullW*0.7, fullW*0.3], headColor: PALETTE.blue }); } // Build unified, formatted chronology
+ const all=[]; (match.periods||[]).forEach(p=>{ const source = Array.isArray(p.goals)? p.goals : []; source.forEach(e=> all.push({ ...e, periodName: p.name })); }); const byPeriod={}; all.forEach(e=>{ const k=e.periodName||e.period||'N/A'; (byPeriod[k]||(byPeriod[k]=[])).push(e); }); const ord=(s)=> s?.includes?.('1°')?1: s?.includes?.('2°')?2: s?.includes?.('3°')?3: s?.includes?.('4°')?4: 5; const rows=[]; Object.entries(byPeriod).sort(([a],[b])=>ord(a)-ord(b)).forEach(([p,evs])=>{ evs.sort((a,b)=>(a.minute||0)-(b.minute||0)).forEach(e=> rows.push([p, formatEventLine(e, match.opponent)])); }); y = gridTable(doc, { title:'CRONOLOGIA EVENTI', head:['Periodo','Evento'], body: rows, startY: y, widths:[fullW*0.26, fullW*0.74], headColor: PALETTE.green }); const ph = doc.internal.pageSize.height; doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(0,0,0); doc.text('Nota: i PUNTI considerano solo i tempi giocati (Prova Tecnica esclusa).', pageW/2, ph-10, { align: 'center' }); const fileName = `Vigontina_vs_${(match.opponent||'Avversario').replace(/[^a-zA-Z0-9]/g,'_')}_${fmtDateIT(match.date).replace(/\//g,'_')}.pdf`; doc.save(fileName); } catch (e) { console.error('Errore export PDF:', e); alert(`Errore durante l'esportazione PDF: ${e?.message||'Errore sconosciuto'}`); } };
 
 export const exportMatchToExcel = async (match) => { if (!match) { alert("Nessuna partita selezionata per l'esportazione Excel"); return; } return exportMatchHistoryToExcel([match]); };
 export const exportHistoryToExcel = async (matches) => { if (!Array.isArray(matches) || matches.length===0) { alert("Nessuna partita disponibile per l'esportazione storico"); return; } return exportMatchHistoryToExcel(matches); };
