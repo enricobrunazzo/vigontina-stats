@@ -371,23 +371,26 @@ export const useMatch = () => {
     });
   }, [currentMatch]);
 
-  const addFreeKick = useCallback((outcome, team, playerNum, getCurrentMinute) => {
+  const addFreeKick = useCallback((outcome, team, playerNum, getCurrentMinute, hitType) => {
     if (!currentMatch || currentPeriod === null) return;
 
     const minute = typeof getCurrentMinute === 'function' ? getCurrentMinute() : 0;
     const playerName = playerNum ? PLAYERS.find((p) => p.num === playerNum)?.name : null;
     
+    const base = `free-kick-${outcome}`;
+    const type = team === 'opponent' ? `${base}-opponent` : base;
+
     const freeKick = {
       minute,
-      type: `free-kick-${outcome}${team === 'opponent' ? '-opponent' : ''}`,
+      type,
       player: playerNum,
       playerName,
       team,
       timestamp: Date.now()
     };
 
-    if (outcome === 'hit') {
-      freeKick.hitType = 'palo'; // o 'traversa', dovrebbe essere passato come parametro
+    if (outcome === 'hit' && hitType) {
+      freeKick.hitType = hitType; // 'palo' | 'traversa'
     }
 
     setCurrentMatch(prev => {
