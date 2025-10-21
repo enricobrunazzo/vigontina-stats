@@ -27,15 +27,16 @@ function eventLabel(e, opponentName = "Avversari") {
 
   // Substitutions (ensure appear in chronology)
   if (e.type === 'substitution') {
-    const outStr = e.out ? `${e.out.num} ${e.out.name}` : '';
-    const inStr = e.in ? `${e.in.num} ${e.in.name}` : '';
+    const outStr = e.out ? `${e.out.num || e.out.number || ''} ${e.out.name || ''}`.trim() : 'N/A';
+    const inStr = e.in ? `${e.in.num || e.in.number || ''} ${e.in.name || ''}`.trim() : 'N/A';
     return `${min} - Sostituzione: ${outStr} → ${inStr}`.trim();
   }
 
-  // Free-kicks (Punizione) with explicit outcomes
-  if (e.type?.startsWith('free-kick')) {
-    const isOpp = e.type.includes('opponent');
+  // Free-kicks (Punizione) with explicit outcomes - FIXED to appear in events
+  if (e.type?.startsWith('free-kick') || e.type === 'foul' || e.type === 'punizione') {
+    const isOpp = e.type.includes('opponent') || e.team === 'opponent';
     const shooter = isOpp ? opponentName : who(e.player, e.playerName);
+    
     if (e.type.includes('goal')) return `${min} - Punizione gol ${shooter}`.trim();
     if (e.type.includes('saved')) return `${min} - Punizione parata ${shooter}`.trim();
     if (e.type.includes('missed')) return `${min} - Punizione fuori ${shooter}`.trim();
@@ -43,8 +44,19 @@ function eventLabel(e, opponentName = "Avversari") {
       const hl = e.hitType === 'traversa' ? 'traversa' : 'palo';
       return `${min} - Punizione ${hl} ${shooter}`.trim();
     }
-    // Fallback generic free-kick
+    // Generic free-kick/foul
     return `${min} - Punizione ${shooter}`.trim();
+  }
+
+  // Fouls/Cards - ADDED to ensure they appear in summary
+  if (e.type === 'yellow-card' || e.type === 'cartellino-giallo') {
+    const player = who(e.player, e.playerName) || (e.team === 'opponent' ? opponentName : 'Giocatore');
+    return `${min} - Ammonizione ${player}`.trim();
+  }
+  
+  if (e.type === 'red-card' || e.type === 'cartellino-rosso') {
+    const player = who(e.player, e.playerName) || (e.team === 'opponent' ? opponentName : 'Giocatore');
+    return `${min} - Espulsione ${player}`.trim();
   }
 
   // General shots and outcomes
@@ -91,21 +103,43 @@ function eventLabel(e, opponentName = "Avversari") {
         const hl = e.hitType === 'traversa' ? 'traversa' : 'palo';
         return `${min} - ${hl} ${whoStr}`.trim();
       }
-      return `${min} - Evento`;
+      // Fallback for any unhandled event types
+      return `${min} - ${e.type || 'Evento'}`.trim();
     }
   }
 }
 
-// Function to load logo image as base64
+// Function to load logo image as base64 - FIXED error handling
 const loadLogoAsBase64 = async () => {
   try {
-    const response = await fetch('/logo-vigontina.png');
-    const blob = await response.blob();
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.readAsDataURL(blob);
-    });
+    // Try multiple potential logo paths
+    const logoPaths = [
+      '/logo-vigontina.png',
+      '/public/logo-vigontina.png', 
+      '/assets/logo-vigontina.png',
+      './logo-vigontina.png'
+    ];
+    
+    for (const path of logoPaths) {
+      try {
+        const response = await fetch(path);
+        if (response.ok) {
+          const blob = await response.blob();
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error('FileReader error'));
+            reader.readAsDataURL(blob);
+          });
+        }
+      } catch (err) {
+        // Continue to next path
+        continue;
+      }
+    }
+    
+    console.warn('Logo not found in any expected location');
+    return null;
   } catch (error) {
     console.warn('Could not load logo:', error);
     return null;
@@ -115,23 +149,37 @@ const loadLogoAsBase64 = async () => {
 export const exportMatchToPDF = async (match) => {
   if (!match) {
     console.warn("Nessuna partita da esportare");
+    alert("Nessuna partita selezionata per l'esportazione");
     return;
   }
 
   try {
+    console.log('Starting PDF export for match:', match.opponent);
+    
     const doc = new jsPDF();
     
-    // Load and add logo
-    const logoBase64 = await loadLogoAsBase64();
+    // Load logo with better error handling
+    let logoBase64 = null;
+    try {
+      logoBase64 = await loadLogoAsBase64();
+    } catch (logoError) {
+      console.warn('Logo loading failed, continuing without logo:', logoError);
+    }
     
     // === PROFESSIONAL HEADER WITH LOGO AND BRANDING ===
-    if (logoBase64) {
-      doc.addImage(logoBase64, 'PNG', 15, 10, 25, 25);
-    }
     
     // Header background rectangle
     doc.setFillColor(30, 58, 138); // Dark blue background
     doc.rect(0, 0, 210, 50, 'F');
+    
+    // Add logo if available
+    if (logoBase64) {
+      try {
+        doc.addImage(logoBase64, 'PNG', 15, 10, 25, 25);
+      } catch (imgError) {
+        console.warn('Error adding logo to PDF:', imgError);
+      }
+    }
     
     // Main title with white text on blue background
     doc.setTextColor(255, 255, 255);
@@ -188,7 +236,7 @@ export const exportMatchToPDF = async (match) => {
     const captain = match.captain;
     if (captain) {
       doc.setFont("helvetica", "normal");
-      doc.text(`Capitano: ${captain.number} ${captain.name.toUpperCase()}`, 20, yPos);
+      doc.text(`Capitano: ${captain.number || captain.num || ''} ${(captain.name || '').toUpperCase()}`, 20, yPos);
       doc.setFontSize(16);
       doc.text('♚', 15, yPos);
       doc.setFontSize(12);
@@ -287,30 +335,56 @@ export const exportMatchToPDF = async (match) => {
       yPos += 15;
     }
     
-    // === CHRONOLOGY SECTION (include substitutions and free-kicks) ===
+    // === ENHANCED CHRONOLOGY SECTION (FIXED to include substitutions and fouls) ===
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.text('CRONOLOGIA EVENTI', 20, yPos);
     yPos += 10;
 
     const allEvents = [];
-    // Collect goals and other events from periods if available
+    
+    // Collect ALL types of events from periods, including substitutions and fouls
     (match.periods || []).forEach(p => {
-      const events = (p.events || p.goals || []);
-      events.forEach(e => {
-        // enrich with period name for ordering
-        allEvents.push({ ...e, periodName: p.name });
+      // Check multiple possible event arrays
+      const eventArrays = [
+        p.events || [],
+        p.goals || [],
+        p.substitutions || [],
+        p.fouls || [],
+        p.cards || [],
+        p.allEvents || []
+      ];
+      
+      eventArrays.forEach(eventArray => {
+        if (Array.isArray(eventArray)) {
+          eventArray.forEach(e => {
+            if (e && typeof e === 'object') {
+              // Enrich with period name for ordering
+              allEvents.push({ ...e, periodName: p.name });
+            }
+          });
+        }
       });
     });
 
-    // Fallback to stats if periods do not carry events
+    // Also collect from match-level events if they exist
+    if (match.events && Array.isArray(match.events)) {
+      match.events.forEach(e => {
+        if (e && typeof e === 'object') {
+          allEvents.push({ ...e, periodName: e.periodName || 'Match' });
+        }
+      });
+    }
+
+    // Fallback to stats if no events collected from periods
     if (allEvents.length === 0) {
       stats.allGoals.filter(e => !e.deletionReason).forEach(e => allEvents.push(e));
     }
 
+    // Group events by period
     const eventsByPeriod = {};
-    allEvents.filter(e => !e.deletionReason).forEach(e => {
-      const periodName = e.periodName || 'N/A';
+    allEvents.filter(e => e && !e.deletionReason).forEach(e => {
+      const periodName = e.periodName || e.period || 'N/A';
       if (!eventsByPeriod[periodName]) eventsByPeriod[periodName] = [];
       eventsByPeriod[periodName].push(e);
     });
@@ -328,8 +402,23 @@ export const exportMatchToPDF = async (match) => {
       });
 
     if (eventsData.length > 0) {
-      autoTable(doc, { startY: yPos, head: [['Periodo', 'Evento']], body: eventsData, theme: 'striped', headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 11 }, bodyStyles: { fontSize: 9 }, margin: { left: 20, right: 20 }, columnStyles: { 0: { cellWidth: 30 }, 1: { cellWidth: 130 } } });
+      autoTable(doc, { 
+        startY: yPos, 
+        head: [['Periodo', 'Evento']], 
+        body: eventsData, 
+        theme: 'striped', 
+        headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 11 }, 
+        bodyStyles: { fontSize: 9 }, 
+        margin: { left: 20, right: 20 }, 
+        columnStyles: { 0: { cellWidth: 30 }, 1: { cellWidth: 130 } } 
+      });
       yPos = doc.lastAutoTable.finalY + 15;
+    } else {
+      // Show message if no events found
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(10);
+      doc.text('Nessun evento registrato durante la partita.', 20, yPos);
+      yPos += 15;
     }
 
     // === PROFESSIONAL FOOTER ===
@@ -341,13 +430,29 @@ export const exportMatchToPDF = async (match) => {
     doc.setTextColor(100, 116, 139);
     doc.text('Nota: i PUNTI considerano solo i tempi giocati (Prova Tecnica esclusa).', 105, pageHeight - 10, { align: 'center' });
 
-    const fileName = `Vigontina_vs_${match.opponent.replace(/[^a-zA-Z0-9]/g, '_')}_${fmtDateIT(match.date).replace(/\//g, '_')}.pdf`;
+    const fileName = `Vigontina_vs_${(match.opponent || 'Avversario').replace(/[^a-zA-Z0-9]/g, '_')}_${fmtDateIT(match.date).replace(/\//g, '_')}.pdf`;
+    
+    console.log('PDF export completed successfully');
     doc.save(fileName);
+    
   } catch (error) {
     console.error('Errore export PDF:', error);
-    alert('Errore durante l\'esportazione PDF');
+    alert(`Errore durante l'esportazione PDF: ${error.message || 'Errore sconosciuto'}`);
   }
 };
 
-export const exportMatchToExcel = async (match) => { if (!match) return; return exportMatchHistoryToExcel([match]); };
-export const exportHistoryToExcel = async (matches) => { if (!Array.isArray(matches) || matches.length === 0) return; return exportMatchHistoryToExcel(matches); };
+export const exportMatchToExcel = async (match) => { 
+  if (!match) {
+    alert("Nessuna partita selezionata per l'esportazione Excel");
+    return; 
+  }
+  return exportMatchHistoryToExcel([match]); 
+};
+
+export const exportHistoryToExcel = async (matches) => { 
+  if (!Array.isArray(matches) || matches.length === 0) {
+    alert("Nessuna partita disponibile per l'esportazione storico");
+    return; 
+  }
+  return exportMatchHistoryToExcel(matches); 
+};
