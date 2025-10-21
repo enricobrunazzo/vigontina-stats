@@ -157,18 +157,18 @@ const VigontinaStats = () => {
     [match, timer]
   );
 
+  // Aggiornamento handler per sostituzioni
+  const handleAddSubstitution = useCallback(
+    (periodIndex, outNum, inNum, minute) => {
+      match.addSubstitution(periodIndex, outNum, inNum, () => minute);
+    },
+    [match]
+  );
+
   // NUOVO: Handler per calcio di punizione
   const handleAddFreeKick = useCallback((outcome, team, playerNum, minute, hitType) => {
-    const typeMap = { missed: 'free-kick-missed', saved: 'free-kick-saved', hit: 'free-kick-hit' };
-    const type = typeMap[outcome];
-    const event = { type, team, minute };
-    if (team === 'vigontina' && playerNum) {
-      const p = (window.PLAYERS || []).find?.(x => x.num === playerNum);
-      event.player = playerNum;
-      event.playerName = p?.name || '';
-    }
-    if (type === 'free-kick-hit' && hitType) event.hitType = hitType;
-    match.addCustomEvent(match.currentPeriod, event);
+    // Usa il metodo esistente addFreeKick che ha firma (outcome, team, playerNum, getCurrentMinute)
+    match.addFreeKick(outcome, team, playerNum, () => minute);
   }, [match]);
 
   // NUOVO HANDLER per eliminazione eventi
@@ -240,6 +240,7 @@ const VigontinaStats = () => {
         onFinish={handleFinishPeriod}
         onSetLineup={match.setLineup}
         onBack={handleBackFromPeriod}
+        onAddSubstitution={handleAddSubstitution}
         onAddFreeKick={handleAddFreeKick}
       />
     );
@@ -265,6 +266,7 @@ const VigontinaStats = () => {
         isEditing={true}
         onSetLineup={match.setLineup}
         onBack={handleBackFromPeriod}
+        onAddSubstitution={handleAddSubstitution}
         onAddFreeKick={handleAddFreeKick}
       />
     );
