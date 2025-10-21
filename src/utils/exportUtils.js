@@ -19,7 +19,64 @@ function drawHeader(doc, match) { const pageW = doc.internal.pageSize.width; con
 
 const outcomeFromGoals = (match) => { let v=0,o=0; (match.periods||[]).filter(p=>!isTechnicalTest(p)).forEach(p=>{ v+=safeNum(p.vigontina); o+=safeNum(p.opponent); }); return v>o?'win':v<o?'lose':'draw'; };
 
-function bannerOutcome(doc, match, startY) { const pageW = doc.internal.pageSize.width; const kind = outcomeFromGoals(match); const scheme = kind==='win'?PALETTE.banner.win: kind==='lose'?PALETTE.banner.lose: PALETTE.banner.draw; const x = MARGINS.left, w = pageW - MARGINS.left - MARGINS.right, h = 11, y = startY; doc.setDrawColor(...scheme.border); doc.setLineWidth(0.12); if (doc.roundedRect) { try { doc.setFillColor(...scheme.fill); doc.roundedRect(x, y, w, h, 3, 3, 'FD'); } catch { doc.setFillColor(...scheme.fill); doc.rect(x, y, w, h, 'F'); } } else { doc.setFillColor(...scheme.fill); doc.rect(x, y, w, h, 'F'); } const title = kind==='win'?'VITTORIA':kind==='lose'?'SCONFITTA':'PAREGGIO'; doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(...scheme.title); doc.text(title, x + 6, y + 7.5); let v=0,o=0; (match.periods||[]).filter(p=>!isTechnicalTest(p)).forEach(p=>{ v+=safeNum(p.vigontina); o+=safeNum(p.opponent); }); doc.setFont('helvetica','normal'); doc.setTextColor(50,50,50); doc.text(`Punti: Vigontina ${v} - ${o} ${match.opponent}`, x + w - 6, y + 7.5, { align: 'right' }); return y + h + 8; }
+// NEW: Calculate match points based on final result
+const calculateMatchPoints = (match) => {
+  let vigontinaGoals = 0, opponentGoals = 0;
+  (match.periods||[]).filter(p=>!isTechnicalTest(p)).forEach(p=>{
+    vigontinaGoals += safeNum(p.vigontina);
+    opponentGoals += safeNum(p.opponent);
+  });
+  
+  let vigontinaPoints, opponentPoints;
+  if (vigontinaGoals > opponentGoals) {
+    // Vigontina wins
+    vigontinaPoints = 3;
+    opponentPoints = 0;
+  } else if (vigontinaGoals < opponentGoals) {
+    // Opponent wins
+    vigontinaPoints = 0;
+    opponentPoints = 3;
+  } else {
+    // Draw
+    vigontinaPoints = 1;
+    opponentPoints = 1;
+  }
+  
+  return { vigontinaPoints, opponentPoints };
+};
+
+function bannerOutcome(doc, match, startY) { 
+  const pageW = doc.internal.pageSize.width; 
+  const kind = outcomeFromGoals(match); 
+  const scheme = kind==='win'?PALETTE.banner.win: kind==='lose'?PALETTE.banner.lose: PALETTE.banner.draw; 
+  const x = MARGINS.left, w = pageW - MARGINS.left - MARGINS.right, h = 11, y = startY; 
+  doc.setDrawColor(...scheme.border); 
+  doc.setLineWidth(0.12); 
+  if (doc.roundedRect) { 
+    try { 
+      doc.setFillColor(...scheme.fill); 
+      doc.roundedRect(x, y, w, h, 3, 3, 'FD'); 
+    } catch { 
+      doc.setFillColor(...scheme.fill); 
+      doc.rect(x, y, w, h, 'F'); 
+    } 
+  } else { 
+    doc.setFillColor(...scheme.fill); 
+    doc.rect(x, y, w, h, 'F'); 
+  } 
+  const title = kind==='win'?'VITTORIA':kind==='lose'?'SCONFITTA':'PAREGGIO'; 
+  doc.setFont('helvetica','bold'); 
+  doc.setFontSize(11); 
+  doc.setTextColor(...scheme.title); 
+  doc.text(title, x + 6, y + 7.5); 
+  
+  // FIXED: Show match points instead of goals
+  const { vigontinaPoints, opponentPoints } = calculateMatchPoints(match);
+  doc.setFont('helvetica','normal'); 
+  doc.setTextColor(50,50,50); 
+  doc.text(`Punti: Vigontina ${vigontinaPoints} - ${opponentPoints} ${match.opponent}`, x + w - 6, y + 7.5, { align: 'right' }); 
+  return y + h + 8; 
+}
 
 function infoBlock(doc, match, startY) {
   let y = startY;
