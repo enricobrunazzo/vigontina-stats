@@ -157,6 +157,20 @@ const VigontinaStats = () => {
     [match, timer]
   );
 
+  // NUOVO: Handler per calcio di punizione
+  const handleAddFreeKick = useCallback((outcome, team, playerNum, minute, hitType) => {
+    const typeMap = { missed: 'free-kick-missed', saved: 'free-kick-saved', hit: 'free-kick-hit' };
+    const type = typeMap[outcome];
+    const event = { type, team, minute };
+    if (team === 'vigontina' && playerNum) {
+      const p = (window.PLAYERS || []).find?.(x => x.num === playerNum);
+      event.player = playerNum;
+      event.playerName = p?.name || '';
+    }
+    if (type === 'free-kick-hit' && hitType) event.hitType = hitType;
+    match.addCustomEvent(match.currentPeriod, event);
+  }, [match]);
+
   // NUOVO HANDLER per eliminazione eventi
   const handleDeleteEvent = useCallback(
     (periodIndex, eventIndex, reason) => {
@@ -217,15 +231,16 @@ const VigontinaStats = () => {
         onAddOwnGoal={handleAddOwnGoal}
         onAddOpponentGoal={handleAddOpponentGoal}
         onAddPenalty={handleAddPenalty}
-        onAddSave={handleAddSave}            // NUOVO
-        onAddMissedShot={handleAddMissedShot} // NUOVO
-        onAddShotBlocked={handleAddShotBlocked} // NUOVO
-        onAddPostCrossbar={handleAddPostCrossbar} // NUOVO
-        onDeleteEvent={handleDeleteEvent}    // NUOVO
+        onAddSave={handleAddSave}
+        onAddMissedShot={handleAddMissedShot}
+        onAddShotBlocked={handleAddShotBlocked}
+        onAddPostCrossbar={handleAddPostCrossbar}
+        onDeleteEvent={handleDeleteEvent}
         onUpdateScore={match.updateScore}
         onFinish={handleFinishPeriod}
         onSetLineup={match.setLineup}
         onBack={handleBackFromPeriod}
+        onAddFreeKick={handleAddFreeKick}
       />
     );
   }
@@ -240,16 +255,17 @@ const VigontinaStats = () => {
         onAddOwnGoal={handleAddOwnGoal}
         onAddOpponentGoal={handleAddOpponentGoal}
         onAddPenalty={handleAddPenalty}
-        onAddSave={handleAddSave}            // NUOVO
-        onAddMissedShot={handleAddMissedShot} // NUOVO
-        onAddShotBlocked={handleAddShotBlocked} // NUOVO
-        onAddPostCrossbar={handleAddPostCrossbar} // NUOVO
-        onDeleteEvent={handleDeleteEvent}    // NUOVO
+        onAddSave={handleAddSave}
+        onAddMissedShot={handleAddMissedShot}
+        onAddShotBlocked={handleAddShotBlocked}
+        onAddPostCrossbar={handleAddPostCrossbar}
+        onDeleteEvent={handleDeleteEvent}
         onUpdateScore={match.updateScore}
         onFinish={handleFinishPeriod}
         isEditing={true}
         onSetLineup={match.setLineup}
         onBack={handleBackFromPeriod}
+        onAddFreeKick={handleAddFreeKick}
       />
     );
   }
