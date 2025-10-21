@@ -8,6 +8,7 @@ import PenaltyAdvancedModal from "./modals/PenaltyAdvancedModal";
 import LineupModal from "./modals/LineupModal";
 import DeleteEventModal from "./modals/DeleteEventModal";
 import SubstitutionModal from "./modals/SubstitutionModal";
+import FreeKickModal from "./modals/FreeKickModal";
 import ProvaTecnicaPanel from "./ProvaTecnicaPanel";
 
 const PeriodPlay = ({
@@ -60,6 +61,7 @@ const PeriodPlay = ({
   const [pendingShotOutcome, setPendingShotOutcome] = useState(null);
   const [showShotPlayerDialog, setShowShotPlayerDialog] = useState(false);
   const [showSubstitution, setShowSubstitution] = useState(false);
+  const [showFreeKickDialog, setShowFreeKickDialog] = useState(false);
   const [lineupAlreadyAsked, setLineupAlreadyAsked] = useState(false);
   const [manualScoreMode, setManualScoreMode] = useState(false);
 
@@ -103,6 +105,12 @@ const PeriodPlay = ({
     else if (pendingShotOutcome === 'parato') onAddShotBlocked('vigontina', playerNum);
     else if (pendingShotOutcome === 'palo' || pendingShotOutcome === 'traversa') onAddPostCrossbar(pendingShotOutcome, 'vigontina', playerNum);
     setPendingShotOutcome(null);
+  };
+
+  const handleFreeKickConfirm = (outcome, team, player, hitType) => {
+    const minute = safeGetMinute();
+    onAddFreeKick(outcome, team, player, minute, hitType);
+    setShowFreeKickDialog(false);
   };
 
   const startShotFlow = () => { setShowShotSelectionDialog(true); };
@@ -237,7 +245,7 @@ const PeriodPlay = ({
                     <div className="grid grid-cols-2 gap-2">
                       <button onClick={startShotFlow} className="bg-gray-600 text-white py-2 px-2 rounded hover:bg-gray-700 font-medium text-xs">🎯 Tiro</button>
                       <button onClick={()=>setShowSubstitution(true)} className="bg-indigo-600 text-white py-2 px-2 rounded hover:bg-indigo-700 font-medium text-xs flex items-center justify-center gap-1"><Repeat className="w-3 h-3" /> Sostituzione</button>
-                      <button onClick={()=>{ setShowShotSelectionDialog(true); }} className="bg-orange-600 text-white py-2 px-2 rounded hover:bg-orange-700 font-medium text-xs">🟧 Punizione</button>
+                      <button onClick={()=>setShowFreeKickDialog(true)} className="bg-orange-600 text-white py-2 px-2 rounded hover:bg-orange-700 font-medium text-xs">🟧 Punizione</button>
                       <button onClick={() => setShowDeleteEventDialog(true)} className="bg-red-600 text-white py-2 px-2 rounded hover:bg-red-700 font-medium text-xs" disabled={events.length === 0}>🗑️ Elimina Evento</button>
                     </div>
                   </div>
@@ -289,6 +297,9 @@ const PeriodPlay = ({
           )}
           {!isViewer && showSubstitution && (
             <SubstitutionModal periodLineup={period.lineup||[]} notCalled={match.notCalled||[]} onConfirm={(outNum,inNum)=>{ onAddSubstitution?.(periodIndex, outNum, inNum, safeGetMinute); setShowSubstitution(false);} } onCancel={()=>setShowSubstitution(false)} />
+          )}
+          {!isViewer && showFreeKickDialog && (
+            <FreeKickModal availablePlayers={availablePlayers} opponentName={match.opponent} onConfirm={handleFreeKickConfirm} onCancel={()=>setShowFreeKickDialog(false)} />
           )}
           {!isViewer && showShotSelectionDialog && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -412,9 +423,9 @@ const TeamEventCard = ({ event, team, opponentName }) => {
   }
   if (event.type?.startsWith('free-kick')) {
     const isOpp = event.type.includes('opponent');
-    if (event.type.includes('missed')) return grayCard(<p className="font-medium text-gray-800">🟧 {event.minute}' - Punizione fuori {isOpp ? opponentName : `${event.player||''} ${event.playerName||''}`.trim()} <Badge color="purple">PUN.</Badge></p>);
-    if (event.type.includes('saved')) return grayCard(<p className="font-medium text-gray-800">🟧 {event.minute}' - Punizione parata {isOpp ? opponentName : `${event.player||''} ${event.playerName||''}`.trim()} <Badge color="purple">PUN.</Badge></p>);
-    if (event.type.includes('hit')) return grayCard(<p className="font-medium text-gray-800">🟧 {event.minute}' - Punizione {event.hitType==='palo'?'🧱 Palo':'⎯ Traversa'} {isOpp ? opponentName : `${event.player||''} ${event.playerName||''}`.trim()} <Badge color="purple">PUN.</Badge></p>);
+    if (event.type.includes('missed')) return grayCard(<p className="font-medium text-gray-800">🟧 {event.minute}' - Punizione fuori {isOpp ? opponentName : `${event.player||''} ${event.playerName||''}`.trim()} <Badge color="orange">PUN.</Badge></p>);
+    if (event.type.includes('saved')) return grayCard(<p className="font-medium text-gray-800">🟧 {event.minute}' - Punizione parata {isOpp ? opponentName : `${event.player||''} ${event.playerName||''}`.trim()} <Badge color="orange">PUN.</Badge></p>);
+    if (event.type.includes('hit')) return grayCard(<p className="font-medium text-gray-800">🟧 {event.minute}' - Punizione {event.hitType==='palo'?'🧱 Palo':'⎯ Traversa'} {isOpp ? opponentName : `${event.player||''} ${event.playerName||''}`.trim()} <Badge color="orange">PUN.</Badge></p>);
   }
   if (event.type === 'substitution') {
     return grayCard(
