@@ -21,7 +21,7 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
       events.forEach((event, idx) => {
         const e = { ...event, originalIndex: idx };
         if (
-          ['goal','penalty-goal','penalty-missed','save','missed-shot','shot-blocked'].includes(event.type)
+          ['goal','penalty-goal','penalty-missed','save','missed-shot','shot-blocked','free-kick-missed','free-kick-saved','free-kick-hit'].includes(event.type)
           || event.type === 'opponent-own-goal'
           || event.type === 'palo-vigontina'
           || event.type === 'traversa-vigontina'
@@ -126,35 +126,58 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
   const grayCard = (children) => (
     <div className={`bg-gray-50 border border-gray-200 text-gray-800 p-2 rounded border text-xs ${baseClasses}`}>{children}</div>
   );
+  const greenCard = (children) => (
+    <div className={`bg-green-50 border border-green-200 text-green-800 p-2 rounded border text-xs ${baseClasses}`}>{children}</div>
+  );
+  const blueCard = (children) => (
+    <div className={`bg-blue-50 border border-blue-200 text-blue-800 p-2 rounded border text-xs ${baseClasses}`}>{children}</div>
+  );
+  const redBall = <span className="text-red-600 font-bold" style={{color: '#dc2626'}}>⚽</span>;
 
   if (event.type === "goal" || event.type === "penalty-goal") {
     const isRig = event.type === 'penalty-goal';
     return (
-      <div className={`bg-green-50 border border-green-200 text-green-800 p-2 rounded border text-xs ${baseClasses}`}>
-        <p className={`font-medium ${textClasses}`}>
-          ⚽ {minute}' - {event.scorer} {event.scorerName}
-          {isRig && <Badge color="purple">RIG.</Badge>}
-        </p>
-        {event.assist && (<p className={`text-xs ${textClasses}`}>Assist: {event.assist} {event.assistName}</p>)}
-        {isDeleted && (<p className="text-xs text-red-600 italic mt-1">⚠️ {event.deletionReason}</p>)}
-      </div>
+      greenCard(
+        <div>
+          <p className={`font-medium ${textClasses}`}>
+            ⚽ {minute}' - {event.scorer} {event.scorerName}
+            {isRig && <Badge color="purple">RIG.</Badge>}
+          </p>
+          {event.assist && (<p className={`text-xs ${textClasses}`}>Assist: {event.assist} {event.assistName}</p>)}
+          {isDeleted && (<p className="text-xs text-red-600 italic mt-1">⚠️ {event.deletionReason}</p>)}
+        </div>
+      )
     );
   }
   if (event.type === "opponent-goal" || event.type === "penalty-opponent-goal") {
     const isRig = event.type === 'penalty-opponent-goal';
     return (
-      <div className={`bg-blue-50 border border-blue-200 text-blue-800 p-2 rounded border text-xs ${baseClasses}`}>
-        <p className={`font-medium ${textClasses}`}>
-          ⚽ {minute}' - {event.type.includes('penalty')? 'Rigore' : 'Gol'} {opponentName}
-          {isRig && <Badge color="purple">RIG.</Badge>}
-        </p>
-        {isDeleted && (<p className="text-xs text-red-600 italic mt-1">⚠️ {event.deletionReason}</p>)}
-      </div>
+      blueCard(
+        <div>
+          <p className={`font-medium ${textClasses}`}>
+            ⚽ {minute}' - {event.type.includes('penalty')? 'Rigore' : 'Gol'} {opponentName}
+            {isRig && <Badge color="purple">RIG.</Badge>}
+          </p>
+          {isDeleted && (<p className="text-xs text-red-600 italic mt-1">⚠️ {event.deletionReason}</p>)}
+        </div>
+      )
     );
   }
-  if (event.type === "own-goal" || event.type === "opponent-own-goal") {
-    const who = event.type === 'own-goal' ? 'Vigontina' : opponentName;
-    return grayCard(<p className={`font-medium ${textClasses}`}>⚽ {minute}' - Autogol {who}</p>);
+  if (event.type === "own-goal") {
+    // Autogol Vigontina: come gol avversario ma pallone rosso
+    return (
+      blueCard(
+        <p className={`font-medium ${textClasses}`}>{redBall} {minute}' - Autogol Vigontina</p>
+      )
+    );
+  }
+  if (event.type === "opponent-own-goal") {
+    // Autogol Avversario: come gol Vigontina ma pallone rosso
+    return (
+      greenCard(
+        <p className={`font-medium ${textClasses}`}>{redBall} {minute}' - Autogol {opponentName}</p>
+      )
+    );
   }
   if (event.type.includes('penalty') && event.type.includes('missed')) {
     const who = event.type === 'penalty-missed' ? 'Vigontina' : opponentName;
