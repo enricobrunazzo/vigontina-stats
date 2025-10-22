@@ -54,6 +54,9 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
       return;
     }
     
+    // FIX: Salva l'oggetto completo del capitano invece del solo numero
+    const captainPlayer = PLAYERS.find(p => p.num === captain);
+    
     // Passa tutti i dati inclusa la password; mappa teamManager -> manager per uniformità con export
     onSubmit({
       competition,
@@ -65,7 +68,7 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
       manager: teamManager, // <-- Mappa teamManager -> manager per uniformità
       coach,
       notCalled,
-      captain,
+      captain: captainPlayer ? { num: captainPlayer.num, number: captainPlayer.num, name: captainPlayer.name } : null,
     }, organizerPassword); // Password come secondo parametro
   };
 
