@@ -359,27 +359,76 @@ export const exportMatchHistoryToExcel = async (matches) => {
           right: { style: 'medium' }
         };
       });
+      infoRow++;
 
-      // Marcatori (se presenti)
-      if (match.periods?.some(p => p.goals?.length > 0)) {
-        infoRow += 2;
-        sheet2.getCell(`A${infoRow}`).value = 'MARCATORI:';
+      // Eventi partita (FIXED - usa la struttura corretta degli eventi)
+      let hasEvents = false;
+      const allEvents = [];
+      
+      match.periods?.forEach(period => {
+        if (period.goals && period.goals.length > 0) {
+          hasEvents = true;
+          period.goals.forEach(event => {
+            // Gestisci diversi tipi di eventi con la struttura corretta
+            let eventText = '';
+            const minute = event.minute || '?';
+            
+            if (event.type === 'goal' || event.type === 'penalty-goal') {
+              const playerName = event.scorerName || event.scorer || 'Sconosciuto';
+              eventText = `${minute}' - GOL: ${playerName}`;
+              if (event.type === 'penalty-goal') eventText += ' (Rigore)';
+              if (event.assistName) eventText += ` (Assist: ${event.assistName})`;
+            } else if (event.type === 'opponent-goal' || event.type === 'penalty-opponent-goal') {
+              eventText = `${minute}' - GOL AVVERSARIO`;
+              if (event.type === 'penalty-opponent-goal') eventText += ' (Rigore)';
+            } else if (event.type === 'own-goal') {
+              eventText = `${minute}' - AUTOGOL VIGONTINA`;
+            } else if (event.type === 'opponent-own-goal') {
+              eventText = `${minute}' - AUTOGOL AVVERSARIO`;
+            } else if (event.type === 'substitution') {
+              const outPlayer = event.out?.name || event.out?.num || 'N/A';
+              const inPlayer = event.in?.name || event.in?.num || 'N/A';
+              eventText = `${minute}' - SOSTITUZIONE: ${outPlayer} → ${inPlayer}`;
+            } else if (event.type === 'save' || event.type === 'opponent-save') {
+              const playerName = event.playerName || 'Portiere';
+              eventText = `${minute}' - PARATA: ${playerName}`;
+            } else if (event.type === 'missed-shot' || event.type === 'opponent-missed-shot') {
+              const playerName = event.playerName || 'Giocatore';
+              eventText = `${minute}' - TIRO FUORI: ${playerName}`;
+            } else if (event.type?.includes('free-kick')) {
+              const playerName = event.playerName || 'Giocatore';
+              const outcome = event.type.includes('missed') ? 'FUORI' : 
+                           event.type.includes('saved') ? 'PARATA' : 'PUNIZIONE';
+              eventText = `${minute}' - PUNIZIONE ${outcome}: ${playerName}`;
+            } else {
+              // Altri tipi di eventi
+              eventText = `${minute}' - ${event.type?.toUpperCase() || 'EVENTO'}`;
+              if (event.playerName) eventText += `: ${event.playerName}`;
+            }
+            
+            allEvents.push(eventText);
+          });
+        }
+      });
+
+      // Mostra eventi se presenti
+      if (hasEvents && allEvents.length > 0) {
+        infoRow += 1;
+        sheet2.getCell(`A${infoRow}`).value = 'EVENTI PARTITA:';
         sheet2.getCell(`A${infoRow}`).font = { bold: true, size: 10 };
         infoRow++;
 
-        match.periods.forEach(period => {
-          period.goals?.forEach(goal => {
-            const goalRow = sheet2.getRow(infoRow);
-            goalRow.getCell(1).value = `${goal.player} (${goal.minute}')`;
-            goalRow.getCell(1).font = { size: 9 };
-            infoRow++;
-          });
+        allEvents.forEach(eventText => {
+          const eventRow = sheet2.getRow(infoRow);
+          eventRow.getCell(1).value = eventText;
+          eventRow.getCell(1).font = { size: 9 };
+          infoRow++;
         });
       }
     });
 
     // Larghezza colonne foglio 2
-    sheet2.getColumn('A').width = 25;
+    sheet2.getColumn('A').width = 40;
     sheet2.getColumn('B').width = 12;
     sheet2.getColumn('C').width = 12;
     sheet2.getColumn('D').width = 12;
