@@ -138,23 +138,105 @@ export const exportMatchHistoryToExcel = async (matches) => {
         });
       }
 
+      // Tabella per periodo: eventi separati per tempo
       infoRow += 1;
+      match.periods?.forEach((period, pIdx) => {
+        // Header periodo
+        sheet2.getCell(`A${infoRow}`).value = `${period.name} - Eventi`;
+        sheet2.getCell(`A${infoRow}`).font = { bold: true, size: 10 };
+        infoRow++;
+
+        // Intestazioni eventi del periodo
+        const evHeaders = ['Min', 'Tipo', 'Descrizione'];
+        evHeaders.forEach((h, idx) => {
+          const c = sheet2.getCell(`${String.fromCharCode(65+idx)}${infoRow}`);
+          c.value = h;
+          c.font = { bold: true, size: 9, color: { argb: colors.white } };
+          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.darkGreen } };
+          c.alignment = { horizontal: 'center', vertical: 'middle' };
+          c.border = { top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'} };
+        });
+        infoRow++;
+
+        const periodEvents = Array.isArray(period.goals) ? period.goals : [];
+        if (periodEvents.length === 0) {
+          const r = sheet2.getRow(infoRow);
+          r.getCell(1).value = '-';
+          r.getCell(2).value = '-';
+          r.getCell(3).value = 'Nessun evento';
+          [1,2,3].forEach(ci=>{ const c = r.getCell(ci); c.alignment={ horizontal:'center', vertical:'middle' }; c.border={ top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'} }; });
+          infoRow++;
+        } else {
+          periodEvents
+            .sort((a,b)=>(a.minute||0)-(b.minute||0))
+            .forEach(event => {
+              const minute = event.minute ?? '';
+              let tipo = '';
+              let descr = '';
+
+              if (event.type === 'goal' || event.type === 'penalty-goal') {
+                tipo = event.type === 'penalty-goal' ? 'Gol (Rig.)' : 'Gol';
+                const name = event.scorerName || event.scorer || 'Sconosciuto';
+                descr = name;
+                if (event.assistName) descr += ` (Assist: ${event.assistName})`;
+              } else if (event.type === 'opponent-goal' || event.type === 'penalty-opponent-goal') {
+                tipo = event.type === 'penalty-opponent-goal' ? 'Gol Avv. (Rig.)' : 'Gol Avv.';
+                descr = match.opponent;
+              } else if (event.type === 'own-goal') {
+                tipo = 'Autogol Vigontina'; descr = '';
+              } else if (event.type === 'opponent-own-goal') {
+                tipo = 'Autogol Avversario'; descr = '';
+              } else if (event.type === 'substitution') {
+                tipo = 'Sostituzione';
+                const outN = event.out?.name || event.out?.num || 'N/A';
+                const inN = event.in?.name || event.in?.num || 'N/A';
+                descr = `${outN} → ${inN}`;
+              } else if (event.type === 'save' || event.type === 'opponent-save') {
+                tipo = 'Parata';
+                descr = event.playerName || (event.type==='opponent-save' ? `Portiere ${match.opponent}` : 'Portiere');
+              } else if (event.type === 'missed-shot' || event.type === 'opponent-missed-shot') {
+                tipo = 'Tiro fuori';
+                descr = event.playerName || (event.type==='opponent-missed-shot' ? match.opponent : '');
+              } else if (event.type === 'shot-blocked' || event.type === 'opponent-shot-blocked') {
+                tipo = 'Tiro parato';
+                descr = event.playerName || (event.type==='opponent-shot-blocked' ? match.opponent : '');
+              } else if (event.type?.startsWith('free-kick')) {
+                if (event.type.includes('missed')) tipo = 'Punizione fuori';
+                else if (event.type.includes('saved')) tipo = 'Punizione parata';
+                else tipo = 'Punizione';
+                descr = event.playerName || (event.team==='opponent' ? match.opponent : '');
+              } else if ((event.type?.includes('palo-') || event.type?.includes('traversa-'))) {
+                tipo = event.hitType === 'palo' ? 'Palo' : 'Traversa';
+                descr = event.playerName || (event.team==='opponent' ? match.opponent : '');
+              } else {
+                tipo = event.type || 'Evento';
+                descr = event.playerName || '';
+              }
+
+              const r = sheet2.getRow(infoRow);
+              r.getCell(1).value = minute;
+              r.getCell(2).value = tipo;
+              r.getCell(3).value = descr;
+              [1,2,3].forEach(ci=>{ const c = r.getCell(ci); c.alignment={ horizontal: ci===3? 'left':'center', vertical:'middle' }; c.border={ top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'} }; });
+              infoRow++;
+            });
+        }
+
+        infoRow += 1; // spazio dopo tabella periodo
+      });
+
+      // Tabella punteggi per periodo
       const periodHeaders = ['Periodo', 'Vigontina', match.opponent];
       periodHeaders.forEach((h, idx)=>{ const c = sheet2.getCell(`${String.fromCharCode(65+idx)}${infoRow}`); c.value = h; c.font = { bold:true, size:10, color:{ argb: colors.white } }; c.fill = { type:'pattern', pattern:'solid', fgColor:{ argb: colors.darkGreen } }; c.alignment = { horizontal:'center', vertical:'middle' }; c.border = { top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'} }; });
       infoRow++;
-
       match.periods?.forEach(period=>{ const r = sheet2.getRow(infoRow); r.getCell(1).value = period.name; r.getCell(2).value = period.vigontina || 0; r.getCell(3).value = period.opponent || 0; [1,2,3].forEach(ci=>{ const c = r.getCell(ci); c.alignment={ horizontal:'center', vertical:'middle' }; c.border={ top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'} }; }); infoRow++; });
 
       const totalRow = sheet2.getRow(infoRow); totalRow.getCell(1).value='TOTALE PUNTI'; totalRow.getCell(2).value=match.finalPoints?.vigontina || 0; totalRow.getCell(3).value=match.finalPoints?.opponent || 0;
-      [1,2,3].forEach(ci=>{ const c = totalRow.getCell(ci); c.font={ bold:true, size:11 }; c.fill={ type:'pattern', pattern:'solid', fgColor:{ argb: colors.yellow } }; c.alignment={ horizontal:'center', vertical:'middle' }; c.border={ top:{style:'medium'},left:{style:'medium'},bottom:{style:'medium'},right:{style:'medium'} }; });
+      [1,2,3].forEach(ci=>{ const c = totalRow.getCell(ci); c.font={ bold:true, size:11 }; c.fill={ type:'pattern', pattern:'solid', fgColor:{ argb:{ argb: colors.yellow } } }; c.alignment={ horizontal:'center', vertical:'middle' }; c.border={ top:{style:'medium'},left:{style:'medium'},bottom:{style:'medium'},right:{style:'medium'} }; });
       infoRow++;
-
-      let hasEvents=false; const allEvents=[];
-      match.periods?.forEach(period=>{ if (period.goals?.length>0){ hasEvents=true; period.goals.forEach(event=>{ const minute=event.minute||'?'; let txt=''; if(event.type==='goal'||event.type==='penalty-goal'){ const name=event.scorerName||event.scorer||'Sconosciuto'; txt=`${minute}' - GOL: ${name}`; if(event.type==='penalty-goal') txt+=' (Rigore)'; if(event.assistName) txt+=` (Assist: ${event.assistName})`; } else if(event.type==='opponent-goal'||event.type==='penalty-opponent-goal'){ txt=`${minute}' - GOL AVVERSARIO${event.type==='penalty-opponent-goal'?' (Rigore)':''}`; } else if(event.type==='own-goal'){ txt=`${minute}' - AUTOGOL VIGONTINA`; } else if(event.type==='opponent-own-goal'){ txt=`${minute}' - AUTOGOL AVVERSARIO`; } else if(event.type==='substitution'){ const outN=event.out?.name||event.out?.num||'N/A'; const inN=event.in?.name||event.in?.num||'N/A'; txt=`${minute}' - SOSTITUZIONE: ${outN} → ${inN}`; } else if(event.type==='save'||event.type==='opponent-save'){ const n=event.playerName||'Portiere'; txt=`${minute}' - PARATA: ${n}`; } else if(event.type==='missed-shot'||event.type==='opponent-missed-shot'){ const n=event.playerName||'Giocatore'; txt=`${minute}' - TIRO FUORI: ${n}`; } else if(event.type?.startsWith('free-kick')){ const n=event.playerName||'Giocatore'; const outc= event.type.includes('missed')?'FUORI': event.type.includes('saved')?'PARATA':'PUNIZIONE'; txt=`${minute}' - PUNIZIONE ${outc}: ${n}`; } else { txt=`${minute}' - ${event.type?.toUpperCase()||'EVENTO'}`; if(event.playerName) txt+=`: ${event.playerName}`; } allEvents.push(txt); }); }});
-      if(hasEvents && allEvents.length>0){ infoRow+=1; sheet2.getCell(`A${infoRow}`).value='EVENTI PARTITA:'; sheet2.getCell(`A${infoRow}`).font={ bold:true, size:10 }; infoRow++; allEvents.forEach(t=>{ const r=sheet2.getRow(infoRow); r.getCell(1).value=t; r.getCell(1).font={ size:9 }; infoRow++; }); }
     });
 
-    sheet2.getColumn('A').width=42; sheet2.getColumn('B').width=40; sheet2.getColumn('C').width=12; sheet2.getColumn('D').width=12; sheet2.getColumn('E').width=12;
+    sheet2.getColumn('A').width=8; sheet2.getColumn('B').width=18; sheet2.getColumn('C').width=45; sheet2.getColumn('D').width=12; sheet2.getColumn('E').width=12;
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
