@@ -111,13 +111,14 @@ const PeriodPlay = ({
     const minute = safeGetMinute();
     if (outcome === 'goal') {
       if (team === 'vigontina') {
-        // Usa onAddFreeKick con tipo 'free-kick-goal' per mantenere traccia
-        onAddFreeKick('goal', team, player, minute, null);
+        // Gol Vigontina da punizione: usa onAddGoal direttamente con metadata
+        onAddGoal(player, null, { minute, meta: { freeKick: true } });
       } else {
-        // Avversario: gol da punizione
-        onAddFreeKick('goal', team, null, minute, null);
+        // Gol avversario da punizione: usa onAddOpponentGoal con metadata
+        onAddOpponentGoal(minute, { freeKick: true });
       }
     } else {
+      // Altri esiti: usa il normale flusso punizioni
       onAddFreeKick(outcome, team, player, minute, hitType);
     }
     setShowFreeKickDialog(false);
@@ -375,8 +376,8 @@ const TeamEventCard = ({ event, team, opponentName }) => {
   );
   const redBall = <span className="text-red-600 font-bold" style={{color: '#dc2626'}}>⚽</span>;
 
-  // Badge PUN per gol da punizione
-  const isFreeKickGoal = event.type === 'free-kick-goal';
+  // Badge PUN per gol da punizione: controlla sia type specifico sia meta.freeKick
+  const isFreeKickGoal = event.type === 'free-kick-goal' || event?.meta?.freeKick === true;
 
   if (event.type === "goal" || event.type === "penalty-goal" || event.type === "free-kick-goal") {
     const isRig = event.type === 'penalty-goal';
@@ -390,7 +391,7 @@ const TeamEventCard = ({ event, team, opponentName }) => {
   }
   if (event.type === "opponent-goal" || event.type === "penalty-opponent-goal" || event.type === "opponent-free-kick-goal") {
     const isRig = event.type === 'penalty-opponent-goal';
-    const isFKGoal = event.type === 'opponent-free-kick-goal';
+    const isFKGoal = event.type === 'opponent-free-kick-goal' || event?.meta?.freeKick === true;
     return blueCard(
       <p className={`font-medium text-blue-800 ${textClasses}`}>
         ⚽ {event.minute}' - {event.type.includes('penalty') ? 'Rigore' : 'Gol'} {opponentName}
