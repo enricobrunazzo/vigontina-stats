@@ -161,12 +161,11 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
     <div className={`bg-blue-50 border border-blue-200 text-blue-800 p-2 rounded border text-xs ${baseClasses}`}>{children}</div>
   );
 
-  // Badge PUN per gol da punizione
-  const isFreeKickGoal = event.type === 'free-kick-goal' || event.type === 'opponent-free-kick-goal';
+  // Mostra "PUN." sia per tipi specifici sia per gol standard con meta.freeKick
+  const isPUN = event.type === 'free-kick-goal' || event.type === 'opponent-free-kick-goal' || event?.meta?.freeKick === true;
 
   if (event.type === "goal" || event.type === "penalty-goal" || event.type === "free-kick-goal") {
     const isRig = event.type === 'penalty-goal';
-    const isPUN = event.type === 'free-kick-goal';
     return (
       greenCard(
         <div>
@@ -183,7 +182,6 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
   }
   if (event.type === "opponent-goal" || event.type === "penalty-opponent-goal" || event.type === "opponent-free-kick-goal") {
     const isRig = event.type === 'penalty-opponent-goal';
-    const isPUN = event.type === 'opponent-free-kick-goal';
     return (
       blueCard(
         <div>
