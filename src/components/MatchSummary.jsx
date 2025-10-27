@@ -202,8 +202,8 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
   }
   if (event.type === "shot-blocked" || event.type === "opponent-shot-blocked") {
     const isVig = event.type === 'shot-blocked';
-    // change order: minute - label first then player/opponent
-    return grayCard(<p className="font-medium">🧤 {minute}' - tiro parato {isVig ? `${event.player} ${event.playerName}` : opponentName}</p>);
+    // Capitalize label: 'Tiro parato'
+    return grayCard(<p className="font-medium">🧤 {minute}' - Tiro parato {isVig ? `${event.player} ${event.playerName}` : opponentName}</p>);
   }
   if (event.type?.includes('palo-') || event.type?.includes('traversa-')) {
     const isVig = event.team === 'vigontina';
@@ -215,7 +215,6 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
     const label = event.type.includes('missed') ? 'Punizione fuori' : event.type.includes('saved') ? 'Punizione parata' : 'Punizione';
     const suffix = event.hitType === 'palo' ? ' (Palo)' : event.hitType === 'traversa' ? ' (Traversa)' : '';
     const isVig = event.team !== 'opponent';
-    // CHANGED ICON: from 📐 to 🎯 for coherence with shot events
     return grayCard(<p className="font-medium">🎯 {minute}' - {label}{suffix} {isVig ? `${event.player||''} ${event.playerName||''}`.trim() : opponentName}</p>);
   }
   if (event.type === 'substitution') {
