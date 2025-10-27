@@ -190,6 +190,7 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
             {isRig && <Badge color="purple">RIG.</Badge>}
             {isPUN && <Badge color="orange">PUN.</Badge>}
           </p>
+          {event.assist && (<p className={`text-xs ${textClasses}`}>Assist: {event.assist} {event.assistName}</p>)}
           {isDeleted && (<p className="text-xs text-red-600 italic mt-1">⚠️ {event.deletionReason}</p>)}
         </div>
       )
