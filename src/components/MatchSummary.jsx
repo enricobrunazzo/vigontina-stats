@@ -61,14 +61,11 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
             <div className="bg-white/50 p-3 rounded text-sm">
               <p className="text-center">
                 <strong>{match.competition}</strong>
-                {match.matchDay && ` - Giornata ${match.matchDay}`}
+                {match.matchDay && ` • Giornata ${match.matchDay}`}
                 {" • "}
                 {match.isHome ? "🏠 Casa" : "✈️ Trasferta"}
                 {" • "}
                 {new Date(match.date).toLocaleDateString("it-IT")}
-                {match.coach && (<> {" • "}<span><strong>Allenatore:</strong> {match.coach}</span></>)}
-                {match.assistantReferee && (<> {" • "}<span><strong>Assistente Arbitro:</strong> {match.assistantReferee}</span></>)}
-                {match.manager && (<> {" • "}<span><strong>Dirigente Accompagnatore:</strong> {match.manager}</span></>)}
               </p>
             </div>
           </div>
@@ -104,7 +101,16 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
               </div>
             )}
 
-            <div className="pt-4 border-t grid grid-cols-2 gap-2">
+            {/* Staff info spostata in fondo, una voce per riga */}
+            {(match.coach || match.assistantReferee || match.manager) && (
+              <div className="mt-2 pt-4 border-t text-sm text-gray-700">
+                {match.coach && (<p><strong>Allenatore:</strong> {match.coach}</p>)}
+                {match.assistantReferee && (<p><strong>Assistente Arbitro:</strong> {match.assistantReferee}</p>)}
+                {match.manager && (<p><strong>Dirigente Accompagnatore:</strong> {match.manager}</p>)}
+              </div>
+            )}
+
+            <div className="pt-4 grid grid-cols-2 gap-2">
               <button onClick={onExportExcel} className="bg-green-400 text-white py-2 rounded hover:bg-green-500 font-medium flex items-center justify-center gap-2 text-sm"><Download className="w-4 h-4" />Esporta Excel</button>
               <button onClick={onExportPDF} className="bg-red-400 text-white py-2 rounded hover:bg-red-500 font-medium flex items-center justify-center gap-2 text-sm"><Download className="w-4 h-4" />Esporta PDF</button>
             </div>
