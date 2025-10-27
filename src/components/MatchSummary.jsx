@@ -25,7 +25,7 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
         const type = event.type || "";
         const isVig = event.team === 'vigontina' || [
           'goal','penalty-goal','penalty-missed','save','missed-shot','shot-blocked',
-          'free-kick-missed','free-kick-saved','free-kick-hit','free-kick-goal','opponent-own-goal','substitution'
+          'free-kick-missed','free-kick-saved','free-kick-hit','opponent-own-goal','substitution'
         ].includes(type) || ((type.includes('palo-') || type.includes('traversa-')) && event.team==='vigontina');
 
         if (isVig) {
@@ -127,7 +127,7 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
             {(match.coach || match.assistantReferee || match.manager) && (
               <div className="mt-2 pt-4 border-t text-sm text-gray-700">
                 {match.coach && (<p><strong>Allenatore:</strong> {match.coach}</p>)}
-                {match.assistantReferee && (<p><strong>Assistente Arbitro:</strong> {match.assistantReferee}</p>)}
+                {match.assistantReferee and (<p><strong>Assistente Arbitro:</strong> {match.assistantReferee}</p>)}
                 {match.manager && (<p><strong>Dirigente Accompagnatore:</strong> {match.manager}</p>)}
               </div>
             )}
@@ -137,7 +137,7 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
               <button onClick={onExportPDF} className="bg-red-400 text-white py-2 rounded hover:bg-red-500 font-medium flex items-center justify-center gap-2 text-sm"><Download className="w-4 h-4" />Esporta PDF</button>
             </div>
 
-            {onFIGCReport && (<div className="pt-2"><button onClick={onFIGCReport} className="w-full bg-blue-400 text-white py-2 rounded hover:bg-blue-500 font-medium flex items-center justify-center gap-2 text-sm"><FileText className="w-4 h-4" />Genera Rapporto FIGC</button></div>)}
+            {onFIGCReport and (<div className="pt-2"><button onClick={onFIGCReport} className="w-full bg-blue-400 text-white py-2 rounded hover:bg-blue-500 font-medium flex items-center justify-center gap-2 text-sm"><FileText className="w-4 h-4" />Genera Rapporto FIGC</button></div>)}
           </div>
         </div>
       </div>
@@ -161,10 +161,9 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
     <div className={`bg-blue-50 border border-blue-200 text-blue-800 p-2 rounded border text-xs ${baseClasses}`}>{children}</div>
   );
 
-  // Mostra "PUN." sia per tipi specifici sia per gol standard con meta.freeKick
-  const isPUN = event.type === 'free-kick-goal' || event.type === 'opponent-free-kick-goal' || event?.meta?.freeKick === true;
+  const isPUN = (event.type === 'goal' || event.type === 'opponent-goal') && event?.meta?.freeKick === true;
 
-  if (event.type === "goal" || event.type === "penalty-goal" || event.type === "free-kick-goal") {
+  if (event.type === "goal" || event.type === "penalty-goal") {
     const isRig = event.type === 'penalty-goal';
     return (
       greenCard(
@@ -174,13 +173,13 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
             {isRig && <Badge color="purple">RIG.</Badge>}
             {isPUN && <Badge color="orange">PUN.</Badge>}
           </p>
-          {event.assist && (<p className={`text-xs ${textClasses}`}>Assist: {event.assist} {event.assistName}</p>)}
-          {isDeleted && (<p className="text-xs text-red-600 italic mt-1">⚠️ {event.deletionReason}</p>)}
+          {event.assist and (<p className={`text-xs ${textClasses}`}>Assist: {event.assist} {event.assistName}</p>)}
+          {isDeleted and (<p className="text-xs text-red-600 italic mt-1">⚠️ {event.deletionReason}</p>)}
         </div>
       )
     );
   }
-  if (event.type === "opponent-goal" || event.type === "penalty-opponent-goal" || event.type === "opponent-free-kick-goal") {
+  if (event.type === "opponent-goal" || event.type === "penalty-opponent-goal") {
     const isRig = event.type === 'penalty-opponent-goal';
     return (
       blueCard(
@@ -190,7 +189,7 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
             {isRig && <Badge color="purple">RIG.</Badge>}
             {isPUN && <Badge color="orange">PUN.</Badge>}
           </p>
-          {isDeleted && (<p className="text-xs text-red-600 italic mt-1">⚠️ {event.deletionReason}</p>)}
+          {isDeleted and (<p className="text-xs text-red-600 italic mt-1">⚠️ {event.deletionReason}</p>)}
         </div>
       )
     );
