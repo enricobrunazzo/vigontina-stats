@@ -24,7 +24,7 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
         const type = event.type || "";
         const isVig = event.team === 'vigontina' || [
           'goal','penalty-goal','penalty-missed','save','missed-shot','shot-blocked',
-          'free-kick-missed','free-kick-saved','free-kick-hit','opponent-own-goal'
+          'free-kick-missed','free-kick-saved','free-kick-hit','opponent-own-goal','substitution'
         ].includes(type) || ((type.includes('palo-') || type.includes('traversa-')) && event.team==='vigontina');
 
         if (isVig) {
@@ -210,6 +210,14 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
     const isVig = event.team !== 'opponent';
     // CHANGED ICON: from 📐 to 🎯 for coherence with shot events
     return grayCard(<p className="font-medium">🎯 {minute}' - {label}{suffix} {isVig ? `${event.player||''} ${event.playerName||''}`.trim() : opponentName}</p>);
+  }
+  if (event.type === 'substitution') {
+    return grayCard(
+      <p className={`font-medium ${textClasses}`}>
+        🔁 {minute}' - Sostituzione: {event.out?.num} {event.out?.name} → {event.in?.num} {event.in?.name}
+        {isDeleted && (<span className="text-xs text-red-600 italic ml-1">⚠️ {event.deletionReason}</span>)}
+      </p>
+    );
   }
   return null;
 };
