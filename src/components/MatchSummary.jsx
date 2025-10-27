@@ -25,7 +25,7 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
         const type = event.type || "";
         const isVig = event.team === 'vigontina' || [
           'goal','penalty-goal','penalty-missed','save','missed-shot','shot-blocked',
-          'free-kick-missed','free-kick-saved','free-kick-hit','opponent-own-goal','substitution'
+          'free-kick-missed','free-kick-saved','free-kick-hit','free-kick-goal','opponent-own-goal','substitution'
         ].includes(type) || ((type.includes('palo-') || type.includes('traversa-')) && event.team==='vigontina');
 
         if (isVig) {
@@ -161,17 +161,19 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
     <div className={`bg-blue-50 border border-blue-200 text-blue-800 p-2 rounded border text-xs ${baseClasses}`}>{children}</div>
   );
 
-  const isFreeKickGoal = !!event?.meta?.freeKick;
+  // Badge PUN per gol da punizione
+  const isFreeKickGoal = event.type === 'free-kick-goal' || event.type === 'opponent-free-kick-goal';
 
-  if (event.type === "goal" || event.type === "penalty-goal") {
+  if (event.type === "goal" || event.type === "penalty-goal" || event.type === "free-kick-goal") {
     const isRig = event.type === 'penalty-goal';
+    const isPUN = event.type === 'free-kick-goal';
     return (
       greenCard(
         <div>
-          <p className={`font-medium ${textClasses}`}>
-            ⚽ {minute}' - {event.scorer} {event.scorerName}
+          <p className={`font-medium text-green-800 ${textClasses}`}>
+            ⚽ {minute}' - {event.scorer} {event.scorerName || event.playerName}
             {isRig && <Badge color="purple">RIG.</Badge>}
-            {isFreeKickGoal && <Badge color="orange">PUN.</Badge>}
+            {isPUN && <Badge color="orange">PUN.</Badge>}
           </p>
           {event.assist && (<p className={`text-xs ${textClasses}`}>Assist: {event.assist} {event.assistName}</p>)}
           {isDeleted && (<p className="text-xs text-red-600 italic mt-1">⚠️ {event.deletionReason}</p>)}
@@ -179,15 +181,16 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
       )
     );
   }
-  if (event.type === "opponent-goal" || event.type === "penalty-opponent-goal") {
+  if (event.type === "opponent-goal" || event.type === "penalty-opponent-goal" || event.type === "opponent-free-kick-goal") {
     const isRig = event.type === 'penalty-opponent-goal';
+    const isPUN = event.type === 'opponent-free-kick-goal';
     return (
       blueCard(
         <div>
-          <p className={`font-medium ${textClasses}`}>
-            ⚽ {minute}' - {event.type.includes('penalty')? 'Rigore' : 'Gol'} {opponentName}
+          <p className={`font-medium text-blue-800 ${textClasses}`}>
+            ⚽ {minute}' - {event.type.includes('penalty') ? 'Rigore' : 'Gol'} {opponentName}
             {isRig && <Badge color="purple">RIG.</Badge>}
-            {isFreeKickGoal && <Badge color="orange">PUN.</Badge>}
+            {isPUN && <Badge color="orange">PUN.</Badge>}
           </p>
           {isDeleted && (<p className="text-xs text-red-600 italic mt-1">⚠️ {event.deletionReason}</p>)}
         </div>
@@ -197,14 +200,14 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
   if (event.type === "own-goal") {
     return (
       blueCard(
-        <p className={`font-medium ${textClasses}`}>⚽ {minute}' - Autogol Vigontina</p>
+        <p className={`font-medium text-blue-800 ${textClasses}`}>⚽ {minute}' - Autogol Vigontina</p>
       )
     );
   }
   if (event.type === "opponent-own-goal") {
     return (
       greenCard(
-        <p className={`font-medium ${textClasses}`}>⚽ {minute}' - Autogol {opponentName}</p>
+        <p className={`font-medium text-green-800 ${textClasses}`}>⚽ {minute}' - Autogol {opponentName}</p>
       )
     );
   }
@@ -232,17 +235,17 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
   if (event.type?.includes('palo-') || event.type?.includes('traversa-')) {
     const isVig = event.team === 'vigontina';
     const hitTypeDisplay = event.hitType === 'palo' ? '🧱 Palo' : '⎯ Traversa';
-    return grayCard(<p className="font-medium">{hitTypeDisplay} {minute}' - {isVig ? `${event.player} ${event.playerName}` : opponentName}</p>);
+    return grayCard(<p className="font-medium text-gray-800">{hitTypeDisplay} {minute}' - {isVig ? `${event.player} ${event.playerName}` : opponentName}</p>);
   }
   if (event.type?.startsWith('free-kick')) {
     const label = event.type.includes('missed') ? 'Punizione fuori' : event.type.includes('saved') ? 'Punizione parata' : 'Punizione';
     const suffix = event.hitType === 'palo' ? ' (Palo)' : event.hitType === 'traversa' ? ' (Traversa)' : '';
     const isVig = event.team !== 'opponent';
-    return grayCard(<p className="font-medium">🎯 {minute}' - {label}{suffix} {isVig ? `${event.player||''} ${event.playerName||''}`.trim() : opponentName}</p>);
+    return grayCard(<p className="font-medium text-gray-800">🎯 {minute}' - {label}{suffix} {isVig ? `${event.player||''} ${event.playerName||''}`.trim() : opponentName}</p>);
   }
   if (event.type === 'substitution') {
     return grayCard(
-      <p className={`font-medium ${textClasses}`}>
+      <p className={`font-medium text-gray-800 ${textClasses}`}>
         🔁 {minute}' - Sostituzione: {event.out?.num} {event.out?.name} → {event.in?.num} {event.in?.name}
       </p>
     );
