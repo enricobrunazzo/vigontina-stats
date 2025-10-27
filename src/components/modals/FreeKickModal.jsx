@@ -1,4 +1,3 @@
-// components/modals/FreeKickModal.jsx
 import React, { useState } from "react";
 import { X } from "lucide-react";
 
@@ -55,6 +54,9 @@ const FreeKickModal = ({ onConfirm, onCancel, opponentName, availablePlayers }) 
               </button>
               <button onClick={() => setSelectedOutcome('hit')} className={`w-full p-3 rounded-lg border-2 text-left ${selectedOutcome === 'hit' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
                 <p className="font-medium text-gray-800">🧱 Palo/Traversa</p>
+              </button>
+              <button onClick={() => { setSelectedOutcome('goal'); setHitType(null); }} className={`w-full p-3 rounded-lg border-2 text-left ${selectedOutcome === 'goal' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
+                <p className="font-medium text-gray-800">⚽ Gol (da punizione)</p>
               </button>
             </div>
           </div>
