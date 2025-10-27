@@ -1,6 +1,6 @@
 // components/MatchSummary.jsx
 import React, { useMemo, useState } from "react";
-import { ArrowLeft, Download, FileText, Users } from "lucide-react";
+import { ArrowLeft, Download, FileText, Users, X } from "lucide-react";
 import { PLAYERS } from "../constants/players";
 import { calculateMatchStats, getMatchResult } from "../utils/matchUtils";
 
@@ -12,6 +12,7 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
   const stats = useMemo(() => calculateMatchStats(match), [match]);
   const result = useMemo(() => getMatchResult(match), [match]);
   const [showLineups, setShowLineups] = useState(false);
+  const [activeLineupPeriod, setActiveLineupPeriod] = useState(null);
 
   const organizedEventsByPeriod = useMemo(() => {
     if (!match.periods) return [];
@@ -43,6 +44,10 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
   const getPlayerLabel = (num) => {
     const p = PLAYERS.find(pl => pl.num === num);
     return p ? `${p.num} ${p.name}` : `#${num}`;
+  };
+
+  const togglePeriodLineup = (idx) => {
+    setActiveLineupPeriod(prev => prev === idx ? null : idx);
   };
 
   return (
@@ -81,33 +86,42 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-semibold text-lg">📋 Cronologia Partita per Squadra</h3>
-                  {/* Toggle discreto lineup */}
+                  {/* Toggle lineup globale (facoltativo) */}
                   {match.periods?.some(p => Array.isArray(p.lineup) && p.lineup.length > 0) && (
-                    <button onClick={()=>setShowLineups(s=>!s)} className="text-xs px-2 py-1 rounded border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center gap-1" title="Mostra/Nascondi 9 in campo per tempo">
-                      <Users className="w-3 h-3" /> {showLineups ? 'Nascondi 9 in campo' : '9 in campo'}
+                    <button onClick={()=>setShowLineups(s=>!s)} className="text-xs px-2 py-1 rounded border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center gap-1" title="Riepilogo giocatori in campo per tempo">
+                      <Users className="w-3 h-3" /> {showLineups ? 'Nascondi' : '9 in campo'}
                     </button>
                   )}
                 </div>
                 <div className="space-y-6">
                   {organizedEventsByPeriod.map((p)=> (
-                    <div key={p.periodIdx} className="border rounded-lg overflow-hidden">
-                      <div className="bg-gradient-to-r from-slate-100 to-slate-50 p-3 border-b">
-                        <div className="flex items-center justify-between">
+                    <div key={p.periodIdx} className="relative border rounded-lg overflow-hidden">
+                      <div className="bg-gradient-to-r from-slate-100 to-slate-50 p-3 border-b flex items-center justify-between">
+                        <div>
                           <h4 className="font-bold text-gray-800">{p.period.name}</h4>
                           <span className="text-sm font-semibold text-gray-600">Vigontina {p.period.vigontina} - {p.period.opponent} {match.opponent}</span>
                         </div>
-                        {/* Riga lineup discreta per tempo */}
+                        {/* Bottone lineup per periodo */}
                         {showLineups && Array.isArray(p.period.lineup) && p.period.lineup.length > 0 && (
-                          <div className="mt-2 text-[11px] text-gray-600">
-                            <span className="font-semibold mr-1">9 in campo:</span>
-                            <span className="inline-block align-middle">
-                              {p.period.lineup.map((num, idx)=> (
-                                <span key={idx} className="mr-2 whitespace-nowrap">{getPlayerLabel(num)}</span>
-                              ))}
-                            </span>
-                          </div>
+                          <button onClick={()=>togglePeriodLineup(p.periodIdx)} className="text-[11px] px-2 py-1 rounded border border-gray-200 text-gray-600 hover:bg-gray-50" title="Mostra riepilogo 9 in campo">
+                            9 in campo
+                          </button>
                         )}
                       </div>
+                      {/* Tooltip/Popover discreto */}
+                      {showLineups && activeLineupPeriod === p.periodIdx && (
+                        <div className="absolute right-3 top-3 z-10 bg-white shadow-lg border border-gray-200 rounded-md p-3 w-64">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs font-semibold text-gray-700">{p.period.name} • 9 in campo</p>
+                            <button onClick={()=>setActiveLineupPeriod(null)} className="text-gray-400 hover:text-gray-600"><X className="w-3 h-3" /></button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px] text-gray-700">
+                            {p.period.lineup.map((num, idx)=> (
+                              <span key={idx} className="whitespace-nowrap">{getPlayerLabel(num)}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <div className="grid grid-cols-2 gap-4 p-4">
                         <div className="space-y-2">
                           {p.vigontina.length>0 ? p.vigontina.map((event)=> (
@@ -126,7 +140,6 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
               </div>
             )}
 
-            {/* Staff info spostata in fondo, una voce per riga */}
             {(match.coach || match.assistantReferee || match.manager) && (
               <div className="mt-2 pt-4 border-t text-sm text-gray-700">
                 {match.coach && (<p><strong>Allenatore:</strong> {match.coach}</p>)}
