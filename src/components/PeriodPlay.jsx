@@ -111,9 +111,11 @@ const PeriodPlay = ({
     const minute = safeGetMinute();
     if (outcome === 'goal') {
       if (team === 'vigontina') {
-        onAddGoal(player, null, { minute, meta: { freeKick: true } });
+        // Usa onAddFreeKick con tipo 'free-kick-goal' per mantenere traccia
+        onAddFreeKick('goal', team, player, minute, null);
       } else {
-        onAddOpponentGoal(minute, { freeKick: true });
+        // Avversario: gol da punizione
+        onAddFreeKick('goal', team, null, minute, null);
       }
     } else {
       onAddFreeKick(outcome, team, player, minute, hitType);
@@ -135,7 +137,7 @@ const PeriodPlay = ({
     events.forEach((event, idx) => {
       const e = { ...event, originalIndex: idx };
       if (
-        ['goal','penalty-goal','penalty-missed','save','missed-shot','shot-blocked','substitution','free-kick-missed','free-kick-saved','free-kick-hit'].includes(event.type)
+        ['goal','penalty-goal','penalty-missed','save','missed-shot','shot-blocked','substitution','free-kick-missed','free-kick-saved','free-kick-hit','free-kick-goal'].includes(event.type)
         || event.type === 'opponent-own-goal'
         || event.type === 'palo-vigontina'
         || event.type === 'traversa-vigontina'
@@ -373,21 +375,27 @@ const TeamEventCard = ({ event, team, opponentName }) => {
   );
   const redBall = <span className="text-red-600 font-bold" style={{color: '#dc2626'}}>⚽</span>;
 
-  if (event.type === "goal" || event.type === "penalty-goal") {
+  // Badge PUN per gol da punizione
+  const isFreeKickGoal = event.type === 'free-kick-goal';
+
+  if (event.type === "goal" || event.type === "penalty-goal" || event.type === "free-kick-goal") {
     const isRig = event.type === 'penalty-goal';
     return greenCard(
       <p className={`font-medium text-green-800 ${textClasses}`}>
-        ⚽ {event.minute}' - {event.scorer} {event.scorerName}
+        ⚽ {event.minute}' - {event.scorer} {event.scorerName || event.playerName}
         {isRig && <Badge color="purple">RIG.</Badge>}
+        {isFreeKickGoal && <Badge color="orange">PUN.</Badge>}
       </p>
     );
   }
-  if (event.type === "opponent-goal" || event.type === "penalty-opponent-goal") {
+  if (event.type === "opponent-goal" || event.type === "penalty-opponent-goal" || event.type === "opponent-free-kick-goal") {
     const isRig = event.type === 'penalty-opponent-goal';
+    const isFKGoal = event.type === 'opponent-free-kick-goal';
     return blueCard(
       <p className={`font-medium text-blue-800 ${textClasses}`}>
         ⚽ {event.minute}' - {event.type.includes('penalty') ? 'Rigore' : 'Gol'} {opponentName}
         {isRig && <Badge color="purple">RIG.</Badge>}
+        {isFKGoal && <Badge color="orange">PUN.</Badge>}
       </p>
     );
   }
