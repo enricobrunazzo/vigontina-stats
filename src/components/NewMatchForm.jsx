@@ -10,7 +10,6 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
   const [opponent, setOpponent] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   
-  // NUOVO: Password organizzatore
   const [organizerPassword, setOrganizerPassword] = useState("");
 
   // Staff
@@ -54,10 +53,8 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
       return;
     }
     
-    // FIX: Salva l'oggetto completo del capitano invece del solo numero
     const captainPlayer = PLAYERS.find(p => p.num === captain);
     
-    // Passa tutti i dati inclusa la password; mappa teamManager -> manager per uniformità con export
     onSubmit({
       competition,
       matchDay: competition.includes("Torneo") ? matchDay : null,
@@ -65,11 +62,11 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
       opponent,
       date,
       assistantReferee,
-      manager: teamManager, // <-- Mappa teamManager -> manager per uniformità
+      manager: teamManager,
       coach,
       notCalled,
       captain: captainPlayer ? { num: captainPlayer.num, number: captainPlayer.num, name: captainPlayer.name } : null,
-    }, organizerPassword); // Password come secondo parametro
+    }, organizerPassword);
   };
 
   const canSubmit = opponent.trim().length > 0 && !!captain && (!requestPassword || organizerPassword.trim().length > 0);
@@ -78,7 +75,6 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
       <div className="max-w-2xl mx-auto">
         <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 relative">
-          {/* Header */}
           <div className="flex items-center gap-2 mb-4">
             <button
               onClick={onCancel}
@@ -91,7 +87,6 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
           </div>
           <h2 className="text-xl font-semibold mb-4">Nuova Partita</h2>
 
-          {/* NUOVO: Campo Password Organizzatore */}
           {requestPassword && (
             <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
@@ -114,9 +109,7 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
             </div>
           )}
 
-          {/* Campi principali */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Competizione */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Competizione
@@ -132,7 +125,6 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
               </select>
             </div>
 
-            {/* Giornata (solo Torneo) */}
             {competition.includes("Torneo") && (
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -150,7 +142,6 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
               </div>
             )}
 
-            {/* Casa / Trasferta */}
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Luogo
@@ -177,7 +168,6 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
               </div>
             </div>
 
-            {/* Avversario */}
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Avversario *
@@ -191,7 +181,6 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
               />
             </div>
 
-            {/* Data (riga intera) */}
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Data
@@ -204,7 +193,6 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
               />
             </div>
 
-            {/* Allenatore */}
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Allenatore
@@ -218,11 +206,9 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
             </div>
           </div>
 
-          {/* Sezione Staff */}
           <div className="mt-4 p-3 rounded border bg-slate-50">
             <h3 className="font-medium text-slate-800 mb-2">Staff</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Assistente Arbitro */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Assistente Arbitro
@@ -238,7 +224,6 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
                   <option>Francesco Campello</option>
                 </select>
               </div>
-              {/* Dirigente Accompagnatore */}
               <div>
                 <label className="block text sm font-medium text-slate-700 mb-1">
                   Dirigente Accompagnatore
@@ -257,14 +242,12 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
             </div>
           </div>
 
-          {/* Divider */}
           <div className="my-4 border-t" />
 
-          {/* Selettori (pulsanti in fondo) */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="text-sm text-slate-700">
-                Non Convocati:{" "}
+                Non Convocati: {" "}
                 <span className="font-semibold">
                   {notCalled.length > 0 ? `${notCalled.length} selezionati` : "nessuno"}
                 </span>
@@ -281,7 +264,7 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
 
             <div className="flex items-center justify-between">
               <div className="text-sm text-slate-700">
-                Capitano:{" "}
+                Capitano: {" "}
                 <span className="font-semibold">
                   {captain
                     ? `${captain} ${PLAYERS.find((p) => p.num === captain)?.name ?? ""}`
@@ -301,7 +284,6 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
             </div>
           </div>
 
-          {/* Azioni finali */}
           <div className="mt-6 flex items-center justify-end gap-2">
             <button
               onClick={onCancel}
@@ -320,7 +302,6 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
             </button>
           </div>
 
-          {/* Info password */}
           {requestPassword && (
             <div className="mt-4 p-3 bg-gray-50 border rounded-lg">
               <p className="text-xs text-gray-600 text-center">
@@ -331,30 +312,27 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
         </div>
       </div>
 
-      {/* MODAL: Non Convocati (multi-select) */}
+      {/* MODAL: Non Convocati (griglia toggle rosso/grigio) */}
       {showNotCalledPicker && (
-        <PickerModal title="Seleziona Non Convocati" onClose={() => setShowNotCalledPicker(false)}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[60vh] overflow-auto pr-1">
+        <PickerModal title={`Seleziona Non Convocati • Esclusi: ${notCalled.length}`} onClose={() => setShowNotCalledPicker(false)}>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[60vh] overflow-auto pr-1">
             {PLAYERS.map((player) => {
-              const checked = notCalled.includes(player.num);
+              const excluded = notCalled.includes(player.num);
               const isCaptain = captain === player.num;
+              const base = excluded
+                ? "bg-red-600 text-white border-red-600"
+                : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50";
               return (
-                <label
+                <button
                   key={player.num}
-                  className={`flex items-center justify-between p-2 border rounded cursor-pointer ${
-                    checked ? "bg-red-50 border-red-300" : "bg-white border-slate-200"
-                  } ${isCaptain ? "opacity-60" : ""}`}
-                  title={isCaptain ? "Non selezionabile: è il capitano" : ""}
+                  type="button"
+                  onClick={() => !isCaptain && toggleNotCalled(player.num)}
+                  disabled={isCaptain}
+                  className={`w-full text-left p-2 border rounded ${base} ${isCaptain ? "opacity-50 cursor-not-allowed" : ""}`}
+                  title={isCaptain ? "Non selezionabile: è il capitano" : `${player.num} ${player.name}`}
                 >
-                  <span className="text-sm">{player.num} {player.name}</span>
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4"
-                    disabled={isCaptain}
-                    checked={checked}
-                    onChange={() => toggleNotCalled(player.num)}
-                  />
-                </label>
+                  <span className="font-semibold mr-1">{player.num}</span>{player.name}
+                </button>
               );
             })}
           </div>
@@ -369,7 +347,7 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
         </PickerModal>
       )}
 
-      {/* MODAL: Capitano (single-select) */}
+      {/* MODAL: Capitano (single-select) - rimane invariato */}
       {showCaptainPicker && (
         <PickerModal title="Seleziona Capitano" onClose={() => setShowCaptainPicker(false)}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[60vh] overflow-auto pr-1">
@@ -414,18 +392,14 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
   );
 };
 
-/* ------------------------------ Picker Modal ------------------------------ */
-
 const PickerModal = ({ title, children, onClose }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      {/* backdrop */}
       <div
         className="absolute inset-0 bg-black/40"
         onClick={onClose}
         aria-hidden="true"
       />
-      {/* dialog */}
       <div className="relative w-full sm:w-[560px] bg-white rounded-t-lg sm:rounded-lg shadow-lg p-4 sm:p-6">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold">{title}</h3>
