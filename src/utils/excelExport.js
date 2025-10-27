@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import { PLAYERS } from '../constants/players';
 
 /**
  * Esporta lo storico partite in Excel con formattazione professionale
@@ -130,7 +131,7 @@ export const exportMatchHistoryToExcel = async (matches) => {
         match.periods.forEach(p=>{
           if (Array.isArray(p.lineup) && p.lineup.length>0) {
             sheet2.getCell(`A${infoRow}`).value = p.name; sheet2.getCell(`A${infoRow}`).font = { bold:true, size:9 };
-            const labels = p.lineup.map(num=>{ const pl = PLAYERS.find(x=>x.num===num); return pl? `${pl.num} ${pl.name}` : `#${num}`; });
+            const labels = p.lineup.map(num=>{ const pl = (match.playersCatalog || PLAYERS).find(x=>x.num===num); return pl? `${pl.num} ${pl.name}` : `#${num}`; });
             sheet2.getCell(`B${infoRow}`).value = labels.join(', ');
             infoRow++;
           }
@@ -148,7 +149,6 @@ export const exportMatchHistoryToExcel = async (matches) => {
       [1,2,3].forEach(ci=>{ const c = totalRow.getCell(ci); c.font={ bold:true, size:11 }; c.fill={ type:'pattern', pattern:'solid', fgColor:{ argb: colors.yellow } }; c.alignment={ horizontal:'center', vertical:'middle' }; c.border={ top:{style:'medium'},left:{style:'medium'},bottom:{style:'medium'},right:{style:'medium'} }; });
       infoRow++;
 
-      // Eventi partita
       let hasEvents=false; const allEvents=[];
       match.periods?.forEach(period=>{ if (period.goals?.length>0){ hasEvents=true; period.goals.forEach(event=>{ const minute=event.minute||'?'; let txt=''; if(event.type==='goal'||event.type==='penalty-goal'){ const name=event.scorerName||event.scorer||'Sconosciuto'; txt=`${minute}' - GOL: ${name}`; if(event.type==='penalty-goal') txt+=' (Rigore)'; if(event.assistName) txt+=` (Assist: ${event.assistName})`; } else if(event.type==='opponent-goal'||event.type==='penalty-opponent-goal'){ txt=`${minute}' - GOL AVVERSARIO${event.type==='penalty-opponent-goal'?' (Rigore)':''}`; } else if(event.type==='own-goal'){ txt=`${minute}' - AUTOGOL VIGONTINA`; } else if(event.type==='opponent-own-goal'){ txt=`${minute}' - AUTOGOL AVVERSARIO`; } else if(event.type==='substitution'){ const outN=event.out?.name||event.out?.num||'N/A'; const inN=event.in?.name||event.in?.num||'N/A'; txt=`${minute}' - SOSTITUZIONE: ${outN} → ${inN}`; } else if(event.type==='save'||event.type==='opponent-save'){ const n=event.playerName||'Portiere'; txt=`${minute}' - PARATA: ${n}`; } else if(event.type==='missed-shot'||event.type==='opponent-missed-shot'){ const n=event.playerName||'Giocatore'; txt=`${minute}' - TIRO FUORI: ${n}`; } else if(event.type?.startsWith('free-kick')){ const n=event.playerName||'Giocatore'; const outc= event.type.includes('missed')?'FUORI': event.type.includes('saved')?'PARATA':'PUNIZIONE'; txt=`${minute}' - PUNIZIONE ${outc}: ${n}`; } else { txt=`${minute}' - ${event.type?.toUpperCase()||'EVENTO'}`; if(event.playerName) txt+=`: ${event.playerName}`; } allEvents.push(txt); }); }});
       if(hasEvents && allEvents.length>0){ infoRow+=1; sheet2.getCell(`A${infoRow}`).value='EVENTI PARTITA:'; sheet2.getCell(`A${infoRow}`).font={ bold:true, size:10 }; infoRow++; allEvents.forEach(t=>{ const r=sheet2.getRow(infoRow); r.getCell(1).value=t; r.getCell(1).font={ size:9 }; infoRow++; }); }
