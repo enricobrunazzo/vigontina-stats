@@ -360,6 +360,13 @@ const TeamEventCard = ({ event, team, opponentName }) => {
       </p>
     );
   }
+  // NEW: explicit branch for missed penalties (ours and opponent)
+  if (event.type === 'penalty-missed' || event.type === 'penalty-opponent-missed') {
+    const who = event.type === 'penalty-missed' ? 'Vigontina' : opponentName;
+    return grayCard(
+      <p className="font-medium text-gray-800">❌ {event.minute}' - Rigore fallito {who} <Badge color="purple">RIG.</Badge></p>
+    );
+  }
   if (event.type?.includes('palo-') || event.type?.includes('traversa-')) {
     const isVig = event.team === 'vigontina';
     const hitTypeDisplay = event.hitType === 'palo' ? '🧱 Palo' : '⎯ Traversa';
