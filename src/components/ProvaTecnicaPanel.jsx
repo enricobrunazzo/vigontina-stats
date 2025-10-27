@@ -47,7 +47,7 @@ const Row = ({ label, minusDisabled, onMinus, onPlus }) => (
 const Info = () => (
   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center mb-4">
     <p className="text-sm text-gray-700">
-      <span className="font-semibold">Prova Tecnica:</span> Inserisci i punti manualmente. Al termine, la squadra vincente guadagna 1 punto nel punteggio finale.
+      <span className="font-semibold">Prova Tecnica:</span> Inserisci i punti manualmente. Il risultato non influisce nel punteggio finale della gara.
     </p>
   </div>
 );
