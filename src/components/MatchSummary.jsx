@@ -61,7 +61,7 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
             <div className="bg-white/50 p-3 rounded text-sm">
               <p className="text-center">
                 <strong>{match.competition}</strong>
-                {match.matchDay && ` • Giornata ${match.matchDay}`}
+                {typeof match.matchDay !== 'undefined' && match.matchDay !== null && ` • Giornata ${match.matchDay}`}
                 {" • "}
                 {match.isHome ? "🏠 Casa" : "✈️ Trasferta"}
                 {" • "}
@@ -202,7 +202,8 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
   }
   if (event.type === "shot-blocked" || event.type === "opponent-shot-blocked") {
     const isVig = event.type === 'shot-blocked';
-    return grayCard(<p className="font-medium">🧤 {minute}' - {isVig ? `${event.player} ${event.playerName}` : opponentName} tiro parato</p>);
+    // change order: minute - label first then player/opponent
+    return grayCard(<p className="font-medium">🧤 {minute}' - tiro parato {isVig ? `${event.player} ${event.playerName}` : opponentName}</p>);
   }
   if (event.type?.includes('palo-') || event.type?.includes('traversa-')) {
     const isVig = event.team === 'vigontina';
