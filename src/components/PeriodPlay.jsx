@@ -70,7 +70,7 @@ const PeriodPlay = ({
     [match.notCalled]
   );
 
-  // Richiedi la formazione una sola volta nei tempi normali
+  // Ask lineup once for normal periods
   useEffect(() => {
     if (!isProvaTecnica && !isViewer && (!period.lineup || period.lineup.length !== 9) && !lineupAlreadyAsked && !period.lineupPrompted) {
       setShowLineupDialog(true);
@@ -107,7 +107,7 @@ const PeriodPlay = ({
     setPendingShotOutcome(null);
   };
 
-  // Punizione: assicura meta.freeKick per i gol e normalizza hitType
+  // Free-kick: ensure meta.freeKick for goals, normalize hitType
   const handleFreeKickConfirm = (outcome, team, player, hitTypeRaw) => {
     const hitType = hitTypeRaw === 'palo' ? 'palo' : hitTypeRaw === 'traversa' ? 'traversa' : null;
     const minute = safeGetMinute();
@@ -162,15 +162,15 @@ const PeriodPlay = ({
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h2 className="text-2xl font-bold mb-4">Vigontina vs {match.opponent} - {periodTitle}</h2>
 
-          {/* Barra controlli (tempi normali) */}
+          {/* Top controls (normal periods) */}
           {!isProvaTecnica && !isViewer && (
             <div className="flex justify-end -mt-2 mb-4 gap-2">
               <button onClick={() => setShowLineupDialog(true)} className="text-xs px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 border border-gray-200" title="Modifica i 9 in campo">👥 9 in campo</button>
-              <button onClick={() => setManualScoreMode((m) => !m)} className={`text-xs px-2 py-1 rounded border ${manualScoreMode? "bg-yellow-100 border-yellow-300 text-yellow-800" : "bg-gray-50 border-gray-200 text-gray-700"}`} title="Attiva/Disattiva modifica manuale punteggio">{manualScoreMode? "✅ Modifica punteggio attiva" : "✏️ Modifica punteggio"}</button>
+              <button onClick={() => setManualScoreMode((m) => !m)} className={`text-xs px-2 py-1 rounded border ${manualScoreMode ? 'bg-yellow-100 border-yellow-300 text-yellow-800' : 'bg-gray-50 border-gray-200 text-gray-700'}`} title="Attiva/Disattiva modifica manuale punteggio">{manualScoreMode ? '✅ Modifica punteggio attiva' : '✏️ Modifica punteggio'}</button>
             </div>
           )}
 
-          {/* Prova Tecnica */}
+          {/* Prova Tecnica or normal period UI */}
           {isProvaTecnica ? (
             <ProvaTecnicaPanel
               opponentName={match.opponent}
@@ -184,7 +184,7 @@ const PeriodPlay = ({
             />
           ) : (
             <>
-              {/* Punteggio Attuale */}
+              {/* Scoreboard */}
               <div className="bg-slate-50 rounded-lg p-4 mb-4">
                 <div className="text-center">
                   <h3 className="text-sm font-medium text-gray-600 mb-2">Punteggio Attuale</h3>
@@ -199,7 +199,7 @@ const PeriodPlay = ({
                         <p className="text-xs text-gray-500">Vigontina</p>
                         <p className="text-3xl font-bold text-green-600">{period.vigontina || 0}</p>
                       </div>
-                      {manualScoreMode and !isViewer && (
+                      {manualScoreMode && !isViewer && (
                         <button onClick={() => onUpdateScore?.('vigontina', 1)} className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-green-600">
                           <Plus className="w-3 h-3" />
                         </button>
@@ -229,20 +229,20 @@ const PeriodPlay = ({
               {/* Timer */}
               <div className="bg-gray-50 rounded-lg p-6 mb-6">
                 <div className="text-center mb-4">
-                  <div className="text-5xl font-mono font-bold text-gray-800">{typeof timer?.formatTime === 'function' ? timer.formatTime(timer.timerSeconds) : "00:00"}</div>
+                  <div className="text-5xl font-mono font-bold text-gray-800">{typeof timer?.formatTime === 'function' ? timer.formatTime(timer.timerSeconds) : '00:00'}</div>
                 </div>
                 {!isViewer && (
                   <div className="flex gap-2">
                     <button onClick={timer?.isTimerRunning ? timer.pauseTimer : timer?.startTimer} className="flex-1 bg-blue-500 text-white py-2 rounded hover:bg-blue-600 flex items-center justify-center gap-2 text-sm">
                       {timer?.isTimerRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                      {timer?.isTimerRunning ? "Pausa" : "Avvia"}
+                      {timer?.isTimerRunning ? 'Pausa' : 'Avvia'}
                     </button>
                   </div>
                 )}
               </div>
 
-              {/* Azioni partita */}
-              {!isViewer and (
+              {/* Actions */}
+              {!isViewer && (
                 <div className="space-y-3 mb-6">
                   <div className="grid grid-cols-2 gap-3">
                     <button onClick={() => setShowGoalDialog(true)} className="bg-green-500 text-white py-2 px-3 rounded hover:bg-green-600 font-medium text-sm">⚽ Gol Vigontina</button>
@@ -256,15 +256,15 @@ const PeriodPlay = ({
                     <p className="text-sm font-semibold text-yellow-800 text-center mb-3">Azioni Salienti</p>
                     <div className="grid grid-cols-2 gap-2">
                       <button onClick={startShotFlow} className="bg-gray-600 text-white py-2 px-2 rounded hover:bg-gray-700 font-medium text-xs">🎯 Tiro</button>
-                      <button onClick={()=>setShowSubstitution(true)} className="bg-indigo-600 text-white py-2 px-2 rounded hover:bg-indigo-700 font-medium text-xs flex items-center justify-center gap-1"><Repeat className="w-3 h-3" /> Sostituzione</button>
-                      <button onClick={()=>setShowFreeKickDialog(true)} className="bg-orange-600 text-white py-2 px-2 rounded hover:bg-orange-700 font-medium text-xs">🟧 Punizione</button>
+                      <button onClick={() => setShowSubstitution(true)} className="bg-indigo-600 text-white py-2 px-2 rounded hover:bg-indigo-700 font-medium text-xs flex items-center justify-center gap-1"><Repeat className="w-3 h-3" /> Sostituzione</button>
+                      <button onClick={() => setShowFreeKickDialog(true)} className="bg-orange-600 text-white py-2 px-2 rounded hover:bg-orange-700 font-medium text-xs">🟧 Punizione</button>
                       <button onClick={() => setShowDeleteEventDialog(true)} className="bg-red-600 text-white py-2 px-2 rounded hover:bg-red-700 font-medium text-xs" disabled={events.length === 0}>🗑️ Elimina Evento</button>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Eventi organizzati */}
+              {/* Events */}
               {(organizedEvents.vigontina.length > 0 || organizedEvents.opponent.length > 0) && (
                 <div className="mb-6 grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -280,11 +280,11 @@ const PeriodPlay = ({
                 </div>
               )}
 
-              {/* Termina tempo */}
+              {/* Finish */}
               {!isViewer && (
                 <div className="mt-8">
-                  <button onClick={onFinish} className="w-full py-4 rounded-lg font-semibold text-white text-base shadow-sm transition focus:outline-none focus:ring-4 focus:ring-blue-300 bg-blue-600 hover:bg-blue-700 flex items-center justify-center gap-2" title={isEditing ? "Salva Modifiche" : `Termina ${periodTitle}`}>
-                    <Flag className="w-5 h-5" /> {isEditing ? "Salva Modifiche" : `Termina ${periodTitle}`}
+                  <button onClick={onFinish} className="w-full py-4 rounded-lg font-semibold text-white text-base shadow-sm transition focus:outline-none focus:ring-4 focus:ring-blue-300 bg-blue-600 hover:bg-blue-700 flex items-center justify-center gap-2" title={isEditing ? 'Salva Modifiche' : `Termina ${periodTitle}`}>
+                    <Flag className="w-5 h-5" /> {isEditing ? 'Salva Modifiche' : `Termina ${periodTitle}`}
                   </button>
                 </div>
               )}
@@ -293,25 +293,25 @@ const PeriodPlay = ({
 
           {/* Modals */}
           {!isViewer && showGoalDialog && (
-            <GoalModal availablePlayers={availablePlayers} onConfirm={(sc,as)=>{ onAddGoal(sc,as); setShowGoalDialog(false);} } onCancel={()=>setShowGoalDialog(false)} />
+            <GoalModal availablePlayers={availablePlayers} onConfirm={(sc, as) => { onAddGoal(sc, as); setShowGoalDialog(false); }} onCancel={() => setShowGoalDialog(false)} />
           )}
           {!isViewer && showOwnGoalDialog && (
-            <OwnGoalModal opponentName={match.opponent} onConfirm={(team)=>{ onAddOwnGoal(team); setShowOwnGoalDialog(false);} } onCancel={()=>setShowOwnGoalDialog(false)} />
+            <OwnGoalModal opponentName={match.opponent} onConfirm={(team) => { onAddOwnGoal(team); setShowOwnGoalDialog(false); }} onCancel={() => setShowOwnGoalDialog(false)} />
           )}
           {!isViewer && showPenaltyDialog && (
-            <PenaltyAdvancedModal availablePlayers={availablePlayers} opponentName={match.opponent} onConfirm={(...args)=>{ onAddPenalty(...args); setShowPenaltyDialog(false);} } onCancel={()=>setShowPenaltyDialog(false)} />
+            <PenaltyAdvancedModal availablePlayers={availablePlayers} opponentName={match.opponent} onConfirm={(...args) => { onAddPenalty(...args); setShowPenaltyDialog(false); }} onCancel={() => setShowPenaltyDialog(false)} />
           )}
           {!isViewer && showLineupDialog && (
             <LineupModal availablePlayers={availablePlayers} initialLineup={period.lineup || []} onConfirm={handleLineupConfirm} onCancel={handleLineupCancel} />
           )}
           {!isViewer && showDeleteEventDialog && (
-            <DeleteEventModal events={events} opponentName={match.opponent} onConfirm={(idx,reason)=>{ /* handled above */ }} onCancel={()=>setShowDeleteEventDialog(false)} />
+            <DeleteEventModal events={events} opponentName={match.opponent} onConfirm={(idx, reason) => { /* handled upstream */ }} onCancel={() => setShowDeleteEventDialog(false)} />
           )}
           {!isViewer && showSubstitution && (
-            <SubstitutionModal periodLineup={period.lineup||[]} notCalled={match.notCalled||[]} onConfirm={(outNum,inNum)=>{ onAddSubstitution?.(periodIndex, outNum, inNum, safeGetMinute()); setShowSubstitution(false);} } onCancel={()=>setShowSubstitution(false)} />
+            <SubstitutionModal periodLineup={period.lineup || []} notCalled={match.notCalled || []} onConfirm={(outNum, inNum) => { onAddSubstitution?.(periodIndex, outNum, inNum, safeGetMinute()); setShowSubstitution(false); }} onCancel={() => setShowSubstitution(false)} />
           )}
           {!isViewer && showFreeKickDialog && (
-            <FreeKickModal availablePlayers={availablePlayers} opponentName={match.opponent} onConfirm={handleFreeKickConfirm} onCancel={()=>setShowFreeKickDialog(false)} />
+            <FreeKickModal availablePlayers={availablePlayers} opponentName={match.opponent} onConfirm={handleFreeKickConfirm} onCancel={() => setShowFreeKickDialog(false)} />
           )}
         </div>
       </div>
@@ -319,14 +319,14 @@ const PeriodPlay = ({
   );
 };
 
-const Badge = ({ children, color='indigo' }) => (
+const Badge = ({ children, color = 'indigo' }) => (
   <span className={`ml-2 text-[10px] leading-3 px-1.5 py-0.5 rounded border font-semibold align-middle inline-block bg-${color}-50 border-${color}-200 text-${color}-700`}>{children}</span>
 );
 
 const TeamEventCard = ({ event, team, opponentName }) => {
   const isDeleted = event.deletionReason;
-  const baseClasses = isDeleted ? "opacity-60" : "";
-  const textClasses = isDeleted ? "line-through" : "";
+  const baseClasses = isDeleted ? 'opacity-60' : '';
+  const textClasses = isDeleted ? 'line-through' : '';
   const grayCard = (children) => (
     <div className={`bg-gray-50 p-2 rounded border border-gray-200 text-xs ${baseClasses}`}>{children}</div>
   );
@@ -337,10 +337,10 @@ const TeamEventCard = ({ event, team, opponentName }) => {
     <div className={`bg-blue-50 p-2 rounded border border-blue-200 text-xs ${baseClasses}`}>{children}</div>
   );
 
-  const isFKGoal = (event.type === 'free-kick-goal') || (event?.meta?.freeKick === true && (event.type === 'goal'));
-  const isFKGoalOpp = (event.type === 'opponent-free-kick-goal') || (event?.meta?.freeKick === true && (event.type === 'opponent-goal'));
+  const isFKGoal = event?.meta?.freeKick === true && event.type === 'goal';
+  const isFKGoalOpp = event?.meta?.freeKick === true && event.type === 'opponent-goal';
 
-  if (event.type === "goal" || event.type === "penalty-goal" || event.type === "free-kick-goal") {
+  if (event.type === 'goal' || event.type === 'penalty-goal') {
     const isRig = event.type === 'penalty-goal';
     return greenCard(
       <p className={`font-medium text-green-800 ${textClasses}`}>
@@ -350,7 +350,7 @@ const TeamEventCard = ({ event, team, opponentName }) => {
       </p>
     );
   }
-  if (event.type === "opponent-goal" || event.type === "penalty-opponent-goal" || event.type === "opponent-free-kick-goal") {
+  if (event.type === 'opponent-goal' || event.type === 'penalty-opponent-goal') {
     const isRig = event.type === 'penalty-opponent-goal';
     return blueCard(
       <p className={`font-medium text-blue-800 ${textClasses}`}>
@@ -367,23 +367,21 @@ const TeamEventCard = ({ event, team, opponentName }) => {
   }
   if (event.type?.startsWith('free-kick')) {
     const isOpp = event.type.includes('opponent');
-    if (event.type.includes('missed')) return grayCard(<p className="font-medium text-gray-800">🟧 {event.minute}' - Punizione fuori {isOpp ? opponentName : `${event.player||''} ${event.playerName||''}`.trim()}</p>);
-    if (event.type.includes('saved')) return grayCard(<p className="font-medium text-gray-800">🟧 {event.minute}' - Punizione parata {isOpp ? opponentName : `${event.player||''} ${event.playerName||''}`.trim()}</p>);
-    if (event.type.includes('hit')) return grayCard(<p className="font-medium text-gray-800">🟧 {event.minute}' - Punizione {event.hitType==='palo'?'🧱 Palo':'⎯ Traversa'} {isOpp ? opponentName : `${event.player||''} ${event.playerName||''}`.trim()}</p>);
+    if (event.type.includes('missed')) return grayCard(<p className="font-medium text-gray-800">🟧 {event.minute}' - Punizione fuori {isOpp ? opponentName : `${event.player || ''} ${event.playerName || ''}`.trim()}</p>);
+    if (event.type.includes('saved')) return grayCard(<p className="font-medium text-gray-800">🟧 {event.minute}' - Punizione parata {isOpp ? opponentName : `${event.player || ''} ${event.playerName || ''}`.trim()}</p>);
+    if (event.type.includes('hit')) return grayCard(<p className="font-medium text-gray-800">🟧 {event.minute}' - Punizione {event.hitType === 'palo' ? '🧱 Palo' : '⎯ Traversa'} {isOpp ? opponentName : `${event.player || ''} ${event.playerName || ''}`.trim()}</p>);
   }
-  if (event.type === "missed-shot" || event.type === "opponent-missed-shot") {
+  if (event.type === 'missed-shot' || event.type === 'opponent-missed-shot') {
     const isVig = event.type === 'missed-shot';
     return grayCard(<p className="font-medium text-gray-800">🎯 {event.minute}' - Tiro fuori {isVig ? `${event.player} ${event.playerName}` : opponentName}</p>);
   }
-  if (event.type === "shot-blocked" || event.type === "opponent-shot-blocked") {
+  if (event.type === 'shot-blocked' || event.type === 'opponent-shot-blocked') {
     const isVig = event.type === 'shot-blocked';
     return grayCard(<p className="font-medium text-gray-800">🧤 {event.minute}' - Tiro parato {isVig ? `${event.player} ${event.playerName}` : opponentName}</p>);
   }
   if (event.type === 'substitution') {
     return grayCard(
-      <p className="font-medium text-gray-800">
-        🔁 {event.minute}' - Sostituzione: {event.out?.num} {event.out?.name} → {event.in?.num} {event.in?.name}
-      </p>
+      <p className="font-medium text-gray-800">🔁 {event.minute}' - Sostituzione: {event.out?.num} {event.out?.name} → {event.in?.num} {event.in?.name}</p>
     );
   }
   return null;
