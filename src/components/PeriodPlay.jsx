@@ -70,7 +70,6 @@ const PeriodPlay = ({
     [match.notCalled]
   );
 
-  // Ask lineup once for normal periods
   useEffect(() => {
     if (!isProvaTecnica && !isViewer && (!period.lineup || period.lineup.length !== 9) && !lineupAlreadyAsked && !period.lineupPrompted) {
       setShowLineupDialog(true);
@@ -87,6 +86,17 @@ const PeriodPlay = ({
     setShowLineupDialog(false);
   }, []);
 
+  // Tiro: step 1 (esito)
+  const startShotFlow = () => {
+    setShowShotSelectionDialog(true);
+  };
+  // Tiro: scelta esito → step 2 (squadra)
+  const pickShotOutcome = (outcome) => {
+    setPendingShotOutcome(outcome);
+    setShowShotSelectionDialog(false);
+    setShowShotTeamDialog(true);
+  };
+  // Tiro: step 2 conferma squadra
   const confirmShotForTeam = (team) => {
     setShowShotTeamDialog(false);
     if (team === 'vigontina') {
@@ -98,7 +108,7 @@ const PeriodPlay = ({
       setPendingShotOutcome(null);
     }
   };
-
+  // Tiro: step 3 selezione giocatore
   const confirmShotForPlayer = (playerNum) => {
     setShowShotPlayerDialog(false);
     if (pendingShotOutcome === 'fuori') onAddMissedShot('vigontina', playerNum);
@@ -107,7 +117,7 @@ const PeriodPlay = ({
     setPendingShotOutcome(null);
   };
 
-  // Free-kick: ensure meta.freeKick for goals, normalize hitType
+  // Punizione: assicura meta.freeKick per i gol, normalizza hitType
   const handleFreeKickConfirm = (outcome, team, player, hitTypeRaw) => {
     const hitType = hitTypeRaw === 'palo' ? 'palo' : hitTypeRaw === 'traversa' ? 'traversa' : null;
     const minute = safeGetMinute();
@@ -124,9 +134,6 @@ const PeriodPlay = ({
     }
     setShowFreeKickDialog(false);
   };
-
-  const startShotFlow = () => setShowShotSelectionDialog(true);
-  const pickShotOutcome = (outcome) => { setShowShotSelectionDialog(false); setPendingShotOutcome(outcome); setShowShotTeamDialog(true); };
 
   const periodNumberMatch = period.name.match(/(\d+)°/);
   const periodNumber = periodNumberMatch ? periodNumberMatch[1] : "";
@@ -154,6 +161,28 @@ const PeriodPlay = ({
     return { vigontina: vigontinaEvents.sort(sortByMinute), opponent: opponentEvents.sort(sortByMinute) };
   }, [events]);
 
+  // Handler effettivo per eliminazione evento: applica motivazione e aggiorna punteggio
+  const handleDeleteEvent = (idx, reason) => {
+    try {
+      const periodClone = { ...match.periods[periodIndex] };
+      const goalsClone = Array.isArray(periodClone.goals) ? [...periodClone.goals] : [];
+      const evt = goalsClone[idx];
+      if (!evt) return;
+      const wasGoalForVig = evt.type === 'goal' || evt.type === 'penalty-goal' || evt.type === 'free-kick-goal';
+      const wasGoalForOpp = evt.type === 'opponent-goal' || evt.type === 'penalty-opponent-goal' || evt.type === 'opponent-free-kick-goal';
+      evt.deletionReason = reason || 'Annullato';
+      evt.deletedAt = Date.now();
+      evt.deleted = true;
+      if (wasGoalForVig && (periodClone.vigontina || 0) > 0) periodClone.vigontina = (periodClone.vigontina || 0) - 1;
+      if (wasGoalForOpp && (periodClone.opponent || 0) > 0) periodClone.opponent = (periodClone.opponent || 0) - 1;
+      goalsClone[idx] = evt;
+      periodClone.goals = goalsClone;
+      if (typeof onDeleteEvent === 'function') onDeleteEvent(periodIndex, idx, reason);
+    } finally {
+      setShowDeleteEventDialog(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
       <div className="max-w-2xl mx-auto space-y-4">
@@ -162,7 +191,6 @@ const PeriodPlay = ({
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h2 className="text-2xl font-bold mb-4">Vigontina vs {match.opponent} - {periodTitle}</h2>
 
-          {/* Top controls (normal periods) */}
           {!isProvaTecnica && !isViewer && (
             <div className="flex justify-end -mt-2 mb-4 gap-2">
               <button onClick={() => setShowLineupDialog(true)} className="text-xs px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 border border-gray-200" title="Modifica i 9 in campo">👥 9 in campo</button>
@@ -170,7 +198,6 @@ const PeriodPlay = ({
             </div>
           )}
 
-          {/* Prova Tecnica or normal period UI */}
           {isProvaTecnica ? (
             <ProvaTecnicaPanel
               opponentName={match.opponent}
@@ -184,7 +211,6 @@ const PeriodPlay = ({
             />
           ) : (
             <>
-              {/* Scoreboard */}
               <div className="bg-slate-50 rounded-lg p-4 mb-4">
                 <div className="text-center">
                   <h3 className="text-sm font-medium text-gray-600 mb-2">Punteggio Attuale</h3>
@@ -226,7 +252,6 @@ const PeriodPlay = ({
                 </div>
               </div>
 
-              {/* Timer */}
               <div className="bg-gray-50 rounded-lg p-6 mb-6">
                 <div className="text-center mb-4">
                   <div className="text-5xl font-mono font-bold text-gray-800">{typeof timer?.formatTime === 'function' ? timer.formatTime(timer.timerSeconds) : '00:00'}</div>
@@ -241,7 +266,6 @@ const PeriodPlay = ({
                 )}
               </div>
 
-              {/* Actions */}
               {!isViewer && (
                 <div className="space-y-3 mb-6">
                   <div className="grid grid-cols-2 gap-3">
@@ -264,7 +288,6 @@ const PeriodPlay = ({
                 </div>
               )}
 
-              {/* Events */}
               {(organizedEvents.vigontina.length > 0 || organizedEvents.opponent.length > 0) && (
                 <div className="mb-6 grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -280,7 +303,6 @@ const PeriodPlay = ({
                 </div>
               )}
 
-              {/* Finish */}
               {!isViewer && (
                 <div className="mt-8">
                   <button onClick={onFinish} className="w-full py-4 rounded-lg font-semibold text-white text-base shadow-sm transition focus:outline-none focus:ring-4 focus:ring-blue-300 bg-blue-600 hover:bg-blue-700 flex items-center justify-center gap-2" title={isEditing ? 'Salva Modifiche' : `Termina ${periodTitle}`}>
@@ -305,7 +327,7 @@ const PeriodPlay = ({
             <LineupModal availablePlayers={availablePlayers} initialLineup={period.lineup || []} onConfirm={handleLineupConfirm} onCancel={handleLineupCancel} />
           )}
           {!isViewer && showDeleteEventDialog && (
-            <DeleteEventModal events={events} opponentName={match.opponent} onConfirm={(idx, reason) => { /* handled upstream */ }} onCancel={() => setShowDeleteEventDialog(false)} />
+            <DeleteEventModal events={events} opponentName={match.opponent} onConfirm={handleDeleteEvent} onCancel={() => setShowDeleteEventDialog(false)} />
           )}
           {!isViewer && showSubstitution && (
             <SubstitutionModal periodLineup={period.lineup || []} notCalled={match.notCalled || []} onConfirm={(outNum, inNum) => { onAddSubstitution?.(periodIndex, outNum, inNum, safeGetMinute()); setShowSubstitution(false); }} onCancel={() => setShowSubstitution(false)} />
@@ -360,7 +382,6 @@ const TeamEventCard = ({ event, team, opponentName }) => {
       </p>
     );
   }
-  // NEW: explicit branch for missed penalties (ours and opponent)
   if (event.type === 'penalty-missed' || event.type === 'penalty-opponent-missed') {
     const who = event.type === 'penalty-missed' ? 'Vigontina' : opponentName;
     return grayCard(
