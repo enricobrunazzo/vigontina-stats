@@ -160,7 +160,8 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
   const blueCard = (children) => (
     <div className={`bg-blue-50 border border-blue-200 text-blue-800 p-2 rounded border text-xs ${baseClasses}`}>{children}</div>
   );
-  const redBall = <span className="text-red-600 font-bold" style={{color: '#dc2626'}}>⚽</span>;
+
+  const isFreeKickGoal = !!event?.meta?.freeKick;
 
   if (event.type === "goal" || event.type === "penalty-goal") {
     const isRig = event.type === 'penalty-goal';
@@ -170,6 +171,7 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
           <p className={`font-medium ${textClasses}`}>
             ⚽ {minute}' - {event.scorer} {event.scorerName}
             {isRig && <Badge color="purple">RIG.</Badge>}
+            {isFreeKickGoal && <Badge color="orange">PUN.</Badge>}
           </p>
           {event.assist && (<p className={`text-xs ${textClasses}`}>Assist: {event.assist} {event.assistName}</p>)}
           {isDeleted && (<p className="text-xs text-red-600 italic mt-1">⚠️ {event.deletionReason}</p>)}
@@ -185,6 +187,7 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
           <p className={`font-medium ${textClasses}`}>
             ⚽ {minute}' - {event.type.includes('penalty')? 'Rigore' : 'Gol'} {opponentName}
             {isRig && <Badge color="purple">RIG.</Badge>}
+            {isFreeKickGoal && <Badge color="orange">PUN.</Badge>}
           </p>
           {isDeleted && (<p className="text-xs text-red-600 italic mt-1">⚠️ {event.deletionReason}</p>)}
         </div>
@@ -194,14 +197,14 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
   if (event.type === "own-goal") {
     return (
       blueCard(
-        <p className={`font-medium ${textClasses}`}>{redBall} {minute}' - Autogol Vigontina</p>
+        <p className={`font-medium ${textClasses}`}>⚽ {minute}' - Autogol Vigontina</p>
       )
     );
   }
   if (event.type === "opponent-own-goal") {
     return (
       greenCard(
-        <p className={`font-medium ${textClasses}`}>{redBall} {minute}' - Autogol {opponentName}</p>
+        <p className={`font-medium ${textClasses}`}>⚽ {minute}' - Autogol {opponentName}</p>
       )
     );
   }
@@ -241,7 +244,6 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
     return grayCard(
       <p className={`font-medium ${textClasses}`}>
         🔁 {minute}' - Sostituzione: {event.out?.num} {event.out?.name} → {event.in?.num} {event.in?.name}
-        {isDeleted && (<span className="text-xs text-red-600 italic ml-1">⚠️ {event.deletionReason}</span>)}
       </p>
     );
   }
