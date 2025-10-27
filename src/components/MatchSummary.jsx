@@ -1,6 +1,6 @@
 // components/MatchSummary.jsx
-import React, { useMemo } from "react";
-import { ArrowLeft, Download, FileText } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { ArrowLeft, Download, FileText, Users } from "lucide-react";
 import { PLAYERS } from "../constants/players";
 import { calculateMatchStats, getMatchResult } from "../utils/matchUtils";
 
@@ -11,6 +11,7 @@ const Badge = ({ children, color='indigo' }) => (
 const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport }) => {
   const stats = useMemo(() => calculateMatchStats(match), [match]);
   const result = useMemo(() => getMatchResult(match), [match]);
+  const [showLineups, setShowLineups] = useState(false);
 
   const organizedEventsByPeriod = useMemo(() => {
     if (!match.periods) return [];
@@ -38,6 +39,11 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
       return { period, periodIdx, vigontina: vigontinaEvents.sort(sortByMinute), opponent: opponentEvents.sort(sortByMinute) };
     }).filter(p => p.vigontina.length>0 || p.opponent.length>0 || p.period.vigontina>0 || p.period.opponent>0);
   }, [match.periods]);
+
+  const getPlayerLabel = (num) => {
+    const p = PLAYERS.find(pl => pl.num === num);
+    return p ? `${p.num} ${p.name}` : `#${num}`;
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
@@ -73,7 +79,15 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
           <div className="space-y-6">
             {organizedEventsByPeriod.length>0 && (
               <div>
-                <h3 className="font-semibold mb-4 text-lg">📋 Cronologia Partita per Squadra</h3>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-lg">📋 Cronologia Partita per Squadra</h3>
+                  {/* Toggle discreto lineup */}
+                  {match.periods?.some(p => Array.isArray(p.lineup) && p.lineup.length > 0) && (
+                    <button onClick={()=>setShowLineups(s=>!s)} className="text-xs px-2 py-1 rounded border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center gap-1" title="Mostra/Nascondi 9 in campo per tempo">
+                      <Users className="w-3 h-3" /> {showLineups ? 'Nascondi 9 in campo' : '9 in campo'}
+                    </button>
+                  )}
+                </div>
                 <div className="space-y-6">
                   {organizedEventsByPeriod.map((p)=> (
                     <div key={p.periodIdx} className="border rounded-lg overflow-hidden">
@@ -82,6 +96,17 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
                           <h4 className="font-bold text-gray-800">{p.period.name}</h4>
                           <span className="text-sm font-semibold text-gray-600">Vigontina {p.period.vigontina} - {p.period.opponent} {match.opponent}</span>
                         </div>
+                        {/* Riga lineup discreta per tempo */}
+                        {showLineups && Array.isArray(p.period.lineup) && p.period.lineup.length > 0 && (
+                          <div className="mt-2 text-[11px] text-gray-600">
+                            <span className="font-semibold mr-1">9 in campo:</span>
+                            <span className="inline-block align-middle">
+                              {p.period.lineup.map((num, idx)=> (
+                                <span key={idx} className="mr-2 whitespace-nowrap">{getPlayerLabel(num)}</span>
+                              ))}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <div className="grid grid-cols-2 gap-4 p-4">
                         <div className="space-y-2">
@@ -202,7 +227,6 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
   }
   if (event.type === "shot-blocked" || event.type === "opponent-shot-blocked") {
     const isVig = event.type === 'shot-blocked';
-    // Capitalize label: 'Tiro parato'
     return grayCard(<p className="font-medium">🧤 {minute}' - Tiro parato {isVig ? `${event.player} ${event.playerName}` : opponentName}</p>);
   }
   if (event.type?.includes('palo-') || event.type?.includes('traversa-')) {
@@ -211,7 +235,6 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
     return grayCard(<p className="font-medium">{hitTypeDisplay} {minute}' - {isVig ? `${event.player} ${event.playerName}` : opponentName}</p>);
   }
   if (event.type?.startsWith('free-kick')) {
-    // Render punizioni: missed, saved, hit (palo/traversa)
     const label = event.type.includes('missed') ? 'Punizione fuori' : event.type.includes('saved') ? 'Punizione parata' : 'Punizione';
     const suffix = event.hitType === 'palo' ? ' (Palo)' : event.hitType === 'traversa' ? ' (Traversa)' : '';
     const isVig = event.team !== 'opponent';
