@@ -208,7 +208,8 @@ const SummaryEventCard = ({ event, team, opponentName }) => {
     const label = event.type.includes('missed') ? 'Punizione fuori' : event.type.includes('saved') ? 'Punizione parata' : 'Punizione';
     const suffix = event.hitType === 'palo' ? ' (Palo)' : event.hitType === 'traversa' ? ' (Traversa)' : '';
     const isVig = event.team !== 'opponent';
-    return grayCard(<p className="font-medium">📐 {minute}' - {label}{suffix} {isVig ? `${event.player||''} ${event.playerName||''}`.trim() : opponentName}</p>);
+    // CHANGED ICON: from 📐 to 🎯 for coherence with shot events
+    return grayCard(<p className="font-medium">🎯 {minute}' - {label}{suffix} {isVig ? `${event.player||''} ${event.playerName||''}`.trim() : opponentName}</p>);
   }
   return null;
 };
