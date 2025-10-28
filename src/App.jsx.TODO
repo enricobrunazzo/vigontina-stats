@@ -1,0 +1,7 @@
+// App.jsx patch: integrate NewMatchModeDialog and LiveBanner
+import React, { useState, useEffect, useCallback } from "react";
+import NewMatchModeDialog from "./components/NewMatchModeDialog";
+import LiveBanner from "./components/LiveBanner";
+import { useSharedMatch } from "./hooks/useSharedMatch";
+
+// ...resto file invariato, solo aggiunte indicate

@@ -1,0 +1,32 @@
+// App.jsx (auto-join live from ?match= param; persist match mode in localStorage)
+import React, { useState, useEffect, useCallback } from "react";
+// ...existing imports remain
+
+const VigontinaStats = () => {
+  // ...existing state
+
+  // Persist matchMode across reloads
+  useEffect(() => {
+    const storedMode = localStorage.getItem('matchMode');
+    if (storedMode) setMatchMode(storedMode);
+  }, []);
+  useEffect(() => {
+    localStorage.setItem('matchMode', matchMode);
+  }, [matchMode]);
+
+  // Auto-join if URL has ?match=XXXXXX
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('match');
+    if (code && !sharedMatch.matchId) {
+      sharedMatch.joinMatch(code).then(() => {
+        setMatchMode('shared');
+        setPage('match-overview');
+      }).catch(() => {
+        // ignore join error; keep home
+      });
+    }
+  }, [sharedMatch.matchId]);
+
+  // ...rest of component unchanged
+}
