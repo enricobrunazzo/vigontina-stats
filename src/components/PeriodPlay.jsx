@@ -7,8 +7,7 @@ import OwnGoalModal from "./modals/OwnGoalModal";
 import PenaltyAdvancedModal from "./modals/PenaltyAdvancedModal";
 import LineupModal from "./modals/LineupModal";
 import DeleteEventModal from "./modals/DeleteEventModal";
-import SubstitutionModal from "./modals/SubstitutionModal";
-import FreeKickModal from "./modals/FreeKickModal";
+// import FreeKickModal from "./modals/FreeKickModal"; // replaced by 3-step flow
 import ProvaTecnicaPanel from "./ProvaTecnicaPanel";
 
 const PeriodPlay = ({
@@ -56,12 +55,21 @@ const PeriodPlay = ({
   const [showPenaltyDialog, setShowPenaltyDialog] = useState(false);
   const [showLineupDialog, setShowLineupDialog] = useState(false);
   const [showDeleteEventDialog, setShowDeleteEventDialog] = useState(false);
+
+  // Shot flow (existing)
   const [showShotSelectionDialog, setShowShotSelectionDialog] = useState(false);
   const [showShotTeamDialog, setShowShotTeamDialog] = useState(false);
   const [pendingShotOutcome, setPendingShotOutcome] = useState(null);
   const [showShotPlayerDialog, setShowShotPlayerDialog] = useState(false);
+
+  // Free kick flow (new 3-step like shot)
+  const [showFKSelectionDialog, setShowFKSelectionDialog] = useState(false);
+  const [showFKTeamDialog, setShowFKTeamDialog] = useState(false);
+  const [pendingFKOutcome, setPendingFKOutcome] = useState(null);
+  const [pendingFKHitType, setPendingFKHitType] = useState(null);
+  const [showFKPlayerDialog, setShowFKPlayerDialog] = useState(false);
+
   const [showSubstitution, setShowSubstitution] = useState(false);
-  const [showFreeKickDialog, setShowFreeKickDialog] = useState(false);
   const [lineupAlreadyAsked, setLineupAlreadyAsked] = useState(false);
   const [manualScoreMode, setManualScoreMode] = useState(false);
 
@@ -86,17 +94,9 @@ const PeriodPlay = ({
     setShowLineupDialog(false);
   }, []);
 
-  // Tiro: step 1 (esito)
-  const startShotFlow = () => {
-    setShowShotSelectionDialog(true);
-  };
-  // Tiro: scelta esito → step 2 (squadra)
-  const pickShotOutcome = (outcome) => {
-    setPendingShotOutcome(outcome);
-    setShowShotSelectionDialog(false);
-    setShowShotTeamDialog(true);
-  };
-  // Tiro: step 2 conferma squadra
+  // Shot flow handlers
+  const startShotFlow = () => setShowShotSelectionDialog(true);
+  const pickShotOutcome = (outcome) => { setPendingShotOutcome(outcome); setShowShotSelectionDialog(false); setShowShotTeamDialog(true); };
   const confirmShotForTeam = (team) => {
     setShowShotTeamDialog(false);
     if (team === 'vigontina') {
@@ -108,7 +108,6 @@ const PeriodPlay = ({
       setPendingShotOutcome(null);
     }
   };
-  // Tiro: step 3 selezione giocatore
   const confirmShotForPlayer = (playerNum) => {
     setShowShotPlayerDialog(false);
     if (pendingShotOutcome === 'fuori') onAddMissedShot('vigontina', playerNum);
@@ -117,22 +116,51 @@ const PeriodPlay = ({
     setPendingShotOutcome(null);
   };
 
-  // Punizione: assicura meta.freeKick per i gol, normalizza hitType
-  const handleFreeKickConfirm = (outcome, team, player, hitTypeRaw) => {
-    const hitType = hitTypeRaw === 'palo' ? 'palo' : hitTypeRaw === 'traversa' ? 'traversa' : null;
+  // Free kick flow handlers (3-step)
+  const startFreeKickFlow = () => setShowFKSelectionDialog(true);
+  const pickFKOutcome = (outcome) => {
+    // outcome: 'goal' | 'fuori' | 'parata' | 'palo' | 'traversa'
+    setPendingFKOutcome(outcome);
+    setPendingFKHitType(outcome === 'palo' ? 'palo' : outcome === 'traversa' ? 'traversa' : null);
+    setShowFKSelectionDialog(false);
+    setShowFKTeamDialog(true);
+  };
+  const confirmFKForTeam = (team) => {
+    setShowFKTeamDialog(false);
     const minute = safeGetMinute();
-    if (outcome === 'goal') {
-      if (team === 'vigontina') {
-        onAddGoal(player, null, { minute, meta: { freeKick: true } });
-      } else {
-        onAddOpponentGoal(minute, { freeKick: true });
-      }
-    } else if (outcome === 'hit') {
-      onAddFreeKick('hit', team, player, minute, hitType);
-    } else {
-      onAddFreeKick(outcome, team, player, minute, hitType);
+    if (pendingFKOutcome === 'goal') {
+      if (team === 'vigontina') setShowFKPlayerDialog(true); else { onAddOpponentGoal(minute, { freeKick: true }); cleanupFK(); }
+      return;
     }
-    setShowFreeKickDialog(false);
+    if (pendingFKOutcome === 'fuori') {
+      onAddFreeKick('missed', team, null, minute, null); cleanupFK(); return;
+    }
+    if (pendingFKOutcome === 'parata') {
+      onAddFreeKick('saved', team, null, minute, null); cleanupFK(); return;
+    }
+    if (pendingFKOutcome === 'palo' || pendingFKOutcome === 'traversa') {
+      onAddFreeKick('hit', team, null, minute, pendingFKHitType); cleanupFK(); return;
+    }
+    cleanupFK();
+  };
+  const confirmFKForPlayer = (playerNum) => {
+    const minute = safeGetMinute();
+    if (pendingFKOutcome === 'goal') {
+      onAddGoal(playerNum, null, { minute, meta: { freeKick: true } });
+      cleanupFK();
+      return;
+    }
+    if (pendingFKOutcome === 'fuori') onAddFreeKick('missed', 'vigontina', playerNum, minute, null);
+    else if (pendingFKOutcome === 'parata') onAddFreeKick('saved', 'vigontina', playerNum, minute, null);
+    else if (pendingFKOutcome === 'palo' || pendingFKOutcome === 'traversa') onAddFreeKick('hit', 'vigontina', playerNum, minute, pendingFKHitType);
+    cleanupFK();
+  };
+  const cleanupFK = () => {
+    setPendingFKOutcome(null);
+    setPendingFKHitType(null);
+    setShowFKSelectionDialog(false);
+    setShowFKTeamDialog(false);
+    setShowFKPlayerDialog(false);
   };
 
   const periodNumberMatch = period.name.match(/(\d+)°/);
@@ -161,7 +189,7 @@ const PeriodPlay = ({
     return { vigontina: vigontinaEvents.sort(sortByMinute), opponent: opponentEvents.sort(sortByMinute) };
   }, [events]);
 
-  // Handler effettivo per eliminazione evento: applica motivazione e aggiorna punteggio
+  // Delete handler
   const handleDeleteEvent = (idx, reason) => {
     try {
       const periodClone = { ...match.periods[periodIndex] };
@@ -281,7 +309,7 @@ const PeriodPlay = ({
                     <div className="grid grid-cols-2 gap-2">
                       <button onClick={startShotFlow} className="bg-gray-600 text-white py-2 px-2 rounded hover:bg-gray-700 font-medium text-xs">🎯 Tiro</button>
                       <button onClick={() => setShowSubstitution(true)} className="bg-indigo-600 text-white py-2 px-2 rounded hover:bg-indigo-700 font-medium text-xs flex items-center justify-center gap-1"><Repeat className="w-3 h-3" /> Sostituzione</button>
-                      <button onClick={() => setShowFreeKickDialog(true)} className="bg-orange-600 text-white py-2 px-2 rounded hover:bg-orange-700 font-medium text-xs">🟧 Punizione</button>
+                      <button onClick={startFreeKickFlow} className="bg-orange-600 text-white py-2 px-2 rounded hover:bg-orange-700 font-medium text-xs">🟧 Punizione</button>
                       <button onClick={() => setShowDeleteEventDialog(true)} className="bg-red-600 text-white py-2 px-2 rounded hover:bg-red-700 font-medium text-xs" disabled={events.length === 0}>🗑️ Elimina Evento</button>
                     </div>
                   </div>
@@ -329,12 +357,6 @@ const PeriodPlay = ({
           {!isViewer && showDeleteEventDialog && (
             <DeleteEventModal events={events} opponentName={match.opponent} onConfirm={handleDeleteEvent} onCancel={() => setShowDeleteEventDialog(false)} />
           )}
-          {!isViewer && showSubstitution && (
-            <SubstitutionModal periodLineup={period.lineup || []} notCalled={match.notCalled || []} onConfirm={(outNum, inNum) => { onAddSubstitution?.(periodIndex, outNum, inNum, safeGetMinute()); setShowSubstitution(false); }} onCancel={() => setShowSubstitution(false)} />
-          )}
-          {!isViewer && showFreeKickDialog && (
-            <FreeKickModal availablePlayers={availablePlayers} opponentName={match.opponent} onConfirm={handleFreeKickConfirm} onCancel={() => setShowFreeKickDialog(false)} />
-          )}
 
           {/* Shot Flow Overlays */}
           {!isViewer && showShotSelectionDialog && (
@@ -373,6 +395,48 @@ const PeriodPlay = ({
                   ))}
                 </div>
                 <button onClick={() => setShowShotPlayerDialog(false)} className="w-full mt-3 bg-gray-300 text-gray-700 p-2 rounded hover:bg-gray-400">Annulla</button>
+              </div>
+            </div>
+          )}
+
+          {/* Free Kick Flow Overlays */}
+          {!isViewer && showFKSelectionDialog && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                <h3 className="text-lg font-semibold mb-4 text-center">Esito della Punizione</h3>
+                <div className="space-y-3">
+                  <button onClick={() => pickFKOutcome('goal')} className="w-full bg-orange-600 text-white p-3 rounded hover:bg-orange-700 font-medium">⚽ Gol</button>
+                  <button onClick={() => pickFKOutcome('fuori')} className="w-full bg-gray-600 text-white p-3 rounded hover:bg-gray-700 font-medium">❌ Fuori</button>
+                  <button onClick={() => pickFKOutcome('parata')} className="w-full bg-gray-600 text-white p-3 rounded hover:bg-gray-700 font-medium">🧤 Parata</button>
+                  <button onClick={() => pickFKOutcome('palo')} className="w-full bg-gray-600 text-white p-3 rounded hover:bg-gray-700 font-medium">🧱 Palo</button>
+                  <button onClick={() => pickFKOutcome('traversa')} className="w-full bg-gray-600 text-white p-3 rounded hover:bg-gray-700 font-medium">⎯ Traversa</button>
+                  <button onClick={() => setShowFKSelectionDialog(false)} className="w-full bg-gray-300 text-gray-700 p-3 rounded hover:bg-gray-400">Annulla</button>
+                </div>
+              </div>
+            </div>
+          )}
+          {!isViewer && showFKTeamDialog && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                <h3 className="text-lg font-semibold mb-4 text-center">Chi ha battuto la punizione?</h3>
+                <div className="space-y-3">
+                  <button onClick={() => { setShowFKTeamDialog(false); if (pendingFKOutcome==='goal') setShowFKPlayerDialog(true); else confirmFKForTeam('vigontina'); }} className="w-full bg-emerald-600 text-white p-3 rounded hover:bg-emerald-700 font-medium">Vigontina</button>
+                  <button onClick={() => confirmFKForTeam('opponent')} className="w-full bg-blue-600 text-white p-3 rounded hover:bg-blue-700 font-medium">{match.opponent}</button>
+                  <button onClick={() => setShowFKTeamDialog(false)} className="w-full bg-gray-300 text-gray-700 p-3 rounded hover:bg-gray-400">Annulla</button>
+                </div>
+              </div>
+            </div>
+          )}
+          {!isViewer && showFKPlayerDialog && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                <h3 className="text-lg font-semibold mb-4 text-center">Seleziona giocatore (Punizione)</h3>
+                <div className="grid grid-cols-3 gap-2 max-h-80 overflow-auto">
+                  {availablePlayers.map((p)=> (
+                    <button key={p.num} onClick={() => confirmFKForPlayer(p.num)} className="bg-gray-100 hover:bg-gray-200 rounded p-2 text-sm text-gray-800">{p.num} {p.name}</button>
+                  ))}
+                </div>
+                <button onClick={() => setShowFKPlayerDialog(false)} className="w-full mt-3 bg-gray-300 text-gray-700 p-2 rounded hover:bg-gray-400">Annulla</button>
               </div>
             </div>
           )}
