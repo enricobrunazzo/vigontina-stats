@@ -12,6 +12,7 @@ export const PLAYERS = [
   { num: 10, name: "ZANE" },
   { num: 11, name: "ALESSANDRO" },
   { num: 13, name: "PIETRO" },
+  { num: 13, name: "VALENTINO" },
   { num: 14, name: "PIETRO (CIGNO)" },
   { num: 15, name: "RARES" },
   { num: 16, name: "ARON" },
