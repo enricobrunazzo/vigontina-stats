@@ -55,9 +55,12 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
     
     const captainPlayer = PLAYERS.find(p => p.num === captain);
     
+    // FIX: Converte matchDay in numero se presente e la competizione è un torneo
+    const parsedMatchDay = competition.includes("Torneo") && matchDay.trim() ? parseInt(matchDay, 10) : null;
+    
     onSubmit({
       competition,
-      matchDay: competition.includes("Torneo") ? matchDay : null,
+      matchDay: parsedMatchDay,
       isHome,
       opponent,
       date,
