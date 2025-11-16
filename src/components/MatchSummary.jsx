@@ -99,7 +99,7 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
                           <div className="mt-2 text-[11px] text-gray-600">
                             <div className="font-semibold mb-1">9 in campo:</div>
                             <div className="flex flex-wrap gap-x-2 gap-y-1">
-                              {p.period.lineup.map((num, idx)=> (
+                              {[...p.period.lineup].sort((a, b) => a - b).map((num, idx) => (
                                 <span key={idx} className="whitespace-nowrap">{getPlayerLabel(num)}</span>
                               ))}
                             </div>
