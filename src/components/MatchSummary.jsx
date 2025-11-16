@@ -97,12 +97,12 @@ const MatchSummary = ({ match, onBack, onExportExcel, onExportPDF, onFIGCReport 
                         </div>
                         {showLineups && Array.isArray(p.period.lineup) && p.period.lineup.length > 0 && (
                           <div className="mt-2 text-[11px] text-gray-600">
-                            <span className="font-semibold mr-1">9 in campo:</span>
-                            <span className="inline-block align-middle">
+                            <div className="font-semibold mb-1">9 in campo:</div>
+                            <div className="flex flex-wrap gap-x-2 gap-y-1">
                               {p.period.lineup.map((num, idx)=> (
-                                <span key={idx} className="mr-2 whitespace-nowrap">{getPlayerLabel(num)}</span>
+                                <span key={idx} className="whitespace-nowrap">{getPlayerLabel(num)}</span>
                               ))}
-                            </span>
+                            </div>
                           </div>
                         )}
                       </div>
