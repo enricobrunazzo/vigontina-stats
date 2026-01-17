@@ -3,12 +3,27 @@ import React, { useState, useMemo } from "react";
 import { ArrowLeft, Users, X, Lock } from "lucide-react";
 import { PLAYERS } from "../constants/players";
 
+const MIRABILANDIA_FIELDS = [
+  "STADIO CERVIA - Stadio dei Pini \"Germano Todoli\"",
+  "PINARELLA - Campo Sportivo \"Brian Filipi\"",
+  "STADIO CESENATICO - Stadio Comunale \"Moretti\"",
+  "BOSCHETTO CESENATICO - Campo Sportivo Boschetto",
+  "PONENTE - Campo Sportivo Cesenatico Ponente",
+  "PEEP ASD BAKIA - Campo Sportivo",
+  "CASTIGLIONE DI RAVENNA - Campo APD Ribelle",
+  "PISIGNANO AC DEL DUCA - Campo Sportivo",
+  "ROMAGNA CENTRO - Centro Sportivo",
+  "MONTALETTO - Campo Sportivo",
+  "POL 2000 - Campo Sportivo Polisportiva 2000",
+];
+
 const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
   const [competition, setCompetition] = useState("Torneo Provinciale Autunnale");
   const [matchDay, setMatchDay] = useState("");
   const [isHome, setIsHome] = useState(true);
   const [opponent, setOpponent] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [field, setField] = useState("");
 
   const [organizerPassword, setOrganizerPassword] = useState("");
 
@@ -53,6 +68,13 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
       return;
     }
 
+    // Per Torneo Mirabilandia Festival il campo da gioco è obbligatorio
+    const isMirabilandia = competition === "Torneo Mirabilandia Festival";
+    if (isMirabilandia && !field) {
+      alert("Seleziona il campo di gioco");
+      return;
+    }
+
     const captainPlayer = PLAYERS.find((p) => p.num === captain);
 
     // Mostra/usa la giornata solo per i tornei provinciali (non per Torneo Mirabilandia Festival)
@@ -69,6 +91,7 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
         isHome,
         opponent,
         date,
+        field: isMirabilandia ? field : undefined,
         assistantReferee,
         manager: teamManager,
         coach,
@@ -89,6 +112,8 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
   const isLeagueTournament =
     competition === "Torneo Provinciale Autunnale" ||
     competition === "Torneo Provinciale Primaverile";
+
+  const isMirabilandia = competition === "Torneo Mirabilandia Festival";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
@@ -162,31 +187,55 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
               </div>
             )}
 
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Luogo
-              </label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsHome(true)}
-                  className={`flex-1 py-2 rounded ${
-                    isHome ? "bg-green-500 text-white" : "bg-gray-200"
-                  }`}
-                >
-                  🏠 Casa
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsHome(false)}
-                  className={`flex-1 py-2 rounded ${
-                    !isHome ? "bg-green-500 text-white" : "bg-gray-200"
-                  }`}
-                >
-                  ✈️ Trasferta
-                </button>
+            {/* Luogo: Casa/Trasferta per tutte le competizioni tranne Mirabilandia */}
+            {!isMirabilandia && (
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Luogo
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsHome(true)}
+                    className={`flex-1 py-2 rounded ${
+                      isHome ? "bg-green-500 text-white" : "bg-gray-200"
+                    }`}
+                  >
+                    🏠 Casa
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsHome(false)}
+                    className={`flex-1 py-2 rounded ${
+                      !isHome ? "bg-green-500 text-white" : "bg-gray-200"
+                    }`}
+                  >
+                    ✈️ Trasferta
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Campo di gioco specifico per Torneo Mirabilandia Festival */}
+            {isMirabilandia && (
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Campo di gioco
+                </label>
+                <select
+                  value={field}
+                  onChange={(e) => setField(e.target.value)}
+                  className="w-full border rounded px-3 py-2"
+                >
+                  <option value="">Seleziona campo...</option>
+                  {MIRABILANDIA_FIELDS.map((f) => (
+                    <option key={f} value={f}>
+                      {f}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-slate-700 mb-1">
