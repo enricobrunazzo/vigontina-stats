@@ -9,7 +9,7 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
   const [isHome, setIsHome] = useState(true);
   const [opponent, setOpponent] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  
+
   const [organizerPassword, setOrganizerPassword] = useState("");
 
   // Staff
@@ -52,27 +52,43 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
       alert("Inserisci la password organizzatore per creare la partita");
       return;
     }
-    
-    const captainPlayer = PLAYERS.find(p => p.num === captain);
-    
-    // FIX: Converte matchDay in numero se presente e la competizione è un torneo
-    const parsedMatchDay = competition.includes("Torneo") && matchDay.trim() ? parseInt(matchDay, 10) : null;
-    
-    onSubmit({
-      competition,
-      matchDay: parsedMatchDay,
-      isHome,
-      opponent,
-      date,
-      assistantReferee,
-      manager: teamManager,
-      coach,
-      notCalled,
-      captain: captainPlayer ? { num: captainPlayer.num, number: captainPlayer.num, name: captainPlayer.name } : null,
-    }, organizerPassword);
+
+    const captainPlayer = PLAYERS.find((p) => p.num === captain);
+
+    // Mostra/usa la giornata solo per i tornei provinciali (non per Torneo Mirabilandia Festival)
+    const isLeagueTournament =
+      competition === "Torneo Provinciale Autunnale" ||
+      competition === "Torneo Provinciale Primaverile";
+
+    const parsedMatchDay = isLeagueTournament && matchDay.trim() ? parseInt(matchDay, 10) : null;
+
+    onSubmit(
+      {
+        competition,
+        matchDay: parsedMatchDay,
+        isHome,
+        opponent,
+        date,
+        assistantReferee,
+        manager: teamManager,
+        coach,
+        notCalled,
+        captain: captainPlayer
+          ? { num: captainPlayer.num, number: captainPlayer.num, name: captainPlayer.name }
+          : null,
+      },
+      organizerPassword
+    );
   };
 
-  const canSubmit = opponent.trim().length > 0 && !!captain && (!requestPassword || organizerPassword.trim().length > 0);
+  const canSubmit =
+    opponent.trim().length > 0 &&
+    !!captain &&
+    (!requestPassword || organizerPassword.trim().length > 0);
+
+  const isLeagueTournament =
+    competition === "Torneo Provinciale Autunnale" ||
+    competition === "Torneo Provinciale Primaverile";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
@@ -124,11 +140,12 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
               >
                 <option>Torneo Provinciale Autunnale</option>
                 <option>Torneo Provinciale Primaverile</option>
+                <option>Torneo Mirabilandia Festival</option>
                 <option>Amichevole</option>
               </select>
             </div>
 
-            {competition.includes("Torneo") && (
+            {isLeagueTournament && (
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Giornata
@@ -250,7 +267,7 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="text-sm text-slate-700">
-                Non Convocati: {" "}
+                Non Convocati:{" "}
                 <span className="font-semibold">
                   {notCalled.length > 0 ? `${notCalled.length} selezionati` : "nessuno"}
                 </span>
@@ -267,7 +284,7 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
 
             <div className="flex items-center justify-between">
               <div className="text-sm text-slate-700">
-                Capitano: {" "}
+                Capitano:{" "}
                 <span className="font-semibold">
                   {captain
                     ? `${captain} ${PLAYERS.find((p) => p.num === captain)?.name ?? ""}`
@@ -308,7 +325,8 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
           {requestPassword && (
             <div className="mt-4 p-3 bg-gray-50 border rounded-lg">
               <p className="text-xs text-gray-600 text-center">
-                <strong>Suggerimento:</strong> La password è <code className="bg-gray-200 px-1 rounded">vigontina2025</code>
+                <strong>Suggerimento:</strong> La password è{" "}
+                <code className="bg-gray-200 px-1 rounded">vigontina2025</code>
               </p>
             </div>
           )}
@@ -317,7 +335,10 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
 
       {/* MODAL: Non Convocati (griglia toggle rosso/grigio) */}
       {showNotCalledPicker && (
-        <PickerModal title={`Seleziona Non Convocati • Esclusi: ${notCalled.length}`} onClose={() => setShowNotCalledPicker(false)}>
+        <PickerModal
+          title={`Seleziona Non Convocati • Esclusi: ${notCalled.length}`}
+          onClose={() => setShowNotCalledPicker(false)}
+        >
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[60vh] overflow-auto pr-1">
             {PLAYERS.map((player) => {
               const excluded = notCalled.includes(player.num);
@@ -331,10 +352,17 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
                   type="button"
                   onClick={() => !isCaptain && toggleNotCalled(player.num)}
                   disabled={isCaptain}
-                  className={`w-full text-left p-2 border rounded ${base} ${isCaptain ? "opacity-50 cursor-not-allowed" : ""}`}
-                  title={isCaptain ? "Non selezionabile: è il capitano" : `${player.num} ${player.name}`}
+                  className={`w-full text-left p-2 border rounded ${base} ${
+                    isCaptain ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                  title={
+                    isCaptain
+                      ? "Non selezionabile: è il capitano"
+                      : `${player.num} ${player.name}`
+                  }
                 >
-                  <span className="font-semibold mr-1">{player.num}</span>{player.name}
+                  <span className="font-semibold mr-1">{player.num}</span>
+                  {player.name}
                 </button>
               );
             })}
@@ -370,7 +398,9 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
                     C
                   </span>
                 )}
-                <span>{player.num} {player.name}</span>
+                <span>
+                  {player.num} {player.name}
+                </span>
               </button>
             ))}
           </div>
@@ -398,19 +428,11 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
 const PickerModal = ({ title, children, onClose }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/40"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
       <div className="relative w-full sm:w-[560px] bg-white rounded-t-lg sm:rounded-lg shadow-lg p-4 sm:p-6">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold">{title}</h3>
-          <button
-            onClick={onClose}
-            className="p-1 rounded hover:bg-gray-100"
-            aria-label="Chiudi"
-          >
+          <button onClick={onClose} className="p-1 rounded hover:bg-gray-100" aria-label="Chiudi">
             <X size={18} />
           </button>
         </div>

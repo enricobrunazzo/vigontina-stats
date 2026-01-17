@@ -12,8 +12,8 @@ const safeNumber = (v) => (Number.isFinite(v) ? v : 0);
 
 // ✅ FIX: Considera solo periodi completati (non la Prova Tecnica)
 const getEffectivePeriods = (match) =>
-  Array.isArray(match?.periods) 
-    ? match.periods.filter((p) => !isTechnicalTest(p) && p.completed === true) 
+  Array.isArray(match?.periods)
+    ? match.periods.filter((p) => !isTechnicalTest(p) && p.completed === true)
     : [];
 
 /**
@@ -166,7 +166,12 @@ export const getMatchResult = (match) => {
     isLoss: !isWin && !isDraw,
     resultText: isWin ? "VITTORIA" : isDraw ? "PAREGGIO" : "SCONFITTA",
     resultColor: isWin ? "text-green-700" : isDraw ? "text-yellow-700" : "text-red-700",
-    resultBg: isWin ? "bg-green-50 border-green-200" : isDraw ? "bg-yellow-50 border-yellow-200" : "bg-red-50 border-red-200",
+    resultBg:
+      isWin
+        ? "bg-green-50 border-green-200"
+        : isDraw
+          ? "bg-yellow-50 border-yellow-200"
+          : "bg-red-50 border-red-200",
   };
 };
 
@@ -176,10 +181,13 @@ export const getMatchResult = (match) => {
  * @returns {Object} Oggetto partita completo
  */
 export const createMatchStructure = (matchData) => {
-  const periods =
-    matchData.competition === "Amichevole"
-      ? ["1° TEMPO", "2° TEMPO", "3° TEMPO", "4° TEMPO"]
-      : ["PROVA TECNICA", "1° TEMPO", "2° TEMPO", "3° TEMPO", "4° TEMPO"];
+  const isFriendlyLike =
+    matchData?.competition === "Amichevole" ||
+    matchData?.competition === "Torneo Mirabilandia Festival";
+
+  const periods = isFriendlyLike
+    ? ["1° TEMPO", "2° TEMPO", "3° TEMPO", "4° TEMPO"]
+    : ["PROVA TECNICA", "1° TEMPO", "2° TEMPO", "3° TEMPO", "4° TEMPO"];
 
   return {
     ...matchData,
