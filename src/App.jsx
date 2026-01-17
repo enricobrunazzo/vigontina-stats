@@ -381,12 +381,12 @@ const HistoryMenu = ({ onBack, onSelect }) => {
 
           <h2 className="text-2xl font-bold mb-6">Storico Partite</h2>
 
-          <div className="space-y-3">
+          <div className="space-y-2">
             {items.map((it) => (
               <button
                 key={it.key}
                 onClick={() => onSelect(it.key)}
-                className="w-full bg-purple-500 text-white py-3 rounded hover:bg-purple-600 transition text-base font-medium"
+                className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition text-sm font-medium"
               >
                 {it.label}
               </button>
