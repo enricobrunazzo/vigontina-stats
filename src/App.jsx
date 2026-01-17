@@ -1,5 +1,5 @@
 // App.jsx (versione aggiornata con modulo FIGC anche per storico)
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 
 // Hooks
 import { useTimer } from "./hooks/useTimer";
@@ -22,6 +22,7 @@ const VigontinaStats = () => {
   // Routing
   const [page, setPage] = useState("home");
   const [selectedHistoryMatch, setSelectedHistoryMatch] = useState(null);
+  const [historyFilter, setHistoryFilter] = useState("all");
 
   // Custom hooks
   const timer = useTimer();
@@ -166,10 +167,13 @@ const VigontinaStats = () => {
   );
 
   // NUOVO: Handler per calcio di punizione
-  const handleAddFreeKick = useCallback((outcome, team, playerNum, minute, hitType) => {
-    // Usa il metodo esistente addFreeKick che ha firma (outcome, team, playerNum, getCurrentMinute)
-    match.addFreeKick(outcome, team, playerNum, () => minute);
-  }, [match]);
+  const handleAddFreeKick = useCallback(
+    (outcome, team, playerNum, minute, hitType) => {
+      // Usa il metodo esistente addFreeKick che ha firma (outcome, team, playerNum, getCurrentMinute)
+      match.addFreeKick(outcome, team, playerNum, () => minute);
+    },
+    [match]
+  );
 
   // NUOVO HANDLER per eliminazione eventi
   const handleDeleteEvent = useCallback(
@@ -179,6 +183,24 @@ const VigontinaStats = () => {
     [match]
   );
 
+  const filteredHistory = useMemo(() => {
+    if (!Array.isArray(matchHistory)) return [];
+
+    switch (historyFilter) {
+      case "friendly":
+        return matchHistory.filter((m) => m?.competition === "Amichevole");
+      case "autumn":
+        return matchHistory.filter((m) => m?.competition === "Torneo Provinciale Autunnale");
+      case "spring":
+        return matchHistory.filter((m) => m?.competition === "Torneo Provinciale Primaverile");
+      case "mirabilandia":
+        return matchHistory.filter((m) => m?.competition === "Torneo Mirabilandia Festival");
+      case "all":
+      default:
+        return matchHistory;
+    }
+  }, [matchHistory, historyFilter]);
+
   // Render routes
   if (page === "home") {
     return (
@@ -186,7 +208,7 @@ const VigontinaStats = () => {
         stats={stats}
         lastPlayedMatch={lastPlayedMatch}
         onNewMatch={() => setPage("new-match")}
-        onViewHistory={() => setPage("history")}
+        onViewHistory={() => setPage("history-menu")}
         onViewLastMatch={(selectedMatch) => {
           setSelectedHistoryMatch(selectedMatch);
           setPage("history-summary");
@@ -195,13 +217,20 @@ const VigontinaStats = () => {
     );
   }
 
-  if (page === "new-match") {
+  if (page === "history-menu") {
     return (
-      <NewMatchForm
-        onSubmit={handleCreateNewMatch}
-        onCancel={() => setPage("home")}
+      <HistoryMenu
+        onBack={() => setPage("home")}
+        onSelect={(filterKey) => {
+          setHistoryFilter(filterKey);
+          setPage("history");
+        }}
       />
     );
+  }
+
+  if (page === "new-match") {
+    return <NewMatchForm onSubmit={handleCreateNewMatch} onCancel={() => setPage("home")} />;
   }
 
   if (page === "match-overview" && match.currentMatch) {
@@ -275,8 +304,8 @@ const VigontinaStats = () => {
   if (page === "history") {
     return (
       <MatchHistory
-        matches={matchHistory}
-        onBack={() => setPage("home")}
+        matches={filteredHistory}
+        onBack={() => setPage("history-menu")}
         onViewStats={(selectedMatch) => {
           setSelectedHistoryMatch(selectedMatch);
           setPage("history-summary");
@@ -318,35 +347,59 @@ const VigontinaStats = () => {
 
   // FIGC Report per partita corrente
   if (page === "figc-report" && match.currentMatch) {
-    return (
-      <FIGCReport
-        match={match.currentMatch}
-        onBack={() => setPage("match-overview")}
-      />
-    );
+    return <FIGCReport match={match.currentMatch} onBack={() => setPage("match-overview")} />;
   }
 
   // FIGC Report per partita storica
   if (page === "history-figc-report" && selectedHistoryMatch) {
-    return (
-      <FIGCReport
-        match={selectedHistoryMatch}
-        onBack={() => setPage("history-summary")}
-      />
-    );
+    return <FIGCReport match={selectedHistoryMatch} onBack={() => setPage("history-summary")} />;
   }
 
   return null;
 };
 
+// History menu screen
+const HistoryMenu = ({ onBack, onSelect }) => {
+  const items = [
+    { key: "all", label: "Tutte le Partite" },
+    { key: "friendly", label: "Amichevoli" },
+    { key: "autumn", label: "Torneo Provinciale Autunnale" },
+    { key: "spring", label: "Torneo Provinciale Primaverile" },
+    { key: "mirabilandia", label: "Torneo Mirabilandia Festival" },
+  ];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <button
+            onClick={onBack}
+            className="mb-4 text-gray-600 hover:text-gray-800 flex items-center gap-2"
+          >
+            ← Indietro
+          </button>
+
+          <h2 className="text-2xl font-bold mb-6">Storico Partite</h2>
+
+          <div className="space-y-3">
+            {items.map((it) => (
+              <button
+                key={it.key}
+                onClick={() => onSelect(it.key)}
+                className="w-full bg-purple-500 text-white py-3 rounded hover:bg-purple-600 transition text-base font-medium"
+              >
+                {it.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // HomeScreen Component
-const HomeScreen = ({
-  stats,
-  lastPlayedMatch,
-  onNewMatch,
-  onViewHistory,
-  onViewLastMatch,
-}) => {
+const HomeScreen = ({ stats, lastPlayedMatch, onNewMatch, onViewHistory, onViewLastMatch }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
       <div className="max-w-2xl mx-auto">
@@ -362,9 +415,7 @@ const HomeScreen = ({
               />
             </div>
             <div>
-              <h1 className="text-xl font-semibold text-gray-800">
-                Vigontina San Paolo
-              </h1>
+              <h1 className="text-xl font-semibold text-gray-800">Vigontina San Paolo</h1>
               <p className="text-sm text-gray-600">Esordienti 2025-2026</p>
             </div>
           </div>
@@ -408,16 +459,12 @@ const HomeScreen = ({
                 <div className="flex items-center justify-between">
                   <div className="text-center flex-1">
                     <p className="text-xs text-gray-600">Vigontina</p>
-                    <p className="text-3xl font-bold">
-                      {calculatePoints(lastPlayedMatch, "vigontina")}
-                    </p>
+                    <p className="text-3xl font-bold">{calculatePoints(lastPlayedMatch, "vigontina")}</p>
                   </div>
                   <span className="px-3 text-gray-400">-</span>
                   <div className="text-center flex-1">
                     <p className="text-xs text-gray-600">{lastPlayedMatch.opponent}</p>
-                    <p className="text-3xl font-bold">
-                      {calculatePoints(lastPlayedMatch, "opponent")}
-                    </p>
+                    <p className="text-3xl font-bold">{calculatePoints(lastPlayedMatch, "opponent")}</p>
                   </div>
                 </div>
                 <button
