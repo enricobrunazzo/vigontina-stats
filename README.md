@@ -7,8 +7,18 @@ Applicazione web per la gestione **live** delle statistiche delle partite della 
 - Gestione partite e periodi di gioco con timer integrato
 - Registrazione eventi: gol, autogol, rigori con selezione marcatore/assist
 - Sezione **Azioni Salienti** (Parata, Tiro Fuori, Palo/Traversa) ottimizzata per l'uso da bordo campo
-- Storico partite con esportazione in **Excel/PDF** e generazione **report FIGC**
+- Storico partite con filtri per competizione ed esportazione in **Excel/PDF**
+- Generazione **report FIGC** anche dallo storico
 - Integrazione con **Firebase** per autenticazione e persistenza dati
+
+## Torneo Mirabilandia Festival
+
+Regole e campi dedicati:
+
+- Selezione **Campo di gioco** da menù a tendina (obbligatoria per creare la partita)
+- Non è previsto **Casa/Trasferta**
+- Non è previsto lo **Staff** (Assistente Arbitro / Dirigente Accompagnatore)
+- Partita con **2 tempi** (1° e 2°)
 
 ## Stack tecnico
 
@@ -43,7 +53,7 @@ Dettagli di configurazione sono descritti in `SETUP_FIREBASE.md` e nei file di c
 
 ## Flusso di utilizzo (live match)
 
-1. Crea una nuova partita e definisci i periodi (es. 1° tempo, 2° tempo, supplementari)
+1. Crea una nuova partita e definisci i periodi
 2. Avvia il periodo per attivare timer e gestione punteggio
 3. Registra gli eventi tramite i pulsanti:
    - Gol Vigontina / Gol Avversario / Autogol / Rigore
@@ -62,17 +72,15 @@ Per una descrizione dettagliata degli eventi e delle schermate vedi `LIVE_MATCH_
 - **Tiro Fuori**: scelta squadra; se Vigontina, selezione giocatore
 - **Palo/Traversa**: scelta tra Palo/Traversa, scelta squadra; se Vigontina, selezione giocatore
 
-## Novità recenti (Dicembre 2025)
+## Novità recenti (Gennaio 2026)
 
-- Sezione **Azioni Salienti** con pulsanti rapidi:
-  - 🧤 Parata (scelta squadra; se Vigontina, selezione portiere)
-  - 🎯 Tiro Fuori (scelta squadra; se Vigontina, selezione giocatore)
-  - 🧱 Palo/Traversa (modal con scelta Palo/Traversa, scelta squadra; se Vigontina, selezione giocatore)
-- Layout pulsanti riorganizzato per velocizzare il data entry in live:
-  - Riga 1: Gol Vigontina | Gol Avversario
-  - Riga 2: Autogol | Rigore
-  - Riga 3: Azioni Salienti (Parata | Tiro Fuori | Palo/Traversa)
-- Lista eventi con icone e colori dedicati per ogni azione
+- Torneo Mirabilandia Festival:
+  - Campo di gioco obbligatorio da menù a tendina
+  - Rimossi Casa/Trasferta e Staff
+  - Partita impostata su 2 tempi
+- Storico Partite:
+  - Menu con 5 filtri competizione
+  - Pulsante "Tutte le Partite" con blu più scuro
 
 ## Note UI
 
