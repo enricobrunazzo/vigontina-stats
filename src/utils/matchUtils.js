@@ -181,13 +181,14 @@ export const getMatchResult = (match) => {
  * @returns {Object} Oggetto partita completo
  */
 export const createMatchStructure = (matchData) => {
-  const isFriendlyLike =
-    matchData?.competition === "Amichevole" ||
-    matchData?.competition === "Torneo Mirabilandia Festival";
+  const isFriendlyLike = matchData?.competition === "Amichevole";
+  const isMirabilandia = matchData?.competition === "Torneo Mirabilandia Festival";
 
-  const periods = isFriendlyLike
-    ? ["1° TEMPO", "2° TEMPO", "3° TEMPO", "4° TEMPO"]
-    : ["PROVA TECNICA", "1° TEMPO", "2° TEMPO", "3° TEMPO", "4° TEMPO"];
+  const periods = isMirabilandia
+    ? ["1° TEMPO", "2° TEMPO"]
+    : isFriendlyLike
+      ? ["1° TEMPO", "2° TEMPO", "3° TEMPO", "4° TEMPO"]
+      : ["PROVA TECNICA", "1° TEMPO", "2° TEMPO", "3° TEMPO", "4° TEMPO"];
 
   return {
     ...matchData,
