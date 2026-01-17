@@ -382,15 +382,22 @@ const HistoryMenu = ({ onBack, onSelect }) => {
           <h2 className="text-2xl font-bold mb-6">Storico Partite</h2>
 
           <div className="space-y-2">
-            {items.map((it) => (
-              <button
-                key={it.key}
-                onClick={() => onSelect(it.key)}
-                className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition text-sm font-medium"
-              >
-                {it.label}
-              </button>
-            ))}
+            {items.map((it) => {
+              const isAll = it.key === "all";
+              return (
+                <button
+                  key={it.key}
+                  onClick={() => onSelect(it.key)}
+                  className={`w-full text-white py-2 rounded transition text-sm font-medium ${
+                    isAll
+                      ? "bg-blue-700 hover:bg-blue-800"
+                      : "bg-blue-500 hover:bg-blue-600"
+                  }`}
+                >
+                  {it.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
