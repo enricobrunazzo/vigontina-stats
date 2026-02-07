@@ -10,6 +10,7 @@ const MatchHistory = ({
   onExportExcel,
   onExportPDF,
   onDelete,
+  onEdit,
   onExportHistory,
 }) => {
   return (
@@ -66,6 +67,7 @@ const MatchHistory = ({
                     onExportExcel={() => onExportExcel(match)}
                     onExportPDF={() => onExportPDF(match)}
                     onDelete={() => onDelete(match.id)}
+                    onEdit={() => onEdit(match.id)}
                   />
                 ))}
               </div>
@@ -84,6 +86,7 @@ const MatchCard = ({
   onExportExcel,
   onExportPDF,
   onDelete,
+  onEdit,
 }) => {
   // Calcolo live dei punti secondo la nuova logica
   const vigontinaPoints = calculatePoints(match, "vigontina");
@@ -107,27 +110,49 @@ const MatchCard = ({
 
   return (
     <div className={`border rounded-lg p-4 relative ${bgColor} hover:shadow-md transition-shadow`}>
-      <button
-        onClick={onDelete}
-        className="absolute top-2 right-2 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full p-1 transition-colors"
-        title="Elimina partita"
-      >
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+      {/* Pulsanti modifica e cancella */}
+      <div className="absolute top-2 right-2 flex gap-1">
+        <button
+          onClick={onEdit}
+          className="text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-full p-1 transition-colors"
+          title="Modifica partita"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M6 18L18 6M6 6l12 12"
-          />
-        </svg>
-      </button>
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+            />
+          </svg>
+        </button>
+        <button
+          onClick={onDelete}
+          className="text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full p-1 transition-colors"
+          title="Elimina partita"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      </div>
 
-      <div className="pr-8">
+      <div className="pr-16">
         {/* Titolo */}
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold text-base">
