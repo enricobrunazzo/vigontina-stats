@@ -187,6 +187,31 @@ export const useMatchHistory = () => {
     [loadHistory]
   );
 
+  // Modifica una partita esistente
+  const editMatch = useCallback(
+    async (matchId) => {
+      const password = prompt(
+        "Inserisci la password per modificare la partita:"
+      );
+      if (password !== "Vigontina2526") {
+        if (password !== null) {
+          alert("❌ Password errata. Modifica annullata.");
+        }
+        return null;
+      }
+      
+      // Trova la partita da modificare
+      const matchToEdit = matchHistory.find(m => m.id === matchId);
+      if (!matchToEdit) {
+        alert("❌ Partita non trovata.");
+        return null;
+      }
+      
+      return matchToEdit;
+    },
+    [matchHistory]
+  );
+
   // Helper per ottenere i punti di una partita
   // SEMPRE ricalcola per garantire coerenza, ignora finalPoints che potrebbero essere vecchi
   const getMatchPoints = useCallback((match, team) => {
@@ -239,6 +264,7 @@ export const useMatchHistory = () => {
     loadHistory,
     saveMatch,
     deleteMatch,
+    editMatch,
     stats,
     lastPlayedMatch,
     getMatchPoints,
