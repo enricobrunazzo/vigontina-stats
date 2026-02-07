@@ -80,9 +80,24 @@ const VigontinaStats = () => {
   const handleEditMatch = async (matchId) => {
     const matchToEdit = await editMatch(matchId);
     if (matchToEdit) {
-      // Rimuovi l'id per evitare conflitti
-      const { id, savedAt, timestamp, finalPoints, finalGoals, ...matchData } = matchToEdit;
-      match.createMatch(matchData);
+      // Rimuovi i metadati Firebase ma mantieni tutti i dati della partita
+      const { id, savedAt, finalPoints, finalGoals, ...matchData } = matchToEdit;
+      
+      // Assicurati che i periodi abbiano la struttura corretta
+      if (matchData.periods && Array.isArray(matchData.periods)) {
+        matchData.periods = matchData.periods.map(p => ({
+          ...p,
+          lineupPrompted: p.lineupPrompted || false,
+          goals: Array.isArray(p.goals) ? p.goals : [],
+          lineup: Array.isArray(p.lineup) ? p.lineup : [],
+          vigontina: Number.isFinite(p.vigontina) ? p.vigontina : 0,
+          opponent: Number.isFinite(p.opponent) ? p.opponent : 0,
+          completed: p.completed || false
+        }));
+      }
+      
+      // Usa setCurrentMatch direttamente invece di createMatch per preservare i dati
+      match.setCurrentMatch(matchData);
       setPage("match-overview");
     }
   };
