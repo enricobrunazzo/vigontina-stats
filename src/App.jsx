@@ -31,6 +31,7 @@ const VigontinaStats = () => {
     loadHistory,
     saveMatch,
     deleteMatch,
+    editMatch,
     stats,
     lastPlayedMatch,
   } = useMatchHistory();
@@ -73,6 +74,16 @@ const VigontinaStats = () => {
     if (success) {
       match.resetMatch();
       setPage("home");
+    }
+  };
+
+  const handleEditMatch = async (matchId) => {
+    const matchToEdit = await editMatch(matchId);
+    if (matchToEdit) {
+      // Rimuovi l'id per evitare conflitti
+      const { id, savedAt, timestamp, finalPoints, finalGoals, ...matchData } = matchToEdit;
+      match.createMatch(matchData);
+      setPage("match-overview");
     }
   };
 
@@ -313,6 +324,7 @@ const VigontinaStats = () => {
         onExportExcel={exportMatchToExcel}
         onExportPDF={exportMatchToPDF}
         onDelete={deleteMatch}
+        onEdit={handleEditMatch}
         onExportHistory={handleExportHistory}
       />
     );
