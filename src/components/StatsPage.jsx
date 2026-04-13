@@ -1,7 +1,8 @@
 // components/StatsPage.jsx
 import React, { useMemo } from "react";
-import { ArrowLeft, Trophy } from "lucide-react";
+import { ArrowLeft, Trophy, ShieldOff } from "lucide-react";
 import { PLAYERS } from "../constants/players";
+import { calculateTotalGoals } from "../utils/matchUtils";
 
 /**
  * Calcola la classifica marcatori da tutto lo storico partite.
@@ -101,6 +102,34 @@ const StatsPage = ({ matchHistory, onBack }) => {
     [scorers]
   );
 
+  // Gol subiti stagione (somma dei gol avversari in tutte le partite, esclusa PROVA TECNICA)
+  const totalGoalsConceded = useMemo(
+    () =>
+      matchHistory.reduce(
+        (sum, match) => sum + calculateTotalGoals(match, "opponent"),
+        0
+      ),
+    [matchHistory]
+  );
+
+  // Partite senza gol subiti (clean sheet)
+  const cleanSheets = useMemo(
+    () =>
+      matchHistory.filter(
+        (match) => calculateTotalGoals(match, "opponent") === 0
+      ).length,
+    [matchHistory]
+  );
+
+  // Media gol subiti a partita
+  const avgConceded = useMemo(
+    () =>
+      matchHistory.length > 0
+        ? (totalGoalsConceded / matchHistory.length).toFixed(1)
+        : "0.0",
+    [totalGoalsConceded, matchHistory]
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
       <div className="max-w-2xl mx-auto">
@@ -120,15 +149,53 @@ const StatsPage = ({ matchHistory, onBack }) => {
           </div>
 
           {/* Riepilogo stagione */}
-          <div className="bg-gradient-to-r from-slate-50 to-cyan-50 rounded-lg p-4 mb-6 text-center">
-            <p className="text-sm text-gray-500 mb-1">Stagione 2025-2026</p>
-            <p className="text-3xl font-bold text-gray-800">{totalGoals}</p>
-            <p className="text-sm text-gray-600">
-              {totalGoals === 1 ? "gol segnato" : "gol segnati"} in{" "}
-              {matchHistory.length}{" "}
-              {matchHistory.length === 1 ? "partita" : "partite"}
-            </p>
+          <div className="bg-gradient-to-r from-slate-50 to-cyan-50 rounded-lg p-4 mb-6">
+            <p className="text-sm text-gray-500 mb-3 text-center">Stagione 2025-2026</p>
+            <div className="grid grid-cols-2 gap-4">
+              {/* Gol segnati */}
+              <div className="text-center">
+                <p className="text-3xl font-bold text-gray-800">{totalGoals}</p>
+                <p className="text-sm text-gray-600">
+                  {totalGoals === 1 ? "gol segnato" : "gol segnati"} in{" "}
+                  {matchHistory.length}{" "}
+                  {matchHistory.length === 1 ? "partita" : "partite"}
+                </p>
+              </div>
+              {/* Gol subiti */}
+              <div className="text-center border-l border-gray-200">
+                <p className="text-3xl font-bold text-red-500">{totalGoalsConceded}</p>
+                <p className="text-sm text-gray-600">
+                  {totalGoalsConceded === 1 ? "gol subito" : "gol subiti"}
+                </p>
+              </div>
+            </div>
           </div>
+
+          {/* Statistiche difensive */}
+          {matchHistory.length > 0 && (
+            <div className="mb-6">
+              <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                <ShieldOff className="w-5 h-5 text-red-400" />
+                Difesa
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-red-50 border border-red-100 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-red-600">{totalGoalsConceded}</p>
+                  <p className="text-xs text-gray-500 mt-1">Gol Subiti Totali</p>
+                </div>
+                <div className="bg-green-50 border border-green-100 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-green-600">{cleanSheets}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Clean Sheet{cleanSheets !== 1 ? "s" : ""}
+                  </p>
+                </div>
+                <div className="bg-orange-50 border border-orange-100 rounded-lg p-3 text-center col-span-2">
+                  <p className="text-2xl font-bold text-orange-600">{avgConceded}</p>
+                  <p className="text-xs text-gray-500 mt-1">Media Gol Subiti / Partita</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Classifica marcatori */}
           <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
