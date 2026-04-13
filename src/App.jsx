@@ -13,6 +13,7 @@ import PeriodPlay from "./components/PeriodPlay";
 import MatchHistory from "./components/MatchHistory";
 import MatchSummary from "./components/MatchSummary";
 import FIGCReport from "./components/FIGCReport";
+import StatsPage from "./components/StatsPage";
 
 // Utils
 import { exportMatchToExcel, exportMatchToPDF, exportHistoryToExcel } from "./utils/exportUtils";
@@ -80,10 +81,7 @@ const VigontinaStats = () => {
   const handleEditMatch = async (matchId) => {
     const matchToEdit = await editMatch(matchId);
     if (matchToEdit) {
-      // Rimuovi i metadati Firebase ma mantieni tutti i dati della partita
       const { id, savedAt, finalPoints, finalGoals, ...matchData } = matchToEdit;
-      
-      // Assicurati che i periodi abbiano la struttura corretta
       if (matchData.periods && Array.isArray(matchData.periods)) {
         matchData.periods = matchData.periods.map(p => ({
           ...p,
@@ -95,8 +93,6 @@ const VigontinaStats = () => {
           completed: p.completed || false
         }));
       }
-      
-      // Usa setCurrentMatch direttamente invece di createMatch per preservare i dati
       match.setCurrentMatch(matchData);
       setPage("match-overview");
     }
@@ -123,12 +119,10 @@ const VigontinaStats = () => {
     }
   };
 
-  // Handler per export storico
   const handleExportHistory = useCallback(() => {
     exportHistoryToExcel(matchHistory);
   }, [matchHistory]);
 
-  // Handler per aprire FIGC Report da storico
   const handleOpenHistoryFIGCReport = useCallback((selectedMatch) => {
     setSelectedHistoryMatch(selectedMatch);
     setPage("history-figc-report");
@@ -153,55 +147,42 @@ const VigontinaStats = () => {
     },
     [match, timer]
   );
-
-  // NUOVI HANDLERS per le azioni salienti
   const handleAddSave = useCallback(
     (team, playerNum) => {
       match.addSave(team, playerNum, timer.getCurrentMinute);
     },
     [match, timer]
   );
-
   const handleAddMissedShot = useCallback(
     (team, playerNum) => {
       match.addMissedShot(team, playerNum, timer.getCurrentMinute);
     },
     [match, timer]
   );
-
-  // NUOVO: Handler per tiri parati
   const handleAddShotBlocked = useCallback(
     (team, playerNum) => {
       match.addShotBlocked(team, playerNum, timer.getCurrentMinute);
     },
     [match, timer]
   );
-
   const handleAddPostCrossbar = useCallback(
     (type, team, playerNum) => {
       match.addPostCrossbar(type, team, playerNum, timer.getCurrentMinute);
     },
     [match, timer]
   );
-
-  // Aggiornamento handler per sostituzioni
   const handleAddSubstitution = useCallback(
     (periodIndex, outNum, inNum, minute) => {
       match.addSubstitution(periodIndex, outNum, inNum, () => minute);
     },
     [match]
   );
-
-  // NUOVO: Handler per calcio di punizione
   const handleAddFreeKick = useCallback(
     (outcome, team, playerNum, minute, hitType) => {
-      // Usa il metodo esistente addFreeKick che ha firma (outcome, team, playerNum, getCurrentMinute)
       match.addFreeKick(outcome, team, playerNum, () => minute);
     },
     [match]
   );
-
-  // NUOVO HANDLER per eliminazione eventi
   const handleDeleteEvent = useCallback(
     (periodIndex, eventIndex, reason) => {
       match.deleteEvent(periodIndex, eventIndex, reason);
@@ -211,7 +192,6 @@ const VigontinaStats = () => {
 
   const filteredHistory = useMemo(() => {
     if (!Array.isArray(matchHistory)) return [];
-
     switch (historyFilter) {
       case "friendly":
         return matchHistory.filter((m) => m?.competition === "Amichevole");
@@ -235,10 +215,20 @@ const VigontinaStats = () => {
         lastPlayedMatch={lastPlayedMatch}
         onNewMatch={() => setPage("new-match")}
         onViewHistory={() => setPage("history-menu")}
+        onViewStats={() => setPage("stats")}
         onViewLastMatch={(selectedMatch) => {
           setSelectedHistoryMatch(selectedMatch);
           setPage("history-summary");
         }}
+      />
+    );
+  }
+
+  if (page === "stats") {
+    return (
+      <StatsPage
+        matchHistory={matchHistory}
+        onBack={() => setPage("home")}
       />
     );
   }
@@ -372,12 +362,10 @@ const VigontinaStats = () => {
     );
   }
 
-  // FIGC Report per partita corrente
   if (page === "figc-report" && match.currentMatch) {
     return <FIGCReport match={match.currentMatch} onBack={() => setPage("match-overview")} />;
   }
 
-  // FIGC Report per partita storica
   if (page === "history-figc-report" && selectedHistoryMatch) {
     return <FIGCReport match={selectedHistoryMatch} onBack={() => setPage("history-summary")} />;
   }
@@ -433,7 +421,7 @@ const HistoryMenu = ({ onBack, onSelect }) => {
 };
 
 // HomeScreen Component
-const HomeScreen = ({ stats, lastPlayedMatch, onNewMatch, onViewHistory, onViewLastMatch }) => {
+const HomeScreen = ({ stats, lastPlayedMatch, onNewMatch, onViewHistory, onViewStats, onViewLastMatch }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
       <div className="max-w-2xl mx-auto">
@@ -517,6 +505,12 @@ const HomeScreen = ({ stats, lastPlayedMatch, onNewMatch, onViewHistory, onViewL
               className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition text-base font-medium"
             >
               Nuova Partita
+            </button>
+            <button
+              onClick={onViewStats}
+              className="w-full bg-teal-500 text-white py-2 rounded hover:bg-teal-600 transition text-base font-medium flex items-center justify-center gap-2"
+            >
+              🏆 Statistiche
             </button>
             <button
               onClick={onViewHistory}
