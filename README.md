@@ -9,6 +9,7 @@ Applicazione web per la gestione **live** delle statistiche delle partite della 
 - Sezione **Azioni Salienti** (Parata, Tiro Fuori, Palo/Traversa) ottimizzata per l'uso da bordo campo
 - Storico partite con filtri per competizione ed esportazione in **Excel/PDF**
 - Generazione **report FIGC** anche dallo storico
+- **Pagina Statistiche** con classifica marcatori, gol subiti e statistiche difensive
 - Integrazione con **Firebase** per autenticazione e persistenza dati
 
 ## Torneo Mirabilandia Festival
@@ -72,7 +73,39 @@ Per una descrizione dettagliata degli eventi e delle schermate vedi `LIVE_MATCH_
 - **Tiro Fuori**: scelta squadra; se Vigontina, selezione giocatore
 - **Palo/Traversa**: scelta tra Palo/Traversa, scelta squadra; se Vigontina, selezione giocatore
 
-## Novità recenti (Gennaio 2026)
+## Pagina Statistiche
+
+Accessibile dallo Storico Partite tramite il pulsante dedicato.
+
+### Riepilogo stagione
+
+- **Gol segnati** — totale gol Vigontina nella stagione
+- **Gol subiti** — totale gol avversari nella stagione
+
+### Statistiche difensive
+
+| Metrica | Descrizione |
+|---|---|
+| Gol Subiti Totali | Somma di tutti i gol avversari (esclusa Prova Tecnica) |
+| Clean Sheets | Partite terminate senza subire gol |
+| Media Gol Subiti / Partita | Media con 1 decimale |
+
+### Classifica Marcatori
+
+- Classifica ordinata per gol (desc), poi assist (desc), poi numero maglia (asc)
+- Include: gol normali, rigori trasformati
+- Esclude: periodi "Prova Tecnica", eventi cancellati
+- Mostra assist accanto ai gol (🅰️)
+
+## Novità recenti
+
+### Aprile 2026
+
+- **Statistiche** — aggiunta sezione gol subiti nella pagina statistiche:
+  - Riepilogo stagione con gol segnati e subiti affiancati
+  - Nuova sezione difesa con: gol subiti totali, clean sheets, media gol subiti/partita
+
+### Gennaio 2026
 
 - Torneo Mirabilandia Festival:
   - Campo di gioco obbligatorio da menù a tendina
@@ -95,9 +128,9 @@ Per una descrizione dettagliata degli eventi e delle schermate vedi `LIVE_MATCH_
 ## Documentazione tecnica
 
 Per approfondimenti consulta:
-- `LIVE_MATCH_FLOW.md` - Flusso dettagliato della gestione live match
-- `SETUP_FIREBASE.md` - Guida alla configurazione Firebase
-- `AUTHENTICATION_GUIDE.md` - Sistema di autenticazione
+- `LIVE_MATCH_FLOW.md` — Flusso dettagliato della gestione live match
+- `SETUP_FIREBASE.md` — Guida alla configurazione Firebase
+- `AUTHENTICATION_GUIDE.md` — Sistema di autenticazione
 - Codice dei componenti in `src/components/`
 
 ## Licenza
