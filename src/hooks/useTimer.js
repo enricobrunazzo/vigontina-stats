@@ -4,7 +4,7 @@ import { ref, onValue, update, remove, serverTimestamp } from "firebase/database
 import { realtimeDb } from "../config/firebase";
 import { getActiveMatchCode } from "./cloudPersistence";
 
-const TIMER_DURATION = 1200; // 20 minuti in secondi
+const TIMER_DURATION = 1080; // 18 minuti in secondi
 
 export const useTimer = () => {
   const [timerSeconds, setTimerSeconds] = useState(0);
