@@ -201,6 +201,14 @@ const VigontinaStats = () => {
         return matchHistory.filter((m) => m?.competition === "Torneo Provinciale Primaverile");
       case "mirabilandia":
         return matchHistory.filter((m) => m?.competition === "Torneo Mirabilandia Festival");
+      case "piove":
+        return matchHistory.filter((m) => m?.competition === "Torneo Piove di Sacco");
+      case "dolo":
+        return matchHistory.filter((m) => m?.competition === "Torneo Dolo");
+      case "cadoneghe":
+        return matchHistory.filter((m) => m?.competition === "Torneo Cadoneghe");
+      case "saccisica":
+        return matchHistory.filter((m) => m?.competition === "Trofeo della Saccisica - Codevigo");
       case "all":
       default:
         return matchHistory;
@@ -381,6 +389,10 @@ const HistoryMenu = ({ onBack, onSelect }) => {
     { key: "autumn", label: "Torneo Provinciale Autunnale" },
     { key: "spring", label: "Torneo Provinciale Primaverile" },
     { key: "mirabilandia", label: "Torneo Mirabilandia Festival" },
+    { key: "piove", label: "Torneo Piove di Sacco" },
+    { key: "dolo", label: "Torneo Dolo" },
+    { key: "cadoneghe", label: "Torneo Cadoneghe" },
+    { key: "saccisica", label: "Trofeo della Saccisica - Codevigo" },
   ];
 
   return (
