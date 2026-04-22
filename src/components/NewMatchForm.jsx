@@ -93,16 +93,20 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
 
     const parsedMatchDay = isLeagueTournament && matchDay.trim() ? parseInt(matchDay, 10) : null;
 
+    // Competizioni senza Casa/Trasferta e senza Staff
+    const isFriendlyLike = FRIENDLY_LIKE_COMPETITIONS.includes(competition);
+    const hideStaff = isMirabilandia || isFriendlyLike;
+
     onSubmit(
       {
         competition,
         matchDay: parsedMatchDay,
-        isHome,
+        isHome: hideStaff ? undefined : isHome,
         opponent,
         date,
         field: isMirabilandia ? field : undefined,
-        assistantReferee: isMirabilandia ? undefined : assistantReferee,
-        manager: isMirabilandia ? undefined : teamManager,
+        assistantReferee: hideStaff ? undefined : assistantReferee,
+        manager: hideStaff ? undefined : teamManager,
         coach,
         notCalled,
         captain: captainPlayer
@@ -123,6 +127,8 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
     competition === "Torneo Provinciale Primaverile";
 
   const isMirabilandia = competition === "Torneo Mirabilandia Festival";
+  const isFriendlyLike = FRIENDLY_LIKE_COMPETITIONS.includes(competition);
+  const hideStaff = isMirabilandia || isFriendlyLike;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
@@ -200,8 +206,8 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
               </div>
             )}
 
-            {/* Luogo: Casa/Trasferta per tutte le competizioni tranne Mirabilandia */}
-            {!isMirabilandia && (
+            {/* Casa/Trasferta: nascosto per Mirabilandia e per i tornei friendly-like */}
+            {!hideStaff && (
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Luogo
@@ -288,8 +294,8 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
             </div>
           </div>
 
-          {/* Staff (nascosto per Torneo Mirabilandia Festival) */}
-          {!isMirabilandia && (
+          {/* Staff: nascosto per Mirabilandia e per i tornei friendly-like */}
+          {!hideStaff && (
             <div className="mt-4 p-3 rounded border bg-slate-50">
               <h3 className="font-medium text-slate-800 mb-2">Staff</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -309,7 +315,7 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text sm font-medium text-slate-700 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
                     Dirigente Accompagnatore
                   </label>
                   <select
@@ -443,7 +449,7 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
         </PickerModal>
       )}
 
-      {/* MODAL: Capitano (single-select) - rimane invariato */}
+      {/* MODAL: Capitano (single-select) */}
       {showCaptainPicker && (
         <PickerModal title="Seleziona Capitano" onClose={() => setShowCaptainPicker(false)}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[60vh] overflow-auto pr-1">
