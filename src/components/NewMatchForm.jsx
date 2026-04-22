@@ -17,6 +17,15 @@ const MIRABILANDIA_FIELDS = [
   "POL 2000 - Campo Sportivo Polisportiva 2000",
 ];
 
+// Competizioni che seguono le regole dell'Amichevole
+const FRIENDLY_LIKE_COMPETITIONS = [
+  "Amichevole",
+  "Torneo Piove di Sacco",
+  "Torneo Dolo",
+  "Torneo Cadoneghe",
+  "Trofeo della Saccisica - Codevigo",
+];
+
 const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
   const [competition, setCompetition] = useState("Torneo Provinciale Autunnale");
   const [matchDay, setMatchDay] = useState("");
@@ -167,6 +176,10 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
                 <option>Torneo Provinciale Primaverile</option>
                 <option>Torneo Mirabilandia Festival</option>
                 <option>Amichevole</option>
+                <option>Torneo Piove di Sacco</option>
+                <option>Torneo Dolo</option>
+                <option>Torneo Cadoneghe</option>
+                <option>Trofeo della Saccisica - Codevigo</option>
               </select>
             </div>
 
