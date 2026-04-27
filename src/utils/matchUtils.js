@@ -10,22 +10,38 @@ const isTechnicalTest = (period) =>
 
 const safeNumber = (v) => (Number.isFinite(v) ? v : 0);
 
-// ✅ FIX: Considera solo periodi completati (non la Prova Tecnica)
+// Considera solo periodi completati (non la Prova Tecnica)
 const getEffectivePeriods = (match) =>
   Array.isArray(match?.periods)
     ? match.periods.filter((p) => !isTechnicalTest(p) && p.completed === true)
     : [];
 
 /**
- * Calcola i punti totali per una squadra (regola: win=1, draw=1, loss=0).
+ * Verifica se la competizione usa la logica "partita singola" (gol totali, no punti per tempo)
+ * @param {Object} match
+ * @returns {boolean}
+ */
+const isSingleMatchLogic = (match) =>
+  match?.competition === "Torneo Mirabilandia Festival";
+
+/**
+ * Calcola i punti totali per una squadra.
+ * - Logica standard (tornei a tempi): win=1, draw=1, loss=0 per ogni tempo completato.
+ * - Logica partita singola (es. Mirabilandia): restituisce i GOL TOTALI,
+ *   poiché il risultato si determina sul computo complessivo dei gol, non sui tempi.
  * @param {Object} match - Oggetto partita
  * @param {string} team - 'vigontina' | 'opponent'
  * @returns {number}
  */
 export const calculatePoints = (match, team) => {
   if (!match || !match.periods) return 0;
-  let points = 0;
 
+  // Mirabilandia: non ci sono punti per tempo, si mostrano i gol totali
+  if (isSingleMatchLogic(match)) {
+    return calculateTotalGoals(match, team);
+  }
+
+  let points = 0;
   for (const period of getEffectivePeriods(match)) {
     const v = safeNumber(period.vigontina);
     const o = safeNumber(period.opponent);
@@ -124,7 +140,6 @@ export const calculateMatchStats = (match) => {
         ownGoalsCount += 1;
         break;
       }
-      // Eventi dell'avversario non impattano marcatori/assist della Vigontina
       default:
         break;
     }
@@ -132,6 +147,7 @@ export const calculateMatchStats = (match) => {
 
   const vigontinaGoals = calculateTotalGoals(match, "vigontina");
   const opponentGoals = calculateTotalGoals(match, "opponent");
+  // Per Mirabilandia i "points" coincidono con i gol totali (logica partita singola)
   const vigontinaPoints = calculatePoints(match, "vigontina");
   const opponentPoints = calculatePoints(match, "opponent");
 
@@ -150,15 +166,28 @@ export const calculateMatchStats = (match) => {
 };
 
 /**
- * Determina il risultato della partita (in base ai PUNTI)
+ * Determina il risultato della partita.
+ * - Logica standard: in base ai PUNTI accumulati per tempo.
+ * - Logica Mirabilandia: in base ai GOL TOTALI complessivi (come una partita singola).
  * @param {Object} match
  * @returns {{isWin:boolean,isDraw:boolean,isLoss:boolean,resultText:string,resultColor:string,resultBg:string}}
  */
 export const getMatchResult = (match) => {
-  const vigontinaPoints = calculatePoints(match, "vigontina");
-  const opponentPoints = calculatePoints(match, "opponent");
-  const isWin = vigontinaPoints > opponentPoints;
-  const isDraw = vigontinaPoints === opponentPoints;
+  let isWin, isDraw;
+
+  if (isSingleMatchLogic(match)) {
+    // Mirabilandia: risultato basato sui gol totali
+    const vigontinaGoals = calculateTotalGoals(match, "vigontina");
+    const opponentGoals = calculateTotalGoals(match, "opponent");
+    isWin = vigontinaGoals > opponentGoals;
+    isDraw = vigontinaGoals === opponentGoals;
+  } else {
+    // Logica standard: risultato basato sui punti per tempo
+    const vigontinaPoints = calculatePoints(match, "vigontina");
+    const opponentPoints = calculatePoints(match, "opponent");
+    isWin = vigontinaPoints > opponentPoints;
+    isDraw = vigontinaPoints === opponentPoints;
+  }
 
   return {
     isWin,
