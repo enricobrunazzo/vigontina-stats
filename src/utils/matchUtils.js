@@ -29,6 +29,18 @@ const SINGLE_MATCH_COMPETITIONS = new Set([
 ]);
 
 /**
+ * Competizioni con solo 2 tempi (niente Prova Tecnica, niente 3°/4° tempo).
+ * Timer: 20 minuti per tempo.
+ */
+export const TWO_HALF_COMPETITIONS = new Set([
+  "Torneo Mirabilandia Festival",
+  "Torneo Piove di Sacco",
+  "Torneo Dolo",
+  "Torneo Cadoneghe",
+  "Trofeo della Saccisica - Codevigo",
+]);
+
+/**
  * Verifica se la competizione usa la logica "partita singola" (gol totali, no punti per tempo)
  * @param {Object} match
  * @returns {boolean}
@@ -223,9 +235,12 @@ export const getMatchResult = (match) => {
  */
 export const createMatchStructure = (matchData) => {
   const isFriendlyLike = matchData?.competition === "Amichevole";
-  const isMirabilandia = matchData?.competition === "Torneo Mirabilandia Festival";
+  const isTwoHalves = TWO_HALF_COMPETITIONS.has(matchData?.competition);
 
-  const periods = isMirabilandia
+  // Tornei a 2 tempi: Mirabilandia + Piove di Sacco + Dolo + Cadoneghe + Saccisica/Codevigo
+  // Amichevole: 4 tempi, niente Prova Tecnica
+  // Tornei provinciali: Prova Tecnica + 4 tempi
+  const periods = isTwoHalves
     ? ["1° TEMPO", "2° TEMPO"]
     : isFriendlyLike
       ? ["1° TEMPO", "2° TEMPO", "3° TEMPO", "4° TEMPO"]
