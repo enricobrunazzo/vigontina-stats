@@ -3,10 +3,26 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { ref, onValue, update, remove, serverTimestamp } from "firebase/database";
 import { realtimeDb } from "../config/firebase";
 import { getActiveMatchCode } from "./cloudPersistence";
+import { TWO_HALF_COMPETITIONS } from "../utils/matchUtils";
 
-const TIMER_DURATION = 1080; // 18 minuti in secondi
+/** Durata standard (tornei provinciali, amichevoli): 18 minuti */
+const TIMER_DURATION_DEFAULT = 1080;
+/** Durata per tornei a 2 tempi (Mirabilandia, Piove, Dolo, Cadoneghe, Saccisica): 20 minuti */
+const TIMER_DURATION_TWO_HALVES = 1200;
 
-export const useTimer = () => {
+/**
+ * Restituisce la durata del timer in secondi in base alla competizione.
+ * @param {string|undefined} competition
+ * @returns {number}
+ */
+export const getTimerDuration = (competition) =>
+  TWO_HALF_COMPETITIONS.has(competition)
+    ? TIMER_DURATION_TWO_HALVES
+    : TIMER_DURATION_DEFAULT;
+
+export const useTimer = (competition) => {
+  const TIMER_DURATION = getTimerDuration(competition);
+
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [timerStartTime, setTimerStartTime] = useState(null);
@@ -23,7 +39,6 @@ export const useTimer = () => {
     try {
       const r = getTimerRef();
       if (!r) return;
-      // one-shot read via onValue with { onlyOnce: true } alternative is get(), but keep onValue for consistency
       await new Promise((resolve) => {
         const unsub = onValue(r, (snap) => {
           const data = snap.exists() ? snap.val() : null;
@@ -40,7 +55,7 @@ export const useTimer = () => {
     } catch (error) {
       console.error("Errore caricamento timer (RTDB):", error);
     }
-  }, [getTimerRef]);
+  }, [getTimerRef, TIMER_DURATION]);
 
   const saveTimerState = useCallback(async (startTime, running) => {
     try {
@@ -127,7 +142,7 @@ export const useTimer = () => {
     }
 
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [isTimerRunning, timerStartTime, clearTimerState]);
+  }, [isTimerRunning, timerStartTime, clearTimerState, TIMER_DURATION]);
 
   useEffect(() => { return () => { releaseWakeLock(); }; }, []);
 
@@ -140,5 +155,6 @@ export const useTimer = () => {
     formatTime,
     getCurrentMinute,
     loadTimerState,
+    timerDuration: TIMER_DURATION,
   };
 };
