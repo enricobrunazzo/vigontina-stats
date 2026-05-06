@@ -26,7 +26,9 @@ const VigontinaStats = () => {
   const [historyFilter, setHistoryFilter] = useState("all");
 
   // Custom hooks
-  const timer = useTimer();
+  const match = useMatch();
+  // Passa la competizione al timer così usa 20 min per i tornei a 2 tempi
+  const timer = useTimer(match.currentMatch?.competition);
   const {
     matchHistory,
     loadHistory,
@@ -36,7 +38,6 @@ const VigontinaStats = () => {
     stats,
     lastPlayedMatch,
   } = useMatchHistory();
-  const match = useMatch();
 
   // Load history and timer state on mount
   useEffect(() => {
