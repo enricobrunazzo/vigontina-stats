@@ -23,7 +23,7 @@ const getEffectivePeriods = (match) =>
 const SINGLE_MATCH_COMPETITIONS = new Set([
   "Torneo Mirabilandia Festival",
   "Torneo Piove di Sacco",
-  "Torneo Dolo",
+  "Torneo Derby Cup Dolo",
   "Torneo Cadoneghe",
   "Trofeo della Saccisica - Codevigo",
 ]);
@@ -35,7 +35,7 @@ const SINGLE_MATCH_COMPETITIONS = new Set([
 export const TWO_HALF_COMPETITIONS = new Set([
   "Torneo Mirabilandia Festival",
   "Torneo Piove di Sacco",
-  "Torneo Dolo",
+  "Torneo Derby Cup Dolo",
   "Torneo Cadoneghe",
   "Trofeo della Saccisica - Codevigo",
 ]);
@@ -237,7 +237,7 @@ export const createMatchStructure = (matchData) => {
   const isFriendlyLike = matchData?.competition === "Amichevole";
   const isTwoHalves = TWO_HALF_COMPETITIONS.has(matchData?.competition);
 
-  // Tornei a 2 tempi: Mirabilandia + Piove di Sacco + Dolo + Cadoneghe + Saccisica/Codevigo
+  // Tornei a 2 tempi: Mirabilandia + Piove di Sacco + Derby Cup Dolo + Cadoneghe + Saccisica/Codevigo
   // Amichevole: 4 tempi, niente Prova Tecnica
   // Tornei provinciali: Prova Tecnica + 4 tempi
   const periods = isTwoHalves

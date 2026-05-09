@@ -21,7 +21,7 @@ const MIRABILANDIA_FIELDS = [
 const FRIENDLY_LIKE_COMPETITIONS = [
   "Amichevole",
   "Torneo Piove di Sacco",
-  "Torneo Dolo",
+  "Torneo Derby Cup Dolo",
   "Torneo Cadoneghe",
   "Trofeo della Saccisica - Codevigo",
 ];
@@ -183,7 +183,7 @@ const NewMatchForm = ({ onSubmit, onCancel, requestPassword = false }) => {
                 <option>Torneo Mirabilandia Festival</option>
                 <option>Amichevole</option>
                 <option>Torneo Piove di Sacco</option>
-                <option>Torneo Dolo</option>
+                <option>Torneo Derby Cup Dolo</option>
                 <option>Torneo Cadoneghe</option>
                 <option>Trofeo della Saccisica - Codevigo</option>
               </select>
