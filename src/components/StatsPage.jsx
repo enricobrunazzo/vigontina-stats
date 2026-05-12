@@ -1,6 +1,6 @@
 // components/StatsPage.jsx
 import React, { useMemo } from "react";
-import { ArrowLeft, Trophy, ShieldOff } from "lucide-react";
+import { ArrowLeft, Trophy, ShieldOff, Swords } from "lucide-react";
 import { PLAYERS } from "../constants/players";
 import { calculateTotalGoals } from "../utils/matchUtils";
 
@@ -130,6 +130,15 @@ const StatsPage = ({ matchHistory, onBack }) => {
     [totalGoalsConceded, matchHistory]
   );
 
+  // Media gol fatti a partita
+  const avgScored = useMemo(
+    () =>
+      matchHistory.length > 0
+        ? (totalGoals / matchHistory.length).toFixed(1)
+        : "0.0",
+    [totalGoals, matchHistory]
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
       <div className="max-w-2xl mx-auto">
@@ -170,6 +179,22 @@ const StatsPage = ({ matchHistory, onBack }) => {
               </div>
             </div>
           </div>
+
+          {/* Statistiche offensive */}
+          {matchHistory.length > 0 && (
+            <div className="mb-6">
+              <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                <Swords className="w-5 h-5 text-cyan-500" />
+                Attacco
+              </h3>
+              <div className="grid grid-cols-1 gap-3">
+                <div className="bg-cyan-50 border border-cyan-100 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-cyan-600">{avgScored}</p>
+                  <p className="text-xs text-gray-500 mt-1">Media Gol Fatti / Partita</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Statistiche difensive */}
           {matchHistory.length > 0 && (
