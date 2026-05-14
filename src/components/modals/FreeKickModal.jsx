@@ -47,6 +47,9 @@ const FreeKickModal = ({ onConfirm, onCancel, opponentName, availablePlayers }) 
           <div className="mb-4">
             <p className="text-sm font-medium text-gray-700 mb-2">Esito della punizione:</p>
             <div className="space-y-2">
+              <button onClick={() => { setSelectedOutcome('goal'); setHitType(null); }} className={`w-full p-3 rounded-lg border-2 text-left ${selectedOutcome === 'goal' ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
+                <p className="font-medium text-gray-800">⚽ Gol</p>
+              </button>
               <button onClick={() => { setSelectedOutcome('missed'); setHitType(null); }} className={`w-full p-3 rounded-lg border-2 text-left ${selectedOutcome === 'missed' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
                 <p className="font-medium text-gray-800">🎯 Fuori</p>
               </button>

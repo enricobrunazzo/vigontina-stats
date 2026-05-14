@@ -405,6 +405,16 @@ export const useMatch = () => {
       updated.periods = [...prev.periods];
       const period = { ...updated.periods[currentPeriod] };
       period.goals = [...period.goals, freeKick];
+
+      // Se è un gol su punizione, aggiorna il punteggio
+      if (outcome === 'goal') {
+        if (team === 'vigontina') {
+          period.vigontina = (period.vigontina || 0) + 1;
+        } else {
+          period.opponent = (period.opponent || 0) + 1;
+        }
+      }
+
       updated.periods[currentPeriod] = period;
       return updated;
     });
@@ -428,9 +438,9 @@ export const useMatch = () => {
         
         // Se era un gol, rimuovi il punto
         const event = events[eventIndex];
-        if (['goal', 'penalty-goal', 'opponent-own-goal'].includes(event.type)) {
+        if (['goal', 'penalty-goal', 'opponent-own-goal', 'free-kick-goal'].includes(event.type)) {
           period.vigontina = Math.max(0, (period.vigontina || 0) - 1);
-        } else if (['opponent-goal', 'penalty-opponent-goal', 'own-goal'].includes(event.type)) {
+        } else if (['opponent-goal', 'penalty-opponent-goal', 'own-goal', 'free-kick-goal-opponent'].includes(event.type)) {
           period.opponent = Math.max(0, (period.opponent || 0) - 1);
         }
       }

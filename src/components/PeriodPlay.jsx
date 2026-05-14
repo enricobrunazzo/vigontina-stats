@@ -127,7 +127,7 @@ const PeriodPlay = ({
     events.forEach((event, idx) => {
       const e = { ...event, originalIndex: idx };
       if (
-        ['goal','penalty-goal','penalty-missed','save','missed-shot','shot-blocked','substitution','free-kick-missed','free-kick-saved','free-kick-hit'].includes(event.type)
+        ['goal','penalty-goal','penalty-missed','save','missed-shot','shot-blocked','substitution','free-kick-missed','free-kick-saved','free-kick-hit','free-kick-goal'].includes(event.type)
         || event.type === 'opponent-own-goal'
         || event.type === 'palo-vigontina'
         || event.type === 'traversa-vigontina'
@@ -420,6 +420,22 @@ const TeamEventCard = ({ event, team, opponentName }) => {
     const isVig = event.team === 'vigontina';
     const hitTypeDisplay = event.hitType === 'palo' ? '🧱 Palo' : '⎯ Traversa';
     return grayCard(<p className="font-medium text-gray-800">{hitTypeDisplay} {event.minute}' - {isVig ? `${event.player} ${event.playerName}` : opponentName}</p>);
+  }
+  if (event.type === 'free-kick-goal') {
+    return greenCard(
+      <p className={`font-medium text-green-800 ${textClasses}`}>
+        ⚽🟧 {event.minute}' - Gol Punizione {`${event.player || ''} ${event.playerName || ''}`.trim()}
+        <Badge color="orange">PUN.</Badge>
+      </p>
+    );
+  }
+  if (event.type === 'free-kick-goal-opponent') {
+    return blueCard(
+      <p className={`font-medium text-blue-800 ${textClasses}`}>
+        ⚽🟧 {event.minute}' - Gol Punizione {opponentName}
+        <Badge color="orange">PUN.</Badge>
+      </p>
+    );
   }
   if (event.type?.startsWith('free-kick')) {
     const isOpp = event.type.includes('opponent');
