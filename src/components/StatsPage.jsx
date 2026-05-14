@@ -4,17 +4,9 @@ import { ArrowLeft, Trophy, ShieldOff, Swords } from "lucide-react";
 import { PLAYERS } from "../constants/players";
 import { calculateTotalGoals } from "../utils/matchUtils";
 
-/**
- * Calcola la classifica marcatori da tutto lo storico partite.
- * Conta: goal + penalty-goal + opponent-own-goal (autogol avversario che vale per Vigontina)
- * Esclude: eventi con deletionReason (cancellati), periodi PROVA TECNICA
- */
 const buildScorerRanking = (matchHistory) => {
-  // Mappa: playerKey (num + name) -> { num, name, goals, assists, matches: Set }
   const map = new Map();
-
   const getKey = (num, name) => `${num}__${name}`;
-
   const ensurePlayer = (num, name) => {
     const key = getKey(num, name);
     if (!map.has(key)) {
@@ -26,22 +18,15 @@ const buildScorerRanking = (matchHistory) => {
   matchHistory.forEach((match) => {
     if (!Array.isArray(match.periods)) return;
     match.periods.forEach((period) => {
-      // Escludi PROVA TECNICA
       if ((period?.name || "").trim().toUpperCase() === "PROVA TECNICA") return;
       if (!Array.isArray(period.goals)) return;
-
       period.goals.forEach((event) => {
-        // Salta eventi cancellati
         if (event.deletionReason) return;
-
         const type = event.type || "";
-
-        // Gol Vigontina (normale o rigore)
         if (
           (type === "goal" || type === "penalty-goal") &&
           Number.isFinite(event.scorer)
         ) {
-          // Cerca il nome preferendo quello salvato nell'evento, poi da PLAYERS
           const playerObj = PLAYERS.find(
             (p) => p.num === event.scorer && p.name === event.scorerName
           ) || PLAYERS.find((p) => p.num === event.scorer);
@@ -49,8 +34,6 @@ const buildScorerRanking = (matchHistory) => {
           const entry = ensurePlayer(event.scorer, name);
           entry.goals += 1;
           if (match.id) entry.matchIds.add(match.id);
-
-          // Assist
           if (Number.isFinite(event.assist)) {
             const aObj = PLAYERS.find(
               (p) => p.num === event.assist && p.name === event.assistName
@@ -61,14 +44,10 @@ const buildScorerRanking = (matchHistory) => {
             if (match.id) aEntry.matchIds.add(match.id);
           }
         }
-
-        // Autogol avversario (punto a Vigontina, ma non di un giocatore specifico)
-        // Non viene attribuito a nessuno — solo i gol con scorer vengono contati
       });
     });
   });
 
-  // Converti in array e ordina: prima per gol desc, poi per assist desc, poi per numero maglia asc
   return Array.from(map.values())
     .filter((p) => p.goals > 0 || p.assists > 0)
     .map((p) => ({ ...p, matchCount: p.matchIds.size }))
@@ -96,13 +75,11 @@ const getMedalEmoji = (rank) => {
 const StatsPage = ({ matchHistory, onBack }) => {
   const scorers = useMemo(() => buildScorerRanking(matchHistory), [matchHistory]);
 
-  // Totali stagione
   const totalGoals = useMemo(
     () => scorers.reduce((sum, p) => sum + p.goals, 0),
     [scorers]
   );
 
-  // Gol subiti stagione (somma dei gol avversari in tutte le partite, esclusa PROVA TECNICA)
   const totalGoalsConceded = useMemo(
     () =>
       matchHistory.reduce(
@@ -112,16 +89,6 @@ const StatsPage = ({ matchHistory, onBack }) => {
     [matchHistory]
   );
 
-  // Partite senza gol subiti (clean sheet)
-  const cleanSheets = useMemo(
-    () =>
-      matchHistory.filter(
-        (match) => calculateTotalGoals(match, "opponent") === 0
-      ).length,
-    [matchHistory]
-  );
-
-  // Media gol subiti a partita
   const avgConceded = useMemo(
     () =>
       matchHistory.length > 0
@@ -130,7 +97,6 @@ const StatsPage = ({ matchHistory, onBack }) => {
     [totalGoalsConceded, matchHistory]
   );
 
-  // Media gol fatti a partita
   const avgScored = useMemo(
     () =>
       matchHistory.length > 0
@@ -161,7 +127,6 @@ const StatsPage = ({ matchHistory, onBack }) => {
           <div className="bg-gradient-to-r from-slate-50 to-cyan-50 rounded-lg p-4 mb-6">
             <p className="text-sm text-gray-500 mb-3 text-center">Stagione 2025-2026</p>
             <div className="grid grid-cols-2 gap-4">
-              {/* Gol segnati */}
               <div className="text-center">
                 <p className="text-3xl font-bold text-gray-800">{totalGoals}</p>
                 <p className="text-sm text-gray-600">
@@ -170,7 +135,6 @@ const StatsPage = ({ matchHistory, onBack }) => {
                   {matchHistory.length === 1 ? "partita" : "partite"}
                 </p>
               </div>
-              {/* Gol subiti */}
               <div className="text-center border-l border-gray-200">
                 <p className="text-3xl font-bold text-red-500">{totalGoalsConceded}</p>
                 <p className="text-sm text-gray-600">
@@ -187,7 +151,11 @@ const StatsPage = ({ matchHistory, onBack }) => {
                 <Swords className="w-5 h-5 text-cyan-500" />
                 Attacco
               </h3>
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-cyan-50 border border-cyan-100 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-cyan-600">{totalGoals}</p>
+                  <p className="text-xs text-gray-500 mt-1">Gol Segnati Totali</p>
+                </div>
                 <div className="bg-cyan-50 border border-cyan-100 rounded-lg p-3 text-center">
                   <p className="text-2xl font-bold text-cyan-600">{avgScored}</p>
                   <p className="text-xs text-gray-500 mt-1">Media Gol Fatti / Partita</p>
@@ -208,13 +176,7 @@ const StatsPage = ({ matchHistory, onBack }) => {
                   <p className="text-2xl font-bold text-red-600">{totalGoalsConceded}</p>
                   <p className="text-xs text-gray-500 mt-1">Gol Subiti Totali</p>
                 </div>
-                <div className="bg-green-50 border border-green-100 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-green-600">{cleanSheets}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Clean Sheet{cleanSheets !== 1 ? "s" : ""}
-                  </p>
-                </div>
-                <div className="bg-orange-50 border border-orange-100 rounded-lg p-3 text-center col-span-2">
+                <div className="bg-orange-50 border border-orange-100 rounded-lg p-3 text-center">
                   <p className="text-2xl font-bold text-orange-600">{avgConceded}</p>
                   <p className="text-xs text-gray-500 mt-1">Media Gol Subiti / Partita</p>
                 </div>
@@ -253,7 +215,6 @@ const StatsPage = ({ matchHistory, onBack }) => {
                         : "bg-white border-gray-100"
                     }`}
                   >
-                    {/* Posizione + nome */}
                     <div className="flex items-center gap-3">
                       <span
                         className={`text-lg font-bold w-7 text-center ${getMedalColor(rank)}`}
@@ -269,8 +230,6 @@ const StatsPage = ({ matchHistory, onBack }) => {
                         </span>
                       </div>
                     </div>
-
-                    {/* Stats */}
                     <div className="flex items-center gap-4 text-sm">
                       {player.assists > 0 && (
                         <span className="text-blue-600 text-xs">
@@ -291,7 +250,6 @@ const StatsPage = ({ matchHistory, onBack }) => {
             </div>
           )}
 
-          {/* Legenda */}
           {scorers.length > 0 && (
             <p className="text-xs text-gray-400 mt-4 text-center">
               ⚽ gol segnati &nbsp;·&nbsp; 🅰️ assist &nbsp;·&nbsp; Periodi
