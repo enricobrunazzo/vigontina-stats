@@ -7,8 +7,8 @@ import { TWO_HALF_COMPETITIONS } from "../utils/matchUtils";
 
 /** Durata standard (tornei provinciali, amichevoli): 22 minuti */
 const TIMER_DURATION_DEFAULT = 1320;
-/** Durata per tornei a 2 tempi (Mirabilandia, Piove, Dolo, Cadoneghe, Saccisica): 20 minuti */
-const TIMER_DURATION_TWO_HALVES = 1200;
+/** Durata per tornei a 2 tempi (Mirabilandia, Piove, Dolo, Cadoneghe, Saccisica): 22 minuti */
+const TIMER_DURATION_TWO_HALVES = 1320;
 
 /**
  * Restituisce la durata del timer in secondi in base alla competizione.
