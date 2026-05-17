@@ -5,8 +5,8 @@ import { realtimeDb } from "../config/firebase";
 import { getActiveMatchCode } from "./cloudPersistence";
 import { TWO_HALF_COMPETITIONS } from "../utils/matchUtils";
 
-/** Durata standard (tornei provinciali, amichevoli): 18 minuti */
-const TIMER_DURATION_DEFAULT = 1080;
+/** Durata standard (tornei provinciali, amichevoli): 22 minuti */
+const TIMER_DURATION_DEFAULT = 1320;
 /** Durata per tornei a 2 tempi (Mirabilandia, Piove, Dolo, Cadoneghe, Saccisica): 20 minuti */
 const TIMER_DURATION_TWO_HALVES = 1200;
 
@@ -130,7 +130,7 @@ export const useTimer = (competition) => {
           setTimerSeconds(TIMER_DURATION);
           setIsTimerRunning(false);
           clearTimerState();
-          alert("⏰ FINE TEMPO!\n\nIl tempo è scaduto.");
+          alert("\u23f0 FINE TEMPO!\n\nIl tempo \u00e8 scaduto.");
           if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500]);
         } else {
           setTimerSeconds(elapsed);
