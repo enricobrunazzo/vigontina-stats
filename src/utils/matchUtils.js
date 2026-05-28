@@ -36,8 +36,15 @@ export const TWO_HALF_COMPETITIONS = new Set([
   "Torneo Mirabilandia Festival",
   "Torneo Piove di Sacco",
   "Torneo Derby Cup Dolo",
-  "Torneo Cadoneghe",
   "Trofeo della Saccisica - Codevigo",
+]);
+
+/**
+ * Competizioni con 3 tempi.
+ * Timer: 20 minuti per tempo.
+ */
+export const THREE_HALF_COMPETITIONS = new Set([
+  "Torneo Cadoneghe",
 ]);
 
 /**
@@ -236,15 +243,19 @@ export const getMatchResult = (match) => {
 export const createMatchStructure = (matchData) => {
   const isFriendlyLike = matchData?.competition === "Amichevole";
   const isTwoHalves = TWO_HALF_COMPETITIONS.has(matchData?.competition);
+  const isThreeHalves = THREE_HALF_COMPETITIONS.has(matchData?.competition);
 
-  // Tornei a 2 tempi: Mirabilandia + Piove di Sacco + Derby Cup Dolo + Cadoneghe + Saccisica/Codevigo
+  // Torneo Cadoneghe: 3 tempi
+  // Altri tornei a 2 tempi: Mirabilandia + Piove di Sacco + Derby Cup Dolo + Saccisica/Codevigo
   // Amichevole: 4 tempi, niente Prova Tecnica
   // Tornei provinciali: Prova Tecnica + 4 tempi
-  const periods = isTwoHalves
-    ? ["1° TEMPO", "2° TEMPO"]
-    : isFriendlyLike
-      ? ["1° TEMPO", "2° TEMPO", "3° TEMPO", "4° TEMPO"]
-      : ["PROVA TECNICA", "1° TEMPO", "2° TEMPO", "3° TEMPO", "4° TEMPO"];
+  const periods = isThreeHalves
+    ? ["1° TEMPO", "2° TEMPO", "3° TEMPO"]
+    : isTwoHalves
+      ? ["1° TEMPO", "2° TEMPO"]
+      : isFriendlyLike
+        ? ["1° TEMPO", "2° TEMPO", "3° TEMPO", "4° TEMPO"]
+        : ["PROVA TECNICA", "1° TEMPO", "2° TEMPO", "3° TEMPO", "4° TEMPO"];
 
   return {
     ...matchData,
