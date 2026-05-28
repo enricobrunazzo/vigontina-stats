@@ -24,7 +24,6 @@ const SINGLE_MATCH_COMPETITIONS = new Set([
   "Torneo Mirabilandia Festival",
   "Torneo Piove di Sacco",
   "Torneo Derby Cup Dolo",
-  "Torneo Cadoneghe",
   "Trofeo della Saccisica - Codevigo",
 ]);
 
@@ -40,7 +39,7 @@ export const TWO_HALF_COMPETITIONS = new Set([
 ]);
 
 /**
- * Competizioni con 3 tempi.
+ * Competizioni con 3 tempi e logica a punti per tempo.
  * Timer: 20 minuti per tempo.
  */
 export const THREE_HALF_COMPETITIONS = new Set([
@@ -245,7 +244,7 @@ export const createMatchStructure = (matchData) => {
   const isTwoHalves = TWO_HALF_COMPETITIONS.has(matchData?.competition);
   const isThreeHalves = THREE_HALF_COMPETITIONS.has(matchData?.competition);
 
-  // Torneo Cadoneghe: 3 tempi
+  // Torneo Cadoneghe: 3 tempi, logica a punti per tempo
   // Altri tornei a 2 tempi: Mirabilandia + Piove di Sacco + Derby Cup Dolo + Saccisica/Codevigo
   // Amichevole: 4 tempi, niente Prova Tecnica
   // Tornei provinciali: Prova Tecnica + 4 tempi
