@@ -1,7 +1,7 @@
-// components/MatchOverview.jsx (shared viewer hides action buttons)
+// components/MatchOverview.jsx
 import React from "react";
-import { ArrowLeft, Download, FileText, ClipboardCheck } from "lucide-react";
-import { calculatePoints, calculateTotalGoals } from "../utils/matchUtils";
+import { ArrowLeft, Download, FileText, ClipboardCheck, Target } from "lucide-react";
+import { calculatePoints, calculateTotalGoals, needsShootout, allPeriodsCompleted, SHOOTOUT_COMPETITIONS } from "../utils/matchUtils";
 
 const MatchOverview = ({
   match,
@@ -16,8 +16,15 @@ const MatchOverview = ({
   onBack,
   isShared = false,
   userRole = 'viewer',
+  onStartShootout,
 }) => {
   const isViewer = isShared && userRole !== 'organizer';
+  const showShootoutButton =
+    !isViewer &&
+    SHOOTOUT_COMPETITIONS.has(match?.competition) &&
+    allPeriodsCompleted(match) &&
+    needsShootout(match);
+  const shootoutDone = !!match?.shootout;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
@@ -31,7 +38,6 @@ const MatchOverview = ({
         </button>
 
         <div className="bg-white rounded-lg shadow-lg p-6">
-          {/* Header con titolo */}
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-2xl font-bold">
               Vigontina vs {match.opponent}
@@ -44,11 +50,11 @@ const MatchOverview = ({
               LIVE
             </span>
           )}
-          
+
           <p className="text-sm text-gray-600 mb-2">
             {match.isHome ? "🏠 Casa" : "✈️ Trasferta"}
           </p>
-          
+
           <p className="text-sm text-gray-600 mb-4">
             {match.competition}
             {match.matchDay && ` - Giornata ${match.matchDay}`}
@@ -75,9 +81,18 @@ const MatchOverview = ({
                 </div>
               </div>
               <p className="text-xs text-gray-600 mt-2">
-                Gol: {calculateTotalGoals(match, "vigontina")} - {" "}
+                Gol: {calculateTotalGoals(match, "vigontina")} -{" "}
                 {calculateTotalGoals(match, "opponent")}
               </p>
+              {/* Risultato spareggio se già registrato */}
+              {shootoutDone && (
+                <div className={`mt-2 text-sm font-semibold ${
+                  match.shootout.winner === "vigontina" ? "text-green-700" : "text-red-700"
+                }`}>
+                  🎯 Rigori: {match.shootout.vigontina} - {match.shootout.opponent}
+                  {" "}({match.shootout.winner === "vigontina" ? "Vigontina" : match.opponent} vince ai rigori)
+                </div>
+              )}
             </div>
           </div>
 
@@ -120,6 +135,28 @@ const MatchOverview = ({
             ))}
           </div>
 
+          {/* SPAREGGIO RIGORI — solo Torneo Cadoneghe, solo se parità dopo 3 tempi */}
+          {showShootoutButton && (
+            <div className="mb-6 bg-purple-50 border-2 border-purple-300 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <Target className="w-6 h-6 text-purple-600 flex-shrink-0 mt-1" />
+                <div className="flex-1">
+                  <h3 className="font-semibold text-purple-900 mb-1">Spareggio Rigori</h3>
+                  <p className="text-xs text-purple-700 mb-3">
+                    I tre tempi sono terminati in parità. Registra la serie di rigori.
+                  </p>
+                  <button
+                    onClick={onStartShootout}
+                    className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 text-sm font-medium"
+                  >
+                    <Target className="w-4 h-4" />
+                    Inizia Spareggio Rigori
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Rapporto FIGC */}
           <div className="mb-6 bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
@@ -138,7 +175,6 @@ const MatchOverview = ({
             </div>
           </div>
 
-          {/* Azione unica sotto Dettagli */}
           <button
             onClick={onSummary}
             className="w-full bg-purple-400 text-white py-2 rounded hover:bg-purple-500 flex items-center justify-center gap-2 text-sm mb-3"
@@ -147,7 +183,6 @@ const MatchOverview = ({
             Riepilogo
           </button>
 
-          {/* PULSANTI EXCEL E PDF SPOSTATI PRIMA DI SALVA PARTITA */}
           {!isViewer && (
             <div className="space-y-2">
               <div className="grid grid-cols-2 gap-3">
@@ -164,7 +199,7 @@ const MatchOverview = ({
                   <Download className="w-4 h-4" /> PDF
                 </button>
               </div>
-              
+
               <button
                 onClick={onSave}
                 className="w-full bg-blue-400 text-white py-2 rounded hover:bg-blue-500 font-medium flex items-center justify-center gap-2 text-sm"

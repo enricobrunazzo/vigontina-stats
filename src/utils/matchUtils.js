@@ -47,26 +47,45 @@ export const THREE_HALF_COMPETITIONS = new Set([
 ]);
 
 /**
+ * Competizioni che prevedono spareggio rigori in caso di parità totale.
+ */
+export const SHOOTOUT_COMPETITIONS = new Set([
+  "Torneo Cadoneghe",
+]);
+
+/**
  * Verifica se la competizione usa la logica "partita singola" (gol totali, no punti per tempo)
- * @param {Object} match
- * @returns {boolean}
  */
 const isSingleMatchLogic = (match) =>
   SINGLE_MATCH_COMPETITIONS.has(match?.competition);
 
 /**
+ * Verifica se tutti i tempi effettivi sono completati
+ */
+export const allPeriodsCompleted = (match) => {
+  if (!match || !Array.isArray(match.periods)) return false;
+  const effective = match.periods.filter((p) => !isTechnicalTest(p));
+  return effective.length > 0 && effective.every((p) => p.completed === true);
+};
+
+/**
+ * Verifica se la partita è in parità dopo tutti i tempi (solo per competizioni con spareggio)
+ */
+export const needsShootout = (match) => {
+  if (!SHOOTOUT_COMPETITIONS.has(match?.competition)) return false;
+  if (!allPeriodsCompleted(match)) return false;
+  if (match.shootout) return false; // spareggio già registrato
+  const vp = calculatePoints(match, "vigontina");
+  const op = calculatePoints(match, "opponent");
+  return vp === op;
+};
+
+/**
  * Calcola i punti totali per una squadra.
- * - Logica standard (tornei a tempi): win=1, draw=1, loss=0 per ogni tempo completato.
- * - Logica partita singola: restituisce i GOL TOTALI,
- *   poiché il risultato si determina sul computo complessivo dei gol, non sui tempi.
- * @param {Object} match - Oggetto partita
- * @param {string} team - 'vigontina' | 'opponent'
- * @returns {number}
  */
 export const calculatePoints = (match, team) => {
   if (!match || !match.periods) return 0;
 
-  // Logica partita singola: non ci sono punti per tempo, si mostrano i gol totali
   if (isSingleMatchLogic(match)) {
     return calculateTotalGoals(match, team);
   }
@@ -77,7 +96,7 @@ export const calculatePoints = (match, team) => {
     const o = safeNumber(period.opponent);
 
     if (v === o) {
-      points += 1; // pareggio: 1 punto ad entrambe
+      points += 1;
     } else if (v > o) {
       points += team === "vigontina" ? 1 : 0;
     } else {
@@ -90,9 +109,6 @@ export const calculatePoints = (match, team) => {
 
 /**
  * Calcola i gol totali per una squadra (escludendo la PROVA TECNICA)
- * @param {Object} match
- * @param {string} team - 'vigontina' | 'opponent'
- * @returns {number}
  */
 export const calculateTotalGoals = (match, team) => {
   if (!match || !match.periods) return 0;
@@ -106,8 +122,6 @@ export const calculateTotalGoals = (match, team) => {
 
 /**
  * Calcola le statistiche di una partita (escludendo la PROVA TECNICA dagli eventi)
- * @param {Object} match
- * @returns {Object} Statistiche complete
  */
 export const calculateMatchStats = (match) => {
   if (!match || !match.periods) {
@@ -125,7 +139,6 @@ export const calculateMatchStats = (match) => {
     };
   }
 
-  // Escludiamo PROVA TECNICA anche dal tracciamento degli eventi
   const allGoals = match.periods
     .filter((p) => !isTechnicalTest(p))
     .flatMap((period) =>
@@ -177,7 +190,6 @@ export const calculateMatchStats = (match) => {
 
   const vigontinaGoals = calculateTotalGoals(match, "vigontina");
   const opponentGoals = calculateTotalGoals(match, "opponent");
-  // Per le competizioni a logica singola i "points" coincidono con i gol totali
   const vigontinaPoints = calculatePoints(match, "vigontina");
   const opponentPoints = calculatePoints(match, "opponent");
 
@@ -197,22 +209,21 @@ export const calculateMatchStats = (match) => {
 
 /**
  * Determina il risultato della partita.
- * - Logica standard: in base ai PUNTI accumulati per tempo.
- * - Logica partita singola: in base ai GOL TOTALI complessivi.
- * @param {Object} match
- * @returns {{isWin:boolean,isDraw:boolean,isLoss:boolean,resultText:string,resultColor:string,resultBg:string}}
+ * Per Cadoneghe: se c'è uno spareggio registrato, usa quello per determinare win/loss.
  */
 export const getMatchResult = (match) => {
   let isWin, isDraw;
 
-  if (isSingleMatchLogic(match)) {
-    // Logica partita singola: risultato basato sui gol totali
+  // Se c'è uno spareggio rigori registrato, ha sempre la precedenza
+  if (match?.shootout) {
+    isWin = match.shootout.winner === "vigontina";
+    isDraw = false;
+  } else if (isSingleMatchLogic(match)) {
     const vigontinaGoals = calculateTotalGoals(match, "vigontina");
     const opponentGoals = calculateTotalGoals(match, "opponent");
     isWin = vigontinaGoals > opponentGoals;
     isDraw = vigontinaGoals === opponentGoals;
   } else {
-    // Logica standard: risultato basato sui punti per tempo
     const vigontinaPoints = calculatePoints(match, "vigontina");
     const opponentPoints = calculatePoints(match, "opponent");
     isWin = vigontinaPoints > opponentPoints;
@@ -236,18 +247,12 @@ export const getMatchResult = (match) => {
 
 /**
  * Crea una nuova struttura partita
- * @param {Object} matchData
- * @returns {Object} Oggetto partita completo
  */
 export const createMatchStructure = (matchData) => {
   const isFriendlyLike = matchData?.competition === "Amichevole";
   const isTwoHalves = TWO_HALF_COMPETITIONS.has(matchData?.competition);
   const isThreeHalves = THREE_HALF_COMPETITIONS.has(matchData?.competition);
 
-  // Torneo Cadoneghe: 3 tempi, logica a punti per tempo
-  // Altri tornei a 2 tempi: Mirabilandia + Piove di Sacco + Derby Cup Dolo + Saccisica/Codevigo
-  // Amichevole: 4 tempi, niente Prova Tecnica
-  // Tornei provinciali: Prova Tecnica + 4 tempi
   const periods = isThreeHalves
     ? ["1° TEMPO", "2° TEMPO", "3° TEMPO"]
     : isTwoHalves
