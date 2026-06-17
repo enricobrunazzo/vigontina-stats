@@ -9,7 +9,7 @@ import {
   doc,
 } from "firebase/firestore";
 import { db } from "../config/firebase";
-import { calculatePoints, calculateTotalGoals } from "../utils/matchUtils";
+import { calculatePoints, calculateTotalGoals, getMatchResult } from "../utils/matchUtils";
 
 // Sanitize helpers for Firestore-compatible payloads
 const cleanString = (s = "") => String(s).normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim();
@@ -36,9 +36,24 @@ const sanitizeEvent = (e = {}) => {
     out,
     in: inn,
   };
-  // Remove undefined fields
   Object.keys(evt).forEach((k) => evt[k] === undefined && delete evt[k]);
   return evt;
+};
+
+const sanitizeShootout = (shootout) => {
+  if (!shootout) return undefined;
+  return {
+    vigontina: cleanNumber(shootout.vigontina),
+    opponent: cleanNumber(shootout.opponent),
+    winner: cleanString(shootout.winner), // 'vigontina' | 'opponent'
+    kicks: Array.isArray(shootout.kicks)
+      ? shootout.kicks.map((k) => ({
+          team: cleanString(k.team),
+          scored: cleanBool(k.scored),
+          playerNum: Number.isFinite(k.playerNum) ? k.playerNum : undefined,
+        })).map((k) => { Object.keys(k).forEach((key) => k[key] === undefined && delete k[key]); return k; })
+      : [],
+  };
 };
 
 const sanitizeMatch = (match = {}) => {
@@ -53,6 +68,7 @@ const sanitizeMatch = (match = {}) => {
     coach: match.coach ? cleanString(match.coach) : undefined,
     assistantReferee: match.assistantReferee ? cleanString(match.assistantReferee) : undefined,
     manager: match.manager ? cleanString(match.manager) : undefined,
+    shootout: sanitizeShootout(match.shootout),
   };
   Object.keys(base).forEach((k) => base[k] === undefined && delete base[k]);
 
@@ -78,7 +94,6 @@ export const useMatchHistory = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Carica lo storico delle partite da Firebase
   const loadHistory = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -94,16 +109,13 @@ export const useMatchHistory = () => {
     } catch (error) {
       console.error("Errore caricamento storico:", error);
       setError(error.message ?? "Errore sconosciuto");
-      alert(
-        `⚠️ Errore nel caricamento dello storico: ${error.message ?? "Errore sconosciuto"}`
-      );
+      alert(`⚠️ Errore nel caricamento dello storico: ${error.message ?? "Errore sconosciuto"}`);
       return [];
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Salva una nuova partita
   const saveMatch = useCallback(
     async (match) => {
       if (!window.confirm("Sei sicuro di voler salvare e terminare questa partita?")) {
@@ -117,7 +129,7 @@ export const useMatchHistory = () => {
         const opponentPoints = calculatePoints(sanitized, "opponent");
         const vigontinaGoals = calculateTotalGoals(sanitized, "vigontina");
         const opponentGoals = calculateTotalGoals(sanitized, "opponent");
-        
+
         await addDoc(collection(db, "matches"), {
           ...sanitized,
           finalPoints: {
@@ -136,9 +148,7 @@ export const useMatchHistory = () => {
       } catch (error) {
         console.error("Errore salvataggio:", error);
         setError(error.message ?? "Errore sconosciuto");
-        alert(
-          `❌ Errore nel salvataggio della partita: ${error.message ?? "Errore sconosciuto"}\n\nRiprova o contatta l'assistenza.`
-        );
+        alert(`❌ Errore nel salvataggio della partita: ${error.message ?? "Errore sconosciuto"}\n\nRiprova o contatta l'assistenza.`);
         return false;
       } finally {
         setIsLoading(false);
@@ -147,23 +157,14 @@ export const useMatchHistory = () => {
     [loadHistory]
   );
 
-  // Elimina una partita
   const deleteMatch = useCallback(
     async (matchId) => {
-      if (
-        !window.confirm(
-          "⚠️ Sei sicuro di voler eliminare questa partita?\n\nQuesta azione è irreversibile!"
-        )
-      ) {
+      if (!window.confirm("\u26a0\ufe0f Sei sicuro di voler eliminare questa partita?\n\nQuesta azione \u00e8 irreversibile!")) {
         return false;
       }
-      const password = prompt(
-        "Inserisci la password per confermare l'eliminazione:"
-      );
+      const password = prompt("Inserisci la password per confermare l'eliminazione:");
       if (password !== "Vigontina2526") {
-        if (password !== null) {
-          alert("❌ Password errata. Eliminazione annullata.");
-        }
+        if (password !== null) alert("❌ Password errata. Eliminazione annullata.");
         return false;
       }
       setIsLoading(true);
@@ -176,9 +177,7 @@ export const useMatchHistory = () => {
       } catch (error) {
         console.error("Errore eliminazione:", error);
         setError(error.message ?? "Errore sconosciuto");
-        alert(
-          `❌ Errore nell'eliminazione: ${error.message ?? "Errore sconosciuto"}`
-        );
+        alert(`❌ Errore nell'eliminazione: ${error.message ?? "Errore sconosciuto"}`);
         return false;
       } finally {
         setIsLoading(false);
@@ -187,74 +186,43 @@ export const useMatchHistory = () => {
     [loadHistory]
   );
 
-  // Modifica una partita esistente
   const editMatch = useCallback(
     async (matchId) => {
-      const password = prompt(
-        "Inserisci la password per modificare la partita:"
-      );
+      const password = prompt("Inserisci la password per modificare la partita:");
       if (password !== "Vigontina2526") {
-        if (password !== null) {
-          alert("❌ Password errata. Modifica annullata.");
-        }
+        if (password !== null) alert("❌ Password errata. Modifica annullata.");
         return null;
       }
-      
-      // Trova la partita da modificare
       const matchToEdit = matchHistory.find(m => m.id === matchId);
       if (!matchToEdit) {
         alert("❌ Partita non trovata.");
         return null;
       }
-      
       return matchToEdit;
     },
     [matchHistory]
   );
 
-  // Helper per ottenere i punti di una partita
-  // SEMPRE ricalcola per garantire coerenza, ignora finalPoints che potrebbero essere vecchi
   const getMatchPoints = useCallback((match, team) => {
     return calculatePoints(match, team);
   }, []);
 
-  // Helper per ottenere i gol di una partita
-  // SEMPRE ricalcola per garantire coerenza
   const getMatchGoals = useCallback((match, team) => {
     return calculateTotalGoals(match, team);
   }, []);
 
-  // Calcola le statistiche generali
+  // Usa getMatchResult per tenere conto dello spareggio rigori
   const stats = useMemo(() => {
     const totalMatches = matchHistory.length;
-    
-    const wins = matchHistory.filter((m) => {
-      const vigontinaPoints = getMatchPoints(m, "vigontina");
-      const opponentPoints = getMatchPoints(m, "opponent");
-      return vigontinaPoints > opponentPoints;
-    }).length;
-    
-    const draws = matchHistory.filter((m) => {
-      const vigontinaPoints = getMatchPoints(m, "vigontina");
-      const opponentPoints = getMatchPoints(m, "opponent");
-      return vigontinaPoints === opponentPoints;
-    }).length;
-    
-    const losses = matchHistory.filter((m) => {
-      const vigontinaPoints = getMatchPoints(m, "vigontina");
-      const opponentPoints = getMatchPoints(m, "opponent");
-      return vigontinaPoints < opponentPoints;
-    }).length;
-    
+    const wins = matchHistory.filter((m) => getMatchResult(m).isWin).length;
+    const draws = matchHistory.filter((m) => getMatchResult(m).isDraw).length;
+    const losses = matchHistory.filter((m) => getMatchResult(m).isLoss).length;
     return { totalMatches, wins, draws, losses };
-  }, [matchHistory, getMatchPoints]);
+  }, [matchHistory]);
 
-  // Ottiene l'ultima partita giocata
   const lastPlayedMatch = useMemo(() => {
     if (!matchHistory || matchHistory.length === 0) return null;
-    return [...matchHistory].sort(
-      (a, b) => new Date(b.date) - new Date(a.date)
-    )[0];
+    return [...matchHistory].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
   }, [matchHistory]);
 
   return {
