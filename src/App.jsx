@@ -14,6 +14,7 @@ import MatchHistory from "./components/MatchHistory";
 import MatchSummary from "./components/MatchSummary";
 import FIGCReport from "./components/FIGCReport";
 import StatsPage from "./components/StatsPage";
+import PenaltyShootout from "./components/PenaltyShootout";
 
 // Utils
 import { exportMatchToExcel, exportMatchToPDF, exportHistoryToExcel } from "./utils/exportUtils";
@@ -128,6 +129,16 @@ const VigontinaStats = () => {
     setSelectedHistoryMatch(selectedMatch);
     setPage("history-figc-report");
   }, []);
+
+  // Spareggio rigori
+  const handleStartShootout = useCallback(() => {
+    setPage("penalty-shootout");
+  }, []);
+
+  const handleSaveShootout = useCallback((shootoutData) => {
+    match.setCurrentMatch((prev) => ({ ...prev, shootout: shootoutData }));
+    setPage("match-overview");
+  }, [match]);
 
   // Event handlers that use timer.getCurrentMinute
   const handleAddGoal = useCallback(
@@ -271,6 +282,17 @@ const VigontinaStats = () => {
         onFIGCReport={() => setPage("figc-report")}
         isTimerRunning={timer.isTimerRunning}
         onBack={handleAbandonMatch}
+        onStartShootout={handleStartShootout}
+      />
+    );
+  }
+
+  if (page === "penalty-shootout" && match.currentMatch) {
+    return (
+      <PenaltyShootout
+        match={match.currentMatch}
+        onSave={handleSaveShootout}
+        onBack={() => setPage("match-overview")}
       />
     );
   }
