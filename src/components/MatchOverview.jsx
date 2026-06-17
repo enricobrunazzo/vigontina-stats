@@ -19,11 +19,20 @@ const MatchOverview = ({
   onStartShootout,
 }) => {
   const isViewer = isShared && userRole !== 'organizer';
+
+  // Valori debug
+  const isShootoutComp = SHOOTOUT_COMPETITIONS.has(match?.competition);
+  const periodsCompleted = allPeriodsCompleted(match);
+  const shootoutNeeded = needsShootout(match);
+  const vPoints = calculatePoints(match, "vigontina");
+  const oPoints = calculatePoints(match, "opponent");
+  const showDebug = isShootoutComp; // mostra solo per Cadoneghe
+
   const showShootoutButton =
     !isViewer &&
-    SHOOTOUT_COMPETITIONS.has(match?.competition) &&
-    allPeriodsCompleted(match) &&
-    needsShootout(match);
+    isShootoutComp &&
+    periodsCompleted &&
+    shootoutNeeded;
   const shootoutDone = !!match?.shootout;
 
   return (
@@ -69,14 +78,14 @@ const MatchOverview = ({
                 <div className="text-center">
                   <p className="text-xs text-gray-600">Punti</p>
                   <p className="text-4xl font-bold text-green-700">
-                    {calculatePoints(match, "vigontina")}
+                    {vPoints}
                   </p>
                 </div>
                 <span className="text-2xl">-</span>
                 <div className="text-center">
                   <p className="text-xs text-gray-600">Punti</p>
                   <p className="text-4xl font-bold text-green-700">
-                    {calculatePoints(match, "opponent")}
+                    {oPoints}
                   </p>
                 </div>
               </div>
@@ -84,7 +93,6 @@ const MatchOverview = ({
                 Gol: {calculateTotalGoals(match, "vigontina")} -{" "}
                 {calculateTotalGoals(match, "opponent")}
               </p>
-              {/* Risultato spareggio se già registrato */}
               {shootoutDone && (
                 <div className={`mt-2 text-sm font-semibold ${
                   match.shootout.winner === "vigontina" ? "text-green-700" : "text-red-700"
@@ -135,7 +143,21 @@ const MatchOverview = ({
             ))}
           </div>
 
-          {/* SPAREGGIO RIGORI — solo Torneo Cadoneghe, solo se parità dopo 3 tempi */}
+          {/* DEBUG TEMPORANEO — rimuovere dopo verifica */}
+          {showDebug && (
+            <div className="mb-4 bg-yellow-50 border border-yellow-300 rounded p-3 text-xs font-mono space-y-1">
+              <p className="font-bold text-yellow-800">🔍 DEBUG Spareggio</p>
+              <p>competition: <b>{match?.competition}</b></p>
+              <p>isShootoutComp: <b>{String(isShootoutComp)}</b></p>
+              <p>allPeriodsCompleted: <b>{String(periodsCompleted)}</b></p>
+              <p>needsShootout: <b>{String(shootoutNeeded)}</b></p>
+              <p>shootoutDone: <b>{String(shootoutDone)}</b></p>
+              <p>punti V/O: <b>{vPoints} - {oPoints}</b></p>
+              <p>periodi: {match?.periods?.map((p, i) => `[${i}] ${p.name} completed=${String(p.completed)}`).join(" | ")}</p>
+            </div>
+          )}
+
+          {/* SPAREGGIO RIGORI */}
           {showShootoutButton && (
             <div className="mb-6 bg-purple-50 border-2 border-purple-300 rounded-lg p-4">
               <div className="flex items-start gap-3">
