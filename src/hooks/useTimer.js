@@ -1,27 +1,20 @@
-// hooks/useTimer.js (migrated to Realtime Database)
+// hooks/useTimer.js
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ref, onValue, update, remove, serverTimestamp } from "firebase/database";
 import { realtimeDb } from "../config/firebase";
 import { getActiveMatchCode } from "./cloudPersistence";
-import { TWO_HALF_COMPETITIONS } from "../utils/matchUtils";
+import { getPeriodDuration, TWO_HALF_COMPETITIONS } from "../utils/matchUtils";
 
-/** Durata standard (tornei provinciali, amichevoli): 22 minuti */
+/** Durata default se non specificato il periodo */
 const TIMER_DURATION_DEFAULT = 1320;
-/** Durata per tornei a 2 tempi (Mirabilandia, Piove, Dolo, Cadoneghe, Saccisica): 22 minuti */
-const TIMER_DURATION_TWO_HALVES = 1320;
 
-/**
- * Restituisce la durata del timer in secondi in base alla competizione.
- * @param {string|undefined} competition
- * @returns {number}
- */
-export const getTimerDuration = (competition) =>
-  TWO_HALF_COMPETITIONS.has(competition)
-    ? TIMER_DURATION_TWO_HALVES
-    : TIMER_DURATION_DEFAULT;
+export const getTimerDuration = (competition, periodName) => {
+  if (periodName) return getPeriodDuration(periodName, competition);
+  return TWO_HALF_COMPETITIONS.has(competition) ? 1200 : TIMER_DURATION_DEFAULT;
+};
 
-export const useTimer = (competition) => {
-  const TIMER_DURATION = getTimerDuration(competition);
+export const useTimer = (competition, periodName) => {
+  const TIMER_DURATION = getTimerDuration(competition, periodName);
 
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
@@ -29,7 +22,6 @@ export const useTimer = (competition) => {
   const timerRef = useRef(null);
   const wakeLockRef = useRef(null);
 
-  // Helpers RTDB
   const getTimerRef = useCallback(() => {
     const code = getActiveMatchCode();
     return code ? ref(realtimeDb, `active-matches/${code}/timer`) : null;

@@ -19,20 +19,11 @@ const MatchOverview = ({
   onStartShootout,
 }) => {
   const isViewer = isShared && userRole !== 'organizer';
-
-  // Valori debug
-  const isShootoutComp = SHOOTOUT_COMPETITIONS.has(match?.competition);
-  const periodsCompleted = allPeriodsCompleted(match);
-  const shootoutNeeded = needsShootout(match);
-  const vPoints = calculatePoints(match, "vigontina");
-  const oPoints = calculatePoints(match, "opponent");
-  const showDebug = isShootoutComp; // mostra solo per Cadoneghe
-
   const showShootoutButton =
     !isViewer &&
-    isShootoutComp &&
-    periodsCompleted &&
-    shootoutNeeded;
+    SHOOTOUT_COMPETITIONS.has(match?.competition) &&
+    allPeriodsCompleted(match) &&
+    needsShootout(match);
   const shootoutDone = !!match?.shootout;
 
   return (
@@ -78,14 +69,14 @@ const MatchOverview = ({
                 <div className="text-center">
                   <p className="text-xs text-gray-600">Punti</p>
                   <p className="text-4xl font-bold text-green-700">
-                    {vPoints}
+                    {calculatePoints(match, "vigontina")}
                   </p>
                 </div>
                 <span className="text-2xl">-</span>
                 <div className="text-center">
                   <p className="text-xs text-gray-600">Punti</p>
                   <p className="text-4xl font-bold text-green-700">
-                    {oPoints}
+                    {calculatePoints(match, "opponent")}
                   </p>
                 </div>
               </div>
@@ -105,57 +96,59 @@ const MatchOverview = ({
           </div>
 
           <div className="space-y-2 mb-6">
-            {match.periods.map((period, idx) => (
-              <div
-                key={idx}
-                className={`border rounded-lg p-4 ${
-                  period.completed ? "bg-gray-50" : "bg-white"
-                }`}
-              >
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="font-semibold">{period.name}</h3>
-                    <p className="text-sm text-gray-600">
-                      {period.vigontina} - {period.opponent}
-                      {period.goals && period.goals.length > 0 && ` (${period.goals.length} eventi)`}
-                    </p>
-                  </div>
-                  {!period.completed ? (
-                    !isViewer && (
+            {match.periods.map((period, idx) => {
+              const isSupplementare = period.name === "1° SUPPLEMENTARE" || period.name === "2° SUPPLEMENTARE";
+              return (
+                <div
+                  key={idx}
+                  className={`border rounded-lg p-4 ${
+                    period.completed
+                      ? "bg-gray-50"
+                      : isSupplementare
+                        ? "bg-orange-50 border-orange-200"
+                        : "bg-white"
+                  }`}
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className={`font-semibold ${ isSupplementare ? "text-orange-700" : "" }`}>
+                        {period.name}
+                        {isSupplementare && !period.completed && (
+                          <span className="ml-2 text-xs font-normal text-orange-500">(5 min)</span>
+                        )}
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        {period.vigontina} - {period.opponent}
+                        {period.goals && period.goals.length > 0 && ` (${period.goals.length} eventi)`}
+                      </p>
+                    </div>
+                    {!period.completed ? (
+                      !isViewer && (
+                        <button
+                          onClick={() => onStartPeriod(idx)}
+                          className={`text-white px-3 py-1 rounded text-sm ${
+                            isSupplementare
+                              ? "bg-orange-500 hover:bg-orange-600"
+                              : "bg-blue-400 hover:bg-blue-500"
+                          }`}
+                        >
+                          {period.name === "PROVA TECNICA" ? "Inizia" : "Gioca"}
+                        </button>
+                      )
+                    ) : (
                       <button
-                        onClick={() => onStartPeriod(idx)}
-                        className="bg-blue-400 text-white px-3 py-1 rounded hover:bg-blue-500 text-sm"
+                        onClick={() => onViewPeriod(idx)}
+                        className="bg-purple-400 text-white px-3 py-1 rounded hover:bg-purple-500 flex items-center gap-1 text-sm"
                       >
-                        {period.name === "PROVA TECNICA" ? "Inizia" : "Gioca"}
+                        <FileText className="w-3 h-3" />
+                        Dettagli
                       </button>
-                    )
-                  ) : (
-                    <button
-                      onClick={() => onViewPeriod(idx)}
-                      className="bg-purple-400 text-white px-3 py-1 rounded hover:bg-purple-500 flex items-center gap-1 text-sm"
-                    >
-                      <FileText className="w-3 h-3" />
-                      Dettagli
-                    </button>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-
-          {/* DEBUG TEMPORANEO — rimuovere dopo verifica */}
-          {showDebug && (
-            <div className="mb-4 bg-yellow-50 border border-yellow-300 rounded p-3 text-xs font-mono space-y-1">
-              <p className="font-bold text-yellow-800">🔍 DEBUG Spareggio</p>
-              <p>competition: <b>{match?.competition}</b></p>
-              <p>isShootoutComp: <b>{String(isShootoutComp)}</b></p>
-              <p>allPeriodsCompleted: <b>{String(periodsCompleted)}</b></p>
-              <p>needsShootout: <b>{String(shootoutNeeded)}</b></p>
-              <p>shootoutDone: <b>{String(shootoutDone)}</b></p>
-              <p>punti V/O: <b>{vPoints} - {oPoints}</b></p>
-              <p>periodi: {match?.periods?.map((p, i) => `[${i}] ${p.name} completed=${String(p.completed)}`).join(" | ")}</p>
-            </div>
-          )}
 
           {/* SPAREGGIO RIGORI */}
           {showShootoutButton && (
@@ -165,7 +158,7 @@ const MatchOverview = ({
                 <div className="flex-1">
                   <h3 className="font-semibold text-purple-900 mb-1">Spareggio Rigori</h3>
                   <p className="text-xs text-purple-700 mb-3">
-                    I tre tempi sono terminati in parità. Registra la serie di rigori.
+                    Tutti i tempi sono terminati in parità. Registra la serie di rigori.
                   </p>
                   <button
                     onClick={onStartShootout}

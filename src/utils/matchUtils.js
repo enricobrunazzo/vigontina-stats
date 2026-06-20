@@ -1,12 +1,15 @@
 // utils/matchUtils.js
 
-// src/utils/matchUtils.js
-
 /**
  * Helpers
  */
 const isTechnicalTest = (period) =>
   (period?.name || "").trim().toUpperCase() === "PROVA TECNICA";
+
+const isExtraTime = (period) => {
+  const name = (period?.name || "").trim().toUpperCase();
+  return name === "1° SUPPLEMENTARE" || name === "2° SUPPLEMENTARE";
+};
 
 const safeNumber = (v) => (Number.isFinite(v) ? v : 0);
 
@@ -28,7 +31,7 @@ const SINGLE_MATCH_COMPETITIONS = new Set([
 ]);
 
 /**
- * Competizioni con solo 2 tempi (niente Prova Tecnica, niente 3°/4° tempo).
+ * Competizioni con solo 2 tempi.
  * Timer: 20 minuti per tempo.
  */
 export const TWO_HALF_COMPETITIONS = new Set([
@@ -39,8 +42,8 @@ export const TWO_HALF_COMPETITIONS = new Set([
 ]);
 
 /**
- * Competizioni con 3 tempi e logica a punti per tempo.
- * Timer: 20 minuti per tempo.
+ * Competizioni con 3 tempi + 2 supplementari da 5 min.
+ * Timer: 20 minuti per i tempi regolamentari, 5 per i supplementari.
  */
 export const THREE_HALF_COMPETITIONS = new Set([
   "Torneo Cadoneghe",
@@ -54,13 +57,25 @@ export const SHOOTOUT_COMPETITIONS = new Set([
 ]);
 
 /**
- * Verifica se la competizione usa la logica "partita singola" (gol totali, no punti per tempo)
+ * Durata in secondi di un periodo dato nome e competizione.
  */
+export const getPeriodDuration = (periodName, competition) => {
+  const name = (periodName || "").trim().toUpperCase();
+  if (
+    THREE_HALF_COMPETITIONS.has(competition) &&
+    (name === "1° SUPPLEMENTARE" || name === "2° SUPPLEMENTARE")
+  ) {
+    return 300; // 5 minuti
+  }
+  if (TWO_HALF_COMPETITIONS.has(competition)) return 1200; // 20 min
+  return 1320; // 22 min default
+};
+
 const isSingleMatchLogic = (match) =>
   SINGLE_MATCH_COMPETITIONS.has(match?.competition);
 
 /**
- * Verifica se tutti i tempi effettivi sono completati
+ * Verifica se tutti i tempi effettivi (inclusi supplementari se presenti) sono completati.
  */
 export const allPeriodsCompleted = (match) => {
   if (!match || !Array.isArray(match.periods)) return false;
@@ -69,12 +84,35 @@ export const allPeriodsCompleted = (match) => {
 };
 
 /**
- * Verifica se la partita è in parità dopo tutti i tempi (solo per competizioni con spareggio)
+ * Verifica se i soli 3 tempi regolamentari sono tutti completati e in parità
+ * (serve per decidere se mostrare il pulsante supplementari — ma ora li aggiungiamo subito,
+ * quindi questa funzione non viene più usata per quello scopo).
+ */
+export const regularPeriodsInDraw = (match) => {
+  if (!SHOOTOUT_COMPETITIONS.has(match?.competition)) return false;
+  const regular = (match?.periods || []).filter(
+    (p) => !isTechnicalTest(p) && !isExtraTime(p) && p.completed === true
+  );
+  if (regular.length === 0) return false;
+  let vp = 0, op = 0;
+  for (const p of regular) {
+    const v = safeNumber(p.vigontina);
+    const o = safeNumber(p.opponent);
+    if (v === o) { vp += 1; op += 1; }
+    else if (v > o) vp += 1;
+    else op += 1;
+  }
+  return vp === op;
+};
+
+/**
+ * Verifica se serve lo spareggio rigori:
+ * solo dopo che TUTTI i periodi (inclusi supplementari) sono completati e c'è parità.
  */
 export const needsShootout = (match) => {
   if (!SHOOTOUT_COMPETITIONS.has(match?.competition)) return false;
   if (!allPeriodsCompleted(match)) return false;
-  if (match.shootout) return false; // spareggio già registrato
+  if (match.shootout) return false;
   const vp = calculatePoints(match, "vigontina");
   const op = calculatePoints(match, "opponent");
   return vp === op;
@@ -214,7 +252,6 @@ export const calculateMatchStats = (match) => {
 export const getMatchResult = (match) => {
   let isWin, isDraw;
 
-  // Se c'è uno spareggio rigori registrato, ha sempre la precedenza
   if (match?.shootout) {
     isWin = match.shootout.winner === "vigontina";
     isDraw = false;
@@ -246,7 +283,8 @@ export const getMatchResult = (match) => {
 };
 
 /**
- * Crea una nuova struttura partita
+ * Crea una nuova struttura partita.
+ * Cadoneghe: 3 tempi da 20 min + 2 supplementari da 5 min.
  */
 export const createMatchStructure = (matchData) => {
   const isFriendlyLike = matchData?.competition === "Amichevole";
@@ -254,7 +292,7 @@ export const createMatchStructure = (matchData) => {
   const isThreeHalves = THREE_HALF_COMPETITIONS.has(matchData?.competition);
 
   const periods = isThreeHalves
-    ? ["1° TEMPO", "2° TEMPO", "3° TEMPO"]
+    ? ["1° TEMPO", "2° TEMPO", "3° TEMPO", "1° SUPPLEMENTARE", "2° SUPPLEMENTARE"]
     : isTwoHalves
       ? ["1° TEMPO", "2° TEMPO"]
       : isFriendlyLike

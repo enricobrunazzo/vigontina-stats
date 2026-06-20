@@ -1,4 +1,4 @@
-// App.jsx (versione aggiornata con modulo FIGC anche per storico)
+// App.jsx
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 
 // Hooks
@@ -21,15 +21,14 @@ import { exportMatchToExcel, exportMatchToPDF, exportHistoryToExcel } from "./ut
 import { calculatePoints } from "./utils/matchUtils";
 
 const VigontinaStats = () => {
-  // Routing
   const [page, setPage] = useState("home");
   const [selectedHistoryMatch, setSelectedHistoryMatch] = useState(null);
   const [historyFilter, setHistoryFilter] = useState("all");
 
-  // Custom hooks
   const match = useMatch();
-  // Passa la competizione al timer così usa 20 min per i tornei a 2 tempi
-  const timer = useTimer(match.currentMatch?.competition);
+  // Passa anche il nome del periodo corrente per il timer supplementari
+  const currentPeriodName = match.currentMatch?.periods?.[match.currentPeriod]?.name;
+  const timer = useTimer(match.currentMatch?.competition, currentPeriodName);
   const {
     matchHistory,
     loadHistory,
@@ -40,13 +39,11 @@ const VigontinaStats = () => {
     lastPlayedMatch,
   } = useMatchHistory();
 
-  // Load history and timer state on mount
   useEffect(() => {
     loadHistory();
     timer.loadTimerState();
   }, [loadHistory, timer.loadTimerState]);
 
-  // Match management
   const handleCreateNewMatch = useCallback(
     (matchData) => {
       match.createMatch(matchData);
@@ -130,7 +127,6 @@ const VigontinaStats = () => {
     setPage("history-figc-report");
   }, []);
 
-  // Spareggio rigori
   const handleStartShootout = useCallback(() => {
     setPage("penalty-shootout");
   }, []);
@@ -140,7 +136,6 @@ const VigontinaStats = () => {
     setPage("match-overview");
   }, [match]);
 
-  // Event handlers that use timer.getCurrentMinute
   const handleAddGoal = useCallback(
     (scorerNum, assistNum) => {
       match.addGoal(scorerNum, assistNum, timer.getCurrentMinute);
@@ -205,29 +200,19 @@ const VigontinaStats = () => {
   const filteredHistory = useMemo(() => {
     if (!Array.isArray(matchHistory)) return [];
     switch (historyFilter) {
-      case "friendly":
-        return matchHistory.filter((m) => m?.competition === "Amichevole");
-      case "autumn":
-        return matchHistory.filter((m) => m?.competition === "Torneo Provinciale Autunnale");
-      case "spring":
-        return matchHistory.filter((m) => m?.competition === "Torneo Provinciale Primaverile");
-      case "mirabilandia":
-        return matchHistory.filter((m) => m?.competition === "Torneo Mirabilandia Festival");
-      case "piove":
-        return matchHistory.filter((m) => m?.competition === "Torneo Piove di Sacco");
-      case "dolo":
-        return matchHistory.filter((m) => m?.competition === "Torneo Derby Cup Dolo");
-      case "cadoneghe":
-        return matchHistory.filter((m) => m?.competition === "Torneo Cadoneghe");
-      case "saccisica":
-        return matchHistory.filter((m) => m?.competition === "Trofeo della Saccisica - Codevigo");
+      case "friendly": return matchHistory.filter((m) => m?.competition === "Amichevole");
+      case "autumn": return matchHistory.filter((m) => m?.competition === "Torneo Provinciale Autunnale");
+      case "spring": return matchHistory.filter((m) => m?.competition === "Torneo Provinciale Primaverile");
+      case "mirabilandia": return matchHistory.filter((m) => m?.competition === "Torneo Mirabilandia Festival");
+      case "piove": return matchHistory.filter((m) => m?.competition === "Torneo Piove di Sacco");
+      case "dolo": return matchHistory.filter((m) => m?.competition === "Torneo Derby Cup Dolo");
+      case "cadoneghe": return matchHistory.filter((m) => m?.competition === "Torneo Cadoneghe");
+      case "saccisica": return matchHistory.filter((m) => m?.competition === "Trofeo della Saccisica - Codevigo");
       case "all":
-      default:
-        return matchHistory;
+      default: return matchHistory;
     }
   }, [matchHistory, historyFilter]);
 
-  // Render routes
   if (page === "home") {
     return (
       <HomeScreen
@@ -245,12 +230,7 @@ const VigontinaStats = () => {
   }
 
   if (page === "stats") {
-    return (
-      <StatsPage
-        matchHistory={matchHistory}
-        onBack={() => setPage("home")}
-      />
-    );
+    return <StatsPage matchHistory={matchHistory} onBack={() => setPage("home")} />;
   }
 
   if (page === "history-menu") {
@@ -404,7 +384,6 @@ const VigontinaStats = () => {
   return null;
 };
 
-// History menu screen
 const HistoryMenu = ({ onBack, onSelect }) => {
   const items = [
     { key: "all", label: "Tutte le Partite" },
@@ -417,37 +396,26 @@ const HistoryMenu = ({ onBack, onSelect }) => {
     { key: "cadoneghe", label: "Torneo Cadoneghe" },
     { key: "saccisica", label: "Trofeo della Saccisica - Codevigo" },
   ];
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
       <div className="max-w-2xl mx-auto">
         <div className="bg-white rounded-lg shadow-lg p-6">
-          <button
-            onClick={onBack}
-            className="mb-4 text-gray-600 hover:text-gray-800 flex items-center gap-2"
-          >
+          <button onClick={onBack} className="mb-4 text-gray-600 hover:text-gray-800 flex items-center gap-2">
             ← Indietro
           </button>
-
           <h2 className="text-2xl font-bold mb-6">Storico Partite</h2>
-
           <div className="space-y-2">
-            {items.map((it) => {
-              const isAll = it.key === "all";
-              return (
-                <button
-                  key={it.key}
-                  onClick={() => onSelect(it.key)}
-                  className={`w-full text-white py-2 rounded transition text-sm font-medium ${
-                    isAll
-                      ? "bg-blue-700 hover:bg-blue-800"
-                      : "bg-blue-500 hover:bg-blue-600"
-                  }`}
-                >
-                  {it.label}
-                </button>
-              );
-            })}
+            {items.map((it) => (
+              <button
+                key={it.key}
+                onClick={() => onSelect(it.key)}
+                className={`w-full text-white py-2 rounded transition text-sm font-medium ${
+                  it.key === "all" ? "bg-blue-700 hover:bg-blue-800" : "bg-blue-500 hover:bg-blue-600"
+                }`}
+              >
+                {it.label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -455,7 +423,6 @@ const HistoryMenu = ({ onBack, onSelect }) => {
   );
 };
 
-// HomeScreen Component
 const HomeScreen = ({ stats, lastPlayedMatch, onNewMatch, onViewHistory, onViewStats, onViewLastMatch }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-cyan-600 p-4">
@@ -535,22 +502,13 @@ const HomeScreen = ({ stats, lastPlayedMatch, onNewMatch, onViewHistory, onViewS
           )}
 
           <div className="space-y-3">
-            <button
-              onClick={onNewMatch}
-              className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition text-base font-medium"
-            >
+            <button onClick={onNewMatch} className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition text-base font-medium">
               Nuova Partita
             </button>
-            <button
-              onClick={onViewStats}
-              className="w-full bg-teal-500 text-white py-2 rounded hover:bg-teal-600 transition text-base font-medium flex items-center justify-center gap-2"
-            >
+            <button onClick={onViewStats} className="w-full bg-teal-500 text-white py-2 rounded hover:bg-teal-600 transition text-base font-medium flex items-center justify-center gap-2">
               🏆 Statistiche
             </button>
-            <button
-              onClick={onViewHistory}
-              className="w-full bg-purple-500 text-white py-2 rounded hover:bg-purple-600 transition text-base font-medium"
-            >
+            <button onClick={onViewHistory} className="w-full bg-purple-500 text-white py-2 rounded hover:bg-purple-600 transition text-base font-medium">
               Storico Partite ({stats.totalMatches})
             </button>
           </div>
